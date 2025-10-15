@@ -6,12 +6,12 @@ export interface AuthTokens {
   exprTime?: number;
 }
 
-export interface UserInfo {
+export type UserInfo = {
   id: string;
   nickname?: string;
   profileImage?: string;
   name?: string;
-}
+};
 
 // 토큰을 로컬 스토리지에 저장
 export const saveTokens = (accessToken: string, refreshToken: string) => {
@@ -53,20 +53,77 @@ export const getUserInfo = (): UserInfo | null => {
   }
 };
 
-// 토큰 확인 API 호출
-export const checkToken = async (): Promise<UserInfo | null> => {
+/**
+ * [NEW] OAuth 리디렉션 후 백엔드로부터 토큰을 가져와 저장하는 함수
+ */
+export const fetchAndStoreTokens = async (): Promise<AuthTokens | null> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/token`, {
-      credentials: 'include',
+      // 백엔드가 세션 쿠키를 보냈을 때, 브라우저가 요청에 해당 쿠키를 포함시키도록 합니다.
+      credentials: 'include', 
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch tokens. Status: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (data.accessToken && data.refreshToken) {
+      // localStorage에 토큰 저장
+      saveTokens(data.accessToken, data.refreshToken);
+      
+      // 요청대로 콘솔에 토큰 출력
+      // console.log("✅ Tokens fetched successfully via credentials:");
+      // console.log("🔑 Access Token:", data.accessToken);
+      // console.log("🔄 Refresh Token:", data.refreshToken);
+
+      return {
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        exprTime: data.exprTime,
+      };
+    } else {
+      console.error("Token data is missing in the response from /api/v1/auth/token");
+      return null;
+    }
+  } catch (error) {
+    console.error('Fetching tokens failed:', error);
+    return null;
+  }
+};
+
+
+// 기존 checkToken 함수는 저장된 토큰으로 사용자 정보를 가져오는 역할을 유지합니다.
+export const checkToken = async (): Promise<UserInfo | null> => {
+  const tokens = getTokens();
+  if (!tokens?.accessToken) {
+    console.error("checkToken: No access token found in localStorage.");
+    return null;
+  }
+
+  try {
+    // 이 API는 Access Token으로 사용자 정보를 조회하는 백엔드 API여야 합니다.
+    // 만약 토큰 발급과 사용자 정보 조회가 같은 API에서 이루어진다면 이 함수는 필요 없을 수 있습니다.
+    // 현재는 토큰 발급과 정보 조회를 분리된 역할로 간주합니다.
+    const response = await fetch(`${API_BASE_URL}/api/v1/me`, { // 사용자 정보 조회 API 경로로 가정
+      headers: {
+        'Authorization': `Bearer ${tokens.accessToken}`,
+      },
     });
     
-    if (!response.ok) return null;
+    if (!response.ok) {
+        console.error(`Failed to fetch user info. Status: ${response.status}`);
+        return null;
+    }
     
     const userInfo = await response.json();
     saveUserInfo(userInfo);
+    console.log("✅ User info fetched and saved:", userInfo);
     return userInfo;
   } catch (error) {
-    console.error('Token check failed:', error);
+    console.error('User info fetch failed:', error);
     return null;
   }
 };
@@ -139,28 +196,3 @@ export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver'): string => {
   return `${API_BASE_URL}/oauth2/authorization/${provider}`;
 };
 
-// 쿠키에서 토큰 파싱 (OAuth 리다이렉트 후)
-export const parseTokensFromCookies = (): AuthTokens | null => {
-  const cookies = document.cookie.split(';');
-  let accessToken = '';
-  let refreshToken = '';
-  
-  for (const cookie of cookies) {
-    const [key, value] = cookie.trim().split('=');
-    if (key === 'ACCESS_TOKEN') {
-      accessToken = value;
-    } else if (key === 'REFRESH_TOKEN') {
-      refreshToken = value;
-    }
-  }
-  
-  if (accessToken && refreshToken) {
-    saveTokens(accessToken, refreshToken);
-    // 쿠키 삭제
-    document.cookie = 'ACCESS_TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'REFRESH_TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    return { accessToken, refreshToken };
-  }
-  
-  return null;
-};

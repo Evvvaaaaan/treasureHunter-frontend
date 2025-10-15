@@ -1,6 +1,7 @@
+
 import { motion } from 'motion/react';
 import { MapPin, Search, Star } from 'lucide-react';
-import { getOAuthUrl } from '../utils/auth';
+import { getOAuthUrl} from '../utils/auth';
 import { Button } from './ui/button';
 import '../styles/login-page.css';
 
