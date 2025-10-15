@@ -13,13 +13,14 @@ import {
   User,
   LogOut,
 } from 'lucide-react';
-import { Button } from './ui/button';
+// import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { getUserInfo, clearTokens } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
+
 
 interface LostItem {
   id: string;

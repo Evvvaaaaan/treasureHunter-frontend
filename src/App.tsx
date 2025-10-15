@@ -1,27 +1,41 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import LoginPage from './components/LoginPage';
-import AuthCallback from './components/AuthCallback';
-import SignupPage from './components/SignupPage';
-import HomePage from './components/HomePage';
-import { getUserInfo } from './utils/auth';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import LoginPage from "./components/LoginPage";
+import AuthCallback from "./components/AuthCallback";
+import SignupPage from "./components/SignupPage";
+import HomePage from "./components/HomePage";
+import CreateLostItemPage from "./components/CreateLostItemPage";
+import { getUserInfo } from "./utils/auth";
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const userInfo = getUserInfo();
-  
+
   if (!userInfo) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
+function PublicRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const userInfo = getUserInfo();
-  
+
   if (userInfo) {
     return <Navigate to="/home" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -34,11 +48,14 @@ export default function App() {
           path="/login"
           element={
             <PublicRoute>
-              <LoginPage />
+              <CreateLostItemPage />
             </PublicRoute>
           }
         />
-        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route
+          path="/auth/callback"
+          element={<AuthCallback />}
+        />
         <Route path="/signup" element={<SignupPage />} />
 
         {/* Protected Routes */}
@@ -50,10 +67,24 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/create"
+          element={
+            <ProtectedRoute>
+              <CreateLostItemPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/"
+          element={<Navigate to="/login" replace />}
+        />
+        <Route
+          path="*"
+          element={<Navigate to="/login" replace />}
+        />
       </Routes>
     </Router>
   );

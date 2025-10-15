@@ -1,65 +1,89 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Camera, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { signupUser, saveUserInfo } from '../utils/auth';
+// 1. 'UserInfo'를 타입 전용(type-only)으로 가져오도록 수정하여 ts(1484) 오류를 해결합니다.
+import { signupUser, saveUserInfo, getUserInfo, type UserInfo } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
 
 export default function SignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const userId = searchParams.get('userId');
-
-  const [formData, setFormData] = useState({
-    nickname: '',
-    profileImage: '',
-    name: '',
-  });
+  
+  const [userId, setUserId] = useState<string | null>(null);
+  const [nickname, setNickname] = useState('');
+  const [name, setName] = useState('');
+  const [profileImage, setProfileImage] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const idFromUrl = searchParams.get('userId');
+    const tempUserInfo = getUserInfo();
+
+    if (!idFromUrl) {
+      setError('잘못된 접근입니다. 로그인 페이지로 이동합니다.');
+      setTimeout(() => navigate('/login'), 2000);
+      return;
+    }
+    
+    setUserId(idFromUrl);
+
+    if (tempUserInfo) {
+        setName(tempUserInfo.name || '');
+        setNickname(tempUserInfo.name || '');
+        setProfileImage(tempUserInfo.profileImage || '');
+    }
+  }, [navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!userId) {
-      setError('사용자 ID가 없습니다.');
+      setError('사용자 ID가 유효하지 않습니다. 다시 로그인 해주세요.');
       return;
     }
 
-    if (!formData.nickname || !formData.name) {
-      setError('모든 필드를 입력해주세요.');
+    if (!nickname.trim() || !name.trim()) {
+      setError('이름과 닉네임은 필수 항목입니다.');
       return;
     }
 
     setIsLoading(true);
 
     try {
+      const defaultProfileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400';
+      const finalProfileImage = profileImage || defaultProfileImage;
+
       const success = await signupUser(
         userId,
-        formData.nickname,
-        formData.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400',
-        formData.name
+        nickname,
+        finalProfileImage,
+        name
       );
 
       if (success) {
-        saveUserInfo({
+        const finalUserInfo: UserInfo = {
           id: userId,
-          nickname: formData.nickname,
-          profileImage: formData.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400',
-          name: formData.name,
-        });
+          nickname: nickname,
+          profileImage: finalProfileImage,
+          name: name,
+        };
+        saveUserInfo(finalUserInfo);
 
         navigate('/home');
       } else {
-        setError('회원가입에 실패했습니다. 다시 시도해주세요.');
+        setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
     } catch (err) {
-      setError('회원가입 중 오류가 발생했습니다.');
+      setError('회원가입 중 오류가 발생했습니다. 관리자에게 문의해주세요.');
+      console.error("Signup failed:", err);
     } finally {
       setIsLoading(false);
     }
@@ -70,11 +94,22 @@ export default function SignupPage() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData({ ...formData, profileImage: reader.result as string });
+        setProfileImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
+  
+  if (!userId && !error) {
+      return (
+          <div className="signup-page">
+              <div className="flex flex-col items-center">
+                  <Loader2 className="spinner h-12 w-12 text-primary" />
+                  <p className="mt-4 text-gray-600">사용자 정보를 불러오는 중...</p>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="signup-page">
@@ -91,13 +126,13 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="signup-form">
-            {/* Profile Image */}
             <div className="profile-image-section">
               <div className="profile-image-wrapper">
                 <div className="profile-image-container">
-                  {formData.profileImage ? (
+                  {profileImage ? (
+                    // 2. 'ImageWithFallback' 컴포넌트의 속성에서 'fallbackSrc'를 제거하여 ts(2322) 오류를 해결합니다.
                     <ImageWithFallback
-                      src={formData.profileImage}
+                      src={profileImage}
                       alt="Profile"
                       className="profile-img"
                     />
@@ -121,36 +156,33 @@ export default function SignupPage() {
               <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.75rem' }}>프로필 사진 (선택)</p>
             </div>
 
-            {/* Name */}
             <div className="form-field">
               <Label htmlFor="name">이름 *</Label>
               <Input
                 id="name"
                 type="text"
                 placeholder="홍길동"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 style={{ height: '3rem', backgroundColor: '#f9fafb', borderColor: '#e5e7eb' }}
                 required
               />
             </div>
 
-            {/* Nickname */}
             <div className="form-field">
               <Label htmlFor="nickname">닉네임 *</Label>
               <Input
                 id="nickname"
                 type="text"
                 placeholder="보물사냥꾼"
-                value={formData.nickname}
-                onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
                 style={{ height: '3rem', backgroundColor: '#f9fafb', borderColor: '#e5e7eb' }}
                 required
               />
               <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>다른 사용자에게 표시되는 이름입니다</p>
             </div>
 
-            {/* Error Message */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -161,7 +193,6 @@ export default function SignupPage() {
               </motion.div>
             )}
 
-            {/* Submit Button */}
             <Button
               type="submit"
               disabled={isLoading}
@@ -188,3 +219,4 @@ export default function SignupPage() {
     </div>
   );
 }
+
