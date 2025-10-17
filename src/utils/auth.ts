@@ -23,9 +23,9 @@ export const saveTokens = (accessToken: string, refreshToken: string) => {
 export const getTokens = (): AuthTokens | null => {
   const accessToken = localStorage.getItem('accessToken');
   const refreshToken = localStorage.getItem('refreshToken');
-  
+
   if (!accessToken || !refreshToken) return null;
-  
+
   return { accessToken, refreshToken };
 };
 
@@ -45,7 +45,7 @@ export const saveUserInfo = (userInfo: UserInfo) => {
 export const getUserInfo = (): UserInfo | null => {
   const userInfoStr = localStorage.getItem('userInfo');
   if (!userInfoStr) return null;
-  
+
   try {
     return JSON.parse(userInfoStr);
   } catch {
@@ -53,14 +53,11 @@ export const getUserInfo = (): UserInfo | null => {
   }
 };
 
-/**
- * [NEW] OAuth 리디렉션 후 백엔드로부터 토큰을 가져와 저장하는 함수
- */
+// 백엔드로부터 응답 본문의 토큰을 가져와 저장하는 함수
 export const fetchAndStoreTokens = async (): Promise<AuthTokens | null> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/token`, {
-      // 백엔드가 세션 쿠키를 보냈을 때, 브라우저가 요청에 해당 쿠키를 포함시키도록 합니다.
-      credentials: 'include', 
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -71,13 +68,11 @@ export const fetchAndStoreTokens = async (): Promise<AuthTokens | null> => {
     const data = await response.json();
 
     if (data.accessToken && data.refreshToken) {
-      // localStorage에 토큰 저장
       saveTokens(data.accessToken, data.refreshToken);
-      
-      // 요청대로 콘솔에 토큰 출력
-      // console.log("✅ Tokens fetched successfully via credentials:");
-      // console.log("🔑 Access Token:", data.accessToken);
-      // console.log("🔄 Refresh Token:", data.refreshToken);
+
+      console.log("✅ Tokens fetched successfully from response body:");
+      console.log("🔑 Access Token:", data.accessToken);
+      console.log("🔄 Refresh Token:", data.refreshToken);
 
       return {
         accessToken: data.accessToken,
@@ -94,9 +89,10 @@ export const fetchAndStoreTokens = async (): Promise<AuthTokens | null> => {
   }
 };
 
-
-// 기존 checkToken 함수는 저장된 토큰으로 사용자 정보를 가져오는 역할을 유지합니다.
-export const checkToken = async (): Promise<UserInfo | null> => {
+/**
+ * [FINAL] URL에서 얻은 userId를 사용하여 올바른 API로 사용자 정보를 가져오는 함수
+ */
+export const checkToken = async (userId: string): Promise<UserInfo | null> => {
   const tokens = getTokens();
   if (!tokens?.accessToken) {
     console.error("checkToken: No access token found in localStorage.");
@@ -104,20 +100,24 @@ export const checkToken = async (): Promise<UserInfo | null> => {
   }
 
   try {
-    // 이 API는 Access Token으로 사용자 정보를 조회하는 백엔드 API여야 합니다.
-    // 만약 토큰 발급과 사용자 정보 조회가 같은 API에서 이루어진다면 이 함수는 필요 없을 수 있습니다.
-    // 현재는 토큰 발급과 정보 조회를 분리된 역할로 간주합니다.
-    const response = await fetch(`${API_BASE_URL}/api/v1/me`, { // 사용자 정보 조회 API 경로로 가정
+    // 전달받은 userId를 사용해 올바른 API 경로로 요청합니다.
+    const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
       headers: {
         'Authorization': `Bearer ${tokens.accessToken}`,
       },
     });
-    
+
     if (!response.ok) {
         console.error(`Failed to fetch user info. Status: ${response.status}`);
+        if (response.status === 401) {
+          const newTokens = await refreshAccessToken();
+          if (newTokens) {
+            return checkToken(userId); // 토큰 갱신 후 재시도
+          }
+        }
         return null;
     }
-    
+
     const userInfo = await response.json();
     saveUserInfo(userInfo);
     console.log("✅ User info fetched and saved:", userInfo);
@@ -132,7 +132,7 @@ export const checkToken = async (): Promise<UserInfo | null> => {
 export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
   const tokens = getTokens();
   if (!tokens?.refreshToken) return null;
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/token/refresh`, {
       method: 'POST',
@@ -143,12 +143,17 @@ export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
         refreshToken: tokens.refreshToken,
       }),
     });
-    
-    if (!response.ok) return null;
-    
+
+    if (!response.ok) {
+      console.error('Token refresh request failed:', response.status);
+      clearTokens();
+      return null;
+    }
+
     const data = await response.json();
     saveTokens(data.accessToken, data.refreshToken);
-    
+    console.log("✅ Tokens refreshed successfully.");
+
     return {
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
@@ -169,7 +174,7 @@ export const signupUser = async (
 ): Promise<boolean> => {
   const tokens = getTokens();
   if (!tokens?.accessToken) return false;
-  
+  console.log("UserID : nickname : profileImage", userId, nickname, profileImage);
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
       method: 'POST',
@@ -183,7 +188,7 @@ export const signupUser = async (
         name,
       }),
     });
-    
+
     return response.ok;
   } catch (error) {
     console.error('Signup failed:', error);
@@ -195,4 +200,3 @@ export const signupUser = async (
 export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver'): string => {
   return `${API_BASE_URL}/oauth2/authorization/${provider}`;
 };
-
