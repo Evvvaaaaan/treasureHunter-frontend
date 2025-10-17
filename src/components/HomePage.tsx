@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { DOMKeyframesResolver, motion } from 'motion/react';
 import {
   Search,
   MapPin,
@@ -12,6 +12,7 @@ import {
   Map,
   User,
   LogOut,
+  Trash2,
 } from 'lucide-react';
 // import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -20,6 +21,7 @@ import { Badge } from './ui/badge';
 import { getUserInfo, clearTokens } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
+import {deleteUser} from '../utils/auth';
 
 
 interface LostItem {
@@ -100,6 +102,22 @@ export default function HomePage() {
       item.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+   const handleDeleteUser = async () => {
+    // 사용자에게 탈퇴 의사를 다시 한 번 확인합니다.
+    if (userInfo && window.confirm('정말로 회원 탈퇴를 진행하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+      // deleteUser API를 호출합니다.
+      const success = await deleteUser(userInfo.id.toString());
+      
+      // API 호출 성공 여부와 관계없이 사용자에게 알리고 로그인 페이지로 보냅니다.
+      // deleteUser 함수가 성공 시 내부적으로 토큰을 삭제합니다.
+      if (success) {
+        alert('회원 탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.');
+      } else {
+        alert('회원 탈퇴 요청 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+      navigate('/login', { replace: true });
+    }
+  };
   return (
     <div className="home-page">
       {/* Header */}
@@ -155,6 +173,10 @@ export default function HomePage() {
                     <button onClick={handleLogout} className="menu-item logout">
                       <LogOut style={{ width: '1rem', height: '1rem' }} />
                       <span>로그아웃</span>
+                    </button>
+                    <button onClick={handleDeleteUser} className="menu-item delete-account">
+                        <Trash2 style={{ width: '1rem', height: '1rem' }} />
+                        <span>회원 탈퇴</span>
                     </button>
                   </motion.div>
                 )}

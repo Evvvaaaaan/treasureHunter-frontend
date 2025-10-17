@@ -200,3 +200,4 @@ export const signupUser = async (
 export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver'): string => {
   return `${API_BASE_URL}/oauth2/authorization/${provider}`;
 };
+
