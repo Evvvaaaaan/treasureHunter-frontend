@@ -35,6 +35,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // 2. 사용자의 역할(role)에 따라 접근을 제어합니다.
   const { role } = userInfo;
+  console.log('User role:', role);
   const currentPath = location.pathname;
 
   // 'NOT_REGISTERED' (프로필 미작성) 상태일 경우, signup 페이지만 허용합니다.
