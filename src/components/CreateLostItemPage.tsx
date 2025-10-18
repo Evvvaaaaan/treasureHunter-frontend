@@ -425,7 +425,7 @@ export default function CreateLostItemPage() {
     <div className="create-lost-item-page">
       <header className="create-header">
         <button onClick={() => navigate(-1)} className="back-btn"><ChevronLeft size={24} /></button>
-        <h1>분실물 등록</h1>
+        <h1>분실물 / 습득물 등록</h1>
         <div style={{ width: 24 }} />
       </header>
 
@@ -438,7 +438,7 @@ export default function CreateLostItemPage() {
 
       <form onSubmit={handleSubmit} className="create-form">
         <div className="form-section">
-          <Label>분실물 종류 *</Label>
+          <Label>분실물 / 습득물 종류  *</Label>
           <div className="item-type-buttons">
             <button type="button" className={`type-btn ${formData.itemType === 'lost' ? 'active' : ''}`} onClick={() => setFormData({ ...formData, itemType: 'lost' })}>
               <span className="type-icon">🔍</span><span>분실물</span>
@@ -450,7 +450,7 @@ export default function CreateLostItemPage() {
         </div>
 
         <div className="form-section">
-          <Label htmlFor="itemName">분실물 이름 *</Label>
+          <Label htmlFor="itemName">분실물 / 습득물 이름 *</Label>
           <Input id="itemName" placeholder="예: 검은색 가죽 지갑" value={formData.itemName} onChange={e => setFormData({ ...formData, itemName: e.target.value })} className="form-input" />
         </div>
 
@@ -491,7 +491,7 @@ export default function CreateLostItemPage() {
         </div>
 
         <div className="form-section">
-            <Label>분실 위치</Label>
+            <Label>분실 / 습득물 위치</Label>
             <button type="button" onClick={getCurrentLocation} className="location-btn"><MapPin size={16} />현재 위치 사용</button>
             <div className="map-container" ref={mapRef} style={{ height: '300px', backgroundColor: '#f3f4f6' }} />
             {formData.location.address && <div className="location-address"><MapPin size={16} className="text-primary"/><span>{formData.location.address}</span></div>}
@@ -512,7 +512,7 @@ export default function CreateLostItemPage() {
         </div>
         
         <div className="form-section">
-            <Label htmlFor="lostDate">분실 날짜 *</Label>
+            <Label htmlFor="lostDate">날짜 *</Label>
             <Input id="lostDate" type="date" value={formData.lostDate} max={new Date().toISOString().split('T')[0]} onChange={e => setFormData({ ...formData, lostDate: e.target.value })} className="form-input" />
         </div>
 
