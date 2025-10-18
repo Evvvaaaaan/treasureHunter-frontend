@@ -12,12 +12,14 @@ import {
   Map,
   User,
   LogOut,
+  Trash2, // 회원 탈퇴 아이콘
+  AlertCircle, // 인증 배너 아이콘
 } from 'lucide-react';
-// import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { getUserInfo, clearTokens } from '../utils/auth';
+// [MODIFIED] UserInfo를 type-only import로 수정
+import { getUserInfo, clearTokens, deleteUser, type UserInfo } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
 
@@ -73,10 +75,12 @@ const mockLostItems: LostItem[] = [
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [userInfo, setUserInfo] = useState(getUserInfo());
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(getUserInfo());
   const [searchQuery, setSearchQuery] = useState('');
   const [lostItems, setLostItems] = useState<LostItem[]>(mockLostItems);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
 
   useEffect(() => {
     if (!userInfo) {
@@ -88,6 +92,25 @@ export default function HomePage() {
     clearTokens();
     navigate('/login');
   };
+  
+  const handleDeleteUser = () => {
+    setShowProfileMenu(false);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const confirmDeleteUser = async () => {
+    if (userInfo) {
+      const success = await deleteUser(userInfo.id.toString());
+      setIsDeleteDialogOpen(false);
+      if (success) {
+        alert('회원 탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.');
+        navigate('/login', { replace: true });
+      } else {
+        alert('회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+    }
+  };
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +125,7 @@ export default function HomePage() {
 
   return (
     <div className="home-page">
-      {/* Header */}
+       {/* Header */}
       <header className="home-header">
         <div className="header-container">
           <div className="header-content">
@@ -152,9 +175,13 @@ export default function HomePage() {
                       <User style={{ width: '1rem', height: '1rem' }} />
                       <span>프로필</span>
                     </button>
-                    <button onClick={handleLogout} className="menu-item logout">
+                    <button onClick={handleLogout} className="menu-item">
                       <LogOut style={{ width: '1rem', height: '1rem' }} />
                       <span>로그아웃</span>
+                    </button>
+                    <button onClick={handleDeleteUser} className="menu-item delete-account">
+                        <Trash2 style={{ width: '1rem', height: '1rem' }} />
+                        <span>회원 탈퇴</span>
                     </button>
                   </motion.div>
                 )}
@@ -186,6 +213,20 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main className="main-content">
+        {/* Verification Banner */}
+        {userInfo?.role === 'NOT_VERIFIED' && (
+          <div className="verification-banner">
+            <AlertCircle className="banner-icon" />
+            <div className="banner-text">
+              <strong>본인 인증이 필요합니다.</strong>
+              <span>모든 기능을 사용하려면 휴대폰 인증을 완료해주세요.</span>
+            </div>
+            <button onClick={() => navigate('/verify-phone')} className="banner-button">
+              인증하기
+            </button>
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="quick-actions">
           <motion.button
@@ -296,9 +337,29 @@ export default function HomePage() {
       >
         <Plus style={{ width: '2rem', height: '2rem', color: 'white' }} />
       </motion.button>
+      
+      {/* 회원 탈퇴 확인 모달 */}
+      {isDeleteDialogOpen && (
+        <div className="delete-dialog-overlay">
+          <motion.div 
+            className="delete-dialog-content"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <h3>회원 탈퇴</h3>
+            <p>정말로 회원 탈퇴를 진행하시겠습니까?<br/>모든 정보가 영구적으로 삭제됩니다.</p>
+            <div className="delete-dialog-actions">
+              <button onClick={() => setIsDeleteDialogOpen(false)} className="dialog-cancel-btn">취소</button>
+              <button onClick={confirmDeleteUser} className="dialog-confirm-btn">탈퇴</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
 
       {/* Bottom Safe Area for Mobile */}
       <div className="bottom-safe-area" />
     </div>
   );
 }
+
