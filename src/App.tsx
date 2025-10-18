@@ -48,7 +48,7 @@ export default function App() {
           path="/login"
           element={
             <PublicRoute>
-              <CreateLostItemPage />
+              <LoginPage />
             </PublicRoute>
           }
         />
