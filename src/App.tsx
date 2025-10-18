@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import AuthCallback from './components/AuthCallback';
@@ -11,12 +12,46 @@ import { getUserInfo } from './utils/auth';
  * (예: 로그인 페이지)
  */
 function PublicRoute({ children }: { children: React.ReactNode }) {
+=======
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import LoginPage from "./components/LoginPage";
+import AuthCallback from "./components/AuthCallback";
+import SignupPage from "./components/SignupPage";
+import HomePage from "./components/HomePage";
+import CreateLostItemPage from "./components/CreateLostItemPage";
+import { getUserInfo } from "./utils/auth";
+
+function ProtectedRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const userInfo = getUserInfo();
-  
+
+  if (!userInfo) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function PublicRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+>>>>>>> createLostItem
+  const userInfo = getUserInfo();
+
   if (userInfo) {
     return <Navigate to="/home" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -77,11 +112,19 @@ export default function App() {
           path="/login"
           element={
             <PublicRoute>
-              <LoginPage />
+              <CreateLostItemPage />
             </PublicRoute>
           }
         />
+<<<<<<< HEAD
         <Route path="/auth/callback" element={<AuthCallback />} />
+=======
+        <Route
+          path="/auth/callback"
+          element={<AuthCallback />}
+        />
+        <Route path="/signup" element={<SignupPage />} />
+>>>>>>> createLostItem
 
         {/* Protected Routes: 로그인한 사용자만 상태에 따라 접근 가능 */}
         <Route
@@ -108,7 +151,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/create"
+          element={
+            <ProtectedRoute>
+              <CreateLostItemPage />
+            </ProtectedRoute>
+          }
+        />
 
+<<<<<<< HEAD
         {/* Redirect Logic */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -117,3 +169,18 @@ export default function App() {
   );
 }
 
+=======
+        {/* Redirect */}
+        <Route
+          path="/"
+          element={<Navigate to="/login" replace />}
+        />
+        <Route
+          path="*"
+          element={<Navigate to="/login" replace />}
+        />
+      </Routes>
+    </Router>
+  );
+}
+>>>>>>> createLostItem
