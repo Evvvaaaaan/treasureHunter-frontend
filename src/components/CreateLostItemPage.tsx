@@ -17,76 +17,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { getUserInfo, type UserInfo } from '../utils/auth'; // UserInfo는 타입으로 가져옵니다.
+import { getUserInfo, getUserProfile, type UserInfo } from '../utils/auth';
 import '../styles/create-lost-item.css';
-
-
-// --- Google Maps 타입 정의 ---
-// "Cannot find namespace 'google'" 오류를 해결하기 위해
-// Google Maps API의 최소한의 타입을 직접 선언합니다.
-// eslint-disable-next-line @typescript-eslint/no-namespace
-declare namespace google.maps {
-  class LatLng {
-    constructor(lat: number, lng: number);
-    lat(): number;
-    lng(): number;
-  }
-
-  interface MapMouseEvent {
-    latLng: LatLng | null;
-  }
-
-  interface MapOptions {
-    center?: LatLng | { lat: number; lng: number };
-    zoom?: number;
-    styles?: any[];
-  }
-
-  class Map {
-    constructor(mapDiv: HTMLElement, opts?: MapOptions);
-    setCenter(latLng: LatLng | { lat: number; lng: number }): void;
-    addListener(eventName: string, handler: (...args: any[]) => void): google.maps.MapsEventListener;
-  }
-
-  interface MarkerOptions {
-    position?: LatLng | { lat: number; lng: number };
-    map?: Map;
-    draggable?: boolean;
-  }
-
-  class Marker {
-    constructor(opts?: MarkerOptions);
-    setPosition(latLng: LatLng | { lat: number; lng: number }): void;
-    addListener(eventName: string, handler: (...args: any[]) => void): google.maps.MapsEventListener;
-  }
-
-  class Geocoder {
-    geocode(
-      request: { location: LatLng | { lat: number; lng: number } },
-      callback: (results: GeocoderResult[] | null, status: GeocoderStatus) => void
-    ): void;
-  }
-
-  interface GeocoderResult {
-    formatted_address: string;
-  }
-
-  type GeocoderStatus = 'OK' | 'ZERO_RESULTS' | 'OVER_QUERY_LIMIT' | 'REQUEST_DENIED' | 'INVALID_REQUEST' | 'UNKNOWN_ERROR';
-
-  // 빈 인터페이스 대신 'object' 타입을 사용하여 린트 오류를 해결합니다.
-  type MapsEventListener = object;
-}
-
-
-// window 객체에 google 속성을 추가하기 위한 타입 확장
-declare global {
-  interface Window {
-    google: typeof google;
-    initGoogleMaps?: () => void;
-  }
-}
-// --- 타입 정의 끝 ---
-
 
 interface FormData {
   itemType: 'lost' | 'found';
@@ -117,6 +49,7 @@ const CATEGORIES = [
 ];
 
 export default function CreateLostItemPage() {
+  const [currentUser, setCurrentUser] = useState<UserInfo | null>(getUserInfo());
   const navigate = useNavigate();
   const userInfo = getUserInfo();
   const [isLoading, setIsLoading] = useState(false);
@@ -126,16 +59,15 @@ export default function CreateLostItemPage() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
-  
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [marker, setMarker] = useState<google.maps.Marker | null>(null);
+  const [map, setMap] = useState<any>(null);
+  const [marker, setMarker] = useState<any>(null);
 
   const [formData, setFormData] = useState<FormData>({
     itemType: 'lost',
     itemName: '',
     category: '',
     description: '',
-    contactEmail: (userInfo as UserInfo & { email?: string })?.email || '',
+    contactEmail: userInfo?.email || '',
     contactPhone: '',
     rewardPoints: 0,
     lostDate: new Date().toISOString().split('T')[0],
@@ -143,157 +75,260 @@ export default function CreateLostItemPage() {
     location: {
       latitude: 37.5665,
       longitude: 126.9780,
-      address: '',
+      address: '', // Will be set when user selects location
     },
   });
 
   const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
 
+  // Calculate progress (필수 필드 기준)
   const calculateProgress = () => {
     let completed = 0;
-    const totalRequired = 5; // itemName, category, description, contact, lostDate
+    let total = 6; // 필수 필드 개수
     
+    // 필수 필드
     if (formData.itemName) completed++;
     if (formData.category) completed++;
     if (formData.description.length >= 100) completed++;
     if (formData.contactEmail || formData.contactPhone) completed++;
     if (formData.lostDate) completed++;
     
-    return (completed / totalRequired) * 100;
+    // 위치는 항상 완료 (기본 위치 포함)
+    completed++;
+    
+    // 선택사항 (진행률에 포함하지만 100% 달성에 필수 아님)
+    if (formData.photos.length > 0) {
+      total++;
+      completed++;
+    }
+    if (formData.rewardPoints > 0) {
+      total++;
+      completed++;
+    }
+    
+    return (completed / total) * 100;
   };
 
   const progress = calculateProgress();
 
+  // Check if form is valid (필수 필드만 체크)
   const isFormValid = () => {
-    return (
-      formData.itemName.trim() !== '' &&
-      formData.category.trim() !== '' &&
+    const valid = (
+      formData.itemName &&
+      formData.category &&
       formData.description.length >= 100 &&
-      (formData.contactEmail.trim() !== '' || formData.contactPhone.trim() !== '') &&
-      formData.lostDate.trim() !== ''
+      (formData.contactEmail || formData.contactPhone) &&
+      formData.lostDate
     );
+    
+    // 디버깅용 로그
+    console.log('Form Validation:', {
+      itemName: formData.itemName,
+      category: formData.category,
+      descriptionLength: formData.description.length,
+      hasContact: !!(formData.contactEmail || formData.contactPhone),
+      lostDate: formData.lostDate,
+      isValid: valid
+    });
+    
+    return valid;
   };
 
+  // Initialize Google Maps
   useEffect(() => {
-    const initMap = () => {
-      if (!mapRef.current) {
-        console.error("지도 컨테이너(ref)가 준비되지 않았습니다.");
-        return;
-      }
+    if (!mapRef.current || map) return;
 
-      console.log("지도 초기화를 시작합니다...");
-      const googleMap = new window.google.maps.Map(mapRef.current, {
+    const initMap = () => {
+      const googleMap = new (window as any).google.maps.Map(mapRef.current, {
         center: { lat: formData.location.latitude, lng: formData.location.longitude },
         zoom: 15,
-        styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }],
+        styles: [
+          {
+            featureType: 'poi',
+            elementType: 'labels',
+            stylers: [{ visibility: 'off' }],
+          },
+        ],
       });
 
-      const mapMarker = new window.google.maps.Marker({
+      const mapMarker = new (window as any).google.maps.Marker({
         position: { lat: formData.location.latitude, lng: formData.location.longitude },
         map: googleMap,
         draggable: true,
       });
 
-      googleMap.addListener('click', (e: google.maps.MapMouseEvent) => {
-        if (e.latLng) {
-          const lat = e.latLng.lat();
-          const lng = e.latLng.lng();
-          mapMarker.setPosition({ lat, lng });
-          updateLocation(lat, lng);
-        }
+      googleMap.addListener('click', (e: any) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+        mapMarker.setPosition({ lat, lng });
+        updateLocation(lat, lng);
       });
 
-      mapMarker.addListener('dragend', (e: google.maps.MapMouseEvent) => {
-        if (e.latLng) {
-          const lat = e.latLng.lat();
-          const lng = e.latLng.lng();
-          updateLocation(lat, lng);
-        }
+      mapMarker.addListener('dragend', (e: any) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+        updateLocation(lat, lng);
       });
 
       setMap(googleMap);
       setMarker(mapMarker);
-      console.log("✓ 지도 초기화가 완료되었습니다.");
     };
 
-    if (window.google && window.google.maps) {
+    if ((window as any).google?.maps) {
       initMap();
     } else {
-      const scriptId = 'google-maps-script';
-      if (document.getElementById(scriptId)) return;
-
-      const script = document.createElement('script');
-      script.id = scriptId;
-      // ❗ 중요: 'YOUR_GOOGLE_MAPS_API_KEY' 부분을 실제 Google Maps API 키로 교체해야 합니다.
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBN5hX-FL_N57xUwRVVuY4ExZQuro5Ti2s`;
-      script.async = true;
-      script.defer = true;
+      // Check if script is already being loaded
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
       
-      // 전역 콜백 대신 script.onload 이벤트를 직접 사용합니다.
-      script.onload = initMap;
-      
-      script.onerror = () => {
-        setError('지도를 불러올 수 없습니다. API 키나 네트워크 연결을 확인해주세요.');
-      };
-      
-      document.head.appendChild(script);
-    }
-    
-    // 클린업 함수는 스크립트 태그만 제거하도록 단순화합니다.
-    return () => {
-        const script = document.getElementById('google-maps-script');
-        if (script) {
-            script.remove();
-        }
-    }
-  }, []); // 의존성 배열을 비워 최초 1회만 실행되도록 합니다.
-
-  const updateLocation = (lat: number, lng: number) => {
-    if (!window.google) return;
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
-      let address = `위도: ${lat.toFixed(6)}, 경도: ${lng.toFixed(6)}`;
-      if (status === 'OK' && results && results[0]) {
-        address = results[0].formatted_address;
+      if (existingScript) {
+        existingScript.addEventListener('load', initMap);
+      } else {
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBN5hX-FL_N57xUwRVVuY4ExZQuro5Ti2s&loading=async&callback=initGoogleMaps`;
+        script.async = true;
+        script.defer = true;
+        
+        // Set up callback
+        (window as any).initGoogleMaps = () => {
+          initMap();
+          delete (window as any).initGoogleMaps;
+        };
+        
+        script.onerror = () => {
+          console.error('Google Maps failed to load');
+          setError('지도를 불러올 수 없습니다. 나중에 다시 시도해주세요.');
+        };
+        
+        document.head.appendChild(script);
       }
-      setFormData((prev) => ({
-        ...prev,
-        location: { latitude: lat, longitude: lng, address },
-      }));
-    });
+    }
+  }, []);
+
+  const updateLocation = async (lat: number, lng: number) => {
+    // Update location without geocoding (API not authorized)
+    // Just use coordinates and a simple address format
+    const simpleAddress = `위도: ${lat.toFixed(6)}, 경도: ${lng.toFixed(6)}`;
+    
+    setFormData((prev) => ({
+      ...prev,
+      location: {
+        latitude: lat,
+        longitude: lng,
+        address: simpleAddress,
+      },
+    }));
+
+    // Optional: Try geocoding if API is available, but don't fail if not
+    try {
+      if ((window as any).google?.maps?.Geocoder) {
+        const geocoder = new (window as any).google.maps.Geocoder();
+        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+          if (status === 'OK' && results[0]) {
+            setFormData((prev) => ({
+              ...prev,
+              location: {
+                latitude: lat,
+                longitude: lng,
+                address: results[0].formatted_address,
+              },
+            }));
+          }
+        });
+      }
+    } catch (error) {
+      // Geocoding failed, but we already have coordinates
+      console.log('Geocoding not available, using coordinates');
+    }
   };
-  
+
+  // Get current location
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setError('위치 정보를 사용할 수 없습니다.');
+      setError('위치 정보를 사용할 수 없습니다. 지도에서 직접 선택해주세요.');
       return;
     }
+
+    // 위치 권한 요청 안내
+    alert('정확한 위치를 표시하기 위해 위치 권한이 필요합니다.\n다음 단계에서 "허용"을 선택해주세요.');
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         if (map && marker) {
-          const newPos: google.maps.LatLng = new window.google.maps.LatLng(lat, lng);
-          map.setCenter(newPos);
-          marker.setPosition(newPos);
+          map.setCenter({ lat, lng });
+          marker.setPosition({ lat, lng });
           updateLocation(lat, lng);
         }
       },
-      () => {
-        setError('위치 정보를 가져올 수 없습니다. 브라우저 설정을 확인해주세요.');
+      (error) => {
+        console.error('Error getting location:', error);
+        let errorMessage = '위치 정보를 가져올 수 없습니다. ';
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage += '위치 권한을 허용해주세요.';
+            alert('위치 권한이 거부되었습니다.\n\n브라우저 설정에서 위치 권한을 허용하거나,\n지도를 직접 클릭하여 위치를 선택해주세요.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage += '위치 정보를 사용할 수 없습니다.';
+            break;
+          case error.TIMEOUT:
+            errorMessage += '요청 시간이 초과되었습니다.';
+            break;
+          default:
+            errorMessage += '지도에서 직접 선택해주세요.';
+        }
+        
+        setError(errorMessage);
+        // Clear error after 5 seconds
+        setTimeout(() => setError(''), 5000);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
       }
     );
   };
-  
-    const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
+
+  // Handle image upload
+  const handleImageChange = async (files: FileList | null) => {
+    if (!files) return;
+
+    const newFiles = Array.from(files).slice(0, 5 - formData.photos.length);
+    
+    // Compress and resize images
+    const compressedFiles = await Promise.all(
+      newFiles.map((file) => compressImage(file))
+    );
+
+    const newPreviews = await Promise.all(
+      compressedFiles.map((file) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+      })
+    );
+
+    setFormData((prev) => ({
+      ...prev,
+      photos: [...prev.photos, ...compressedFiles],
+    }));
+    setPhotosPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          let { width, height } = img;
+          let width = img.width;
+          let height = img.height;
 
           const MAX_WIDTH = 1920;
           const MAX_HEIGHT = 1920;
@@ -313,106 +348,140 @@ export default function CreateLostItemPage() {
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            return reject(new Error('Failed to get canvas context'));
-          }
-          ctx.drawImage(img, 0, 0, width, height);
+          ctx?.drawImage(img, 0, 0, width, height);
 
           canvas.toBlob(
             (blob) => {
               if (blob) {
-                resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
-              } else {
-                reject(new Error('Canvas to Blob conversion failed'));
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
               }
             },
             'image/jpeg',
             0.8
           );
         };
-        img.onerror = () => reject(new Error('Image loading error'));
         img.src = e.target?.result as string;
       };
-      reader.onerror = () => reject(new Error('File reading error'));
       reader.readAsDataURL(file);
     });
   };
 
-  const handleImageChange = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    const newFiles = Array.from(files).slice(0, 5 - formData.photos.length);
-    if (newFiles.length === 0) return;
-
-    try {
-      const compressedFiles = await Promise.all(newFiles.map(compressImage));
-      const newPreviews = compressedFiles.map(file => URL.createObjectURL(file));
-
-      setFormData(prev => ({ ...prev, photos: [...prev.photos, ...compressedFiles] }));
-      setPhotosPreviews(prev => [...prev, ...newPreviews]);
-    } catch (e) {
-      console.error("Image processing failed:", e);
-      setError("이미지 처리 중 오류가 발생했습니다.");
-    }
-  };
-
-
   const removePhoto = (index: number) => {
-    URL.revokeObjectURL(photosPreviews[index]);
-    setFormData(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }));
-    setPhotosPreviews(prev => prev.filter((_, i) => i !== index));
+    setFormData((prev) => ({
+      ...prev,
+      photos: prev.photos.filter((_, i) => i !== index),
+    }));
+    setPhotosPreviews((prev) => prev.filter((_, i) => i !== index));
   };
-  
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = () => setIsDragging(false);
+
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     handleImageChange(e.dataTransfer.files);
   };
-  
+
+  // Validate form
+  const validateForm = () => {
+    if (!formData.itemName) return '분실물 이름을 입력해주세요.';
+    if (!formData.category) return '카테고리를 선택해주세요.';
+    if (formData.description.length < 100) return '상세 설명을 100자 이상 입력해주세요.';
+    if (!formData.contactEmail && !formData.contactPhone) return '연락처를 하나 이상 입력해주세요.';
+    if (!formData.lostDate) return '분실 날짜를 선택해주세요.';
+    // Location is always valid (기본 위치 포함)
+    // 사용자가 위치를 선택하지 않으면 기본 위치(서울)가 사용됨
+    return null;
+  };
+
+  // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid()) {
-      setError('필수 항목을 모두 올바르게 입력해주세요.');
+    
+    console.log('=== 폼 제출 시작 ===');
+    console.log('Form Data:', formData);
+    console.log('Is Valid:', isFormValid());
+    
+    const validationError = validateForm();
+    if (validationError) {
+      console.error('Validation Error:', validationError);
+      setError(validationError);
+      alert(`입력 오류: ${validationError}`);
       return;
     }
 
+    console.log('✓ 유효성 검사 통과');
     setIsLoading(true);
     setError('');
 
     try {
+      console.log('API 호출 시작...');
+      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      console.log('✓ API 호출 성공');
+      // In production, send to API:
+      // const formDataToSend = new FormData();
+      // formDataToSend.append('itemType', formData.itemType);
+      // formDataToSend.append('itemName', formData.itemName);
+      // ... append all fields
+      // formData.photos.forEach((photo) => {
+      //   formDataToSend.append('photos', photo);
+      // });
+
       setSuccess(true);
-      setTimeout(() => navigate('/home'), 2000);
+      setTimeout(() => {
+        navigate('/home');
+      }, 2000);
     } catch (err) {
-      setError('등록 중 오류가 발생했습니다.');
+      console.error('API Error:', err);
+      setError('등록 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Auto-save to localStorage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.setItem('draft_lost_item', JSON.stringify(formData));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [formData]);
+
+  // Load draft on mount
   useEffect(() => {
     const draft = localStorage.getItem('draft_lost_item');
     if (draft) {
       try {
-        const parsed = JSON.parse(draft) as Partial<FormData>;
-        setFormData(prev => ({ ...prev, ...parsed, photos: [] }));
-      } catch (e) { console.error('Failed to load draft'); }
+        const parsed = JSON.parse(draft);
+        setFormData((prev) => ({ ...prev, ...parsed, photos: [] }));
+      } catch (e) {
+        console.error('Failed to load draft');
+      }
     }
   }, []);
-  
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      localStorage.setItem('draft_lost_item', JSON.stringify(formData));
-    }, 1000);
-    return () => clearTimeout(handler);
-  }, [formData]);
 
   if (success) {
     return (
       <div className="create-success">
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="success-icon">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="success-icon"
+        >
           <Check style={{ width: '3rem', height: '3rem', color: 'white' }} />
         </motion.div>
         <h2>등록 완료!</h2>
@@ -423,113 +492,358 @@ export default function CreateLostItemPage() {
 
   return (
     <div className="create-lost-item-page">
+      {/* Header */}
       <header className="create-header">
-        <button onClick={() => navigate(-1)} className="back-btn"><ChevronLeft size={24} /></button>
+        <button onClick={() => navigate(-1)} className="back-btn">
+          <ChevronLeft style={{ width: '1.5rem', height: '1.5rem' }} />
+        </button>
         <h1>분실물 등록</h1>
-        <div style={{ width: 24 }} />
+        <div style={{ width: '2.5rem' }} />
       </header>
 
+      {/* Progress Bar */}
       <div className="progress-container">
         <div className="progress-bar">
-          <motion.div className="progress-fill" animate={{ width: `${progress}%` }} />
+          <motion.div
+            className="progress-fill"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.3 }}
+          />
         </div>
         <p className="progress-text">{Math.round(progress)}% 완료</p>
       </div>
 
       <form onSubmit={handleSubmit} className="create-form">
+        {/* Item Type Selection */}
         <div className="form-section">
-          <Label>분실물 종류 *</Label>
+          <div className="label-with-check">
+            <Label>분실물 종류 *</Label>
+            {formData.itemType && (
+              <span className="field-check completed">✓ 완료</span>
+            )}
+          </div>
           <div className="item-type-buttons">
-            <button type="button" className={`type-btn ${formData.itemType === 'lost' ? 'active' : ''}`} onClick={() => setFormData({ ...formData, itemType: 'lost' })}>
-              <span className="type-icon">🔍</span><span>분실물</span>
+            <button
+              type="button"
+              className={`type-btn ${formData.itemType === 'lost' ? 'active' : ''}`}
+              onClick={() => setFormData({ ...formData, itemType: 'lost' })}
+            >
+              <span className="type-icon">🔍</span>
+              <span>분실물</span>
             </button>
-            <button type="button" className={`type-btn ${formData.itemType === 'found' ? 'active' : ''}`} onClick={() => setFormData({ ...formData, itemType: 'found' })}>
-              <span className="type-icon">✨</span><span>습득물</span>
+            <button
+              type="button"
+              className={`type-btn ${formData.itemType === 'found' ? 'active' : ''}`}
+              onClick={() => setFormData({ ...formData, itemType: 'found' })}
+            >
+              <span className="type-icon">✨</span>
+              <span>습득물</span>
             </button>
           </div>
         </div>
 
+        {/* Item Name */}
         <div className="form-section">
-          <Label htmlFor="itemName">분실물 이름 *</Label>
-          <Input id="itemName" placeholder="예: 검은색 가죽 지갑" value={formData.itemName} onChange={e => setFormData({ ...formData, itemName: e.target.value })} className="form-input" />
+          <div className="label-with-check">
+            <Label htmlFor="itemName">분실물 이름 *</Label>
+            {formData.itemName && (
+              <span className="field-check completed">✓ 완료</span>
+            )}
+          </div>
+          <Input
+            id="itemName"
+            type="text"
+            placeholder="예: 검은색 가죽 지갑"
+            value={formData.itemName}
+            onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
+            className="form-input"
+          />
         </div>
 
+        {/* Category */}
         <div className="form-section">
-          <Label>카테고리 선택 *</Label>
+          <div className="label-with-check">
+            <Label>카테고리 선택 *</Label>
+            {formData.category && (
+              <span className="field-check completed">✓ 완료</span>
+            )}
+          </div>
           <div className="category-grid">
-            {CATEGORIES.map(cat => (
-              <button key={cat.value} type="button" className={`category-btn ${formData.category === cat.value ? 'active' : ''}`} onClick={() => setFormData({ ...formData, category: cat.value })} style={{ '--category-color': cat.color } as React.CSSProperties}>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.value}
+                type="button"
+                className={`category-btn ${formData.category === cat.value ? 'active' : ''}`}
+                onClick={() => setFormData({ ...formData, category: cat.value })}
+                style={{
+                  '--category-color': cat.color,
+                } as React.CSSProperties}
+              >
                 <span className="category-icon">{cat.icon}</span>
                 <span className="category-label">{cat.value}</span>
               </button>
             ))}
           </div>
         </div>
-        
-        <div className="form-section">
-            <Label htmlFor="description">상세 설명 * ({formData.description.length}/100)</Label>
-            <Textarea id="description" placeholder="분실물의 특징을 100자 이상 자세히 설명해주세요." value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="form-textarea" />
-        </div>
 
+        {/* Description */}
         <div className="form-section">
-            <Label>사진 업로드 (최대 5장)</Label>
-            <div className={`photo-upload-area ${isDragging ? 'dragging' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}>
-                <Upload size={32} className="upload-icon" />
-                <p>클릭하거나 드래그하여 이미지 업로드</p>
-                <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={e => handleImageChange(e.target.files)} style={{ display: 'none' }} />
-            </div>
-            {photosPreviews.length > 0 && (
-                <div className="photos-preview">
-                    {photosPreviews.map((preview, index) => (
-                        <div key={index} className="photo-preview-item">
-                            <img src={preview} alt={`Preview ${index + 1}`} />
-                            <button type="button" className="remove-photo-btn" onClick={() => removePhoto(index)}><X size={16} /></button>
-                        </div>
-                    ))}
-                </div>
+          <div className="label-with-check">
+            <Label htmlFor="description">
+              상세 설명 * ({formData.description.length}/100)
+            </Label>
+            {formData.description.length >= 100 && (
+              <span className="field-check completed">✓ 완료</span>
             )}
+          </div>
+          <Textarea
+            id="description"
+            placeholder="분실물의 특징, 브랜드, 색상, 크기 등을 자세히 설명해주세요. (최소 100자)"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="form-textarea"
+            style={{ minHeight: '8rem' }}
+          />
         </div>
 
+        {/* Photo Upload */}
         <div className="form-section">
-            <Label>분실 위치</Label>
-            <button type="button" onClick={getCurrentLocation} className="location-btn"><MapPin size={16} />현재 위치 사용</button>
-            <div className="map-container" ref={mapRef} style={{ height: '300px', backgroundColor: '#f3f4f6' }} />
-            {formData.location.address && <div className="location-address"><MapPin size={16} className="text-primary"/><span>{formData.location.address}</span></div>}
-        </div>
+          <div className="label-with-check">
+            <Label>사진 업로드 (최대 5장, 선택사항)</Label>
+            {formData.photos.length > 0 && (
+              <span className="field-check completed">✓ {formData.photos.length}장 업로드됨</span>
+            )}
+          </div>
+          <div
+            className={`photo-upload-area ${isDragging ? 'dragging' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload style={{ width: '2rem', height: '2rem', color: '#9ca3af' }} />
+            <p className="upload-text">클릭하거나 드래그하여 이미지 업로드</p>
+            <p className="upload-hint">PNG, JPG (최대 1MB)</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => handleImageChange(e.target.files)}
+              style={{ display: 'none' }}
+            />
+          </div>
 
-        <div className="form-section">
-            <Label>연락처 정보 (하나 이상 필수)</Label>
-            <div className="contact-fields">
-                <Input type="email" placeholder="이메일" value={formData.contactEmail} onChange={e => setFormData({ ...formData, contactEmail: e.target.value })} className="form-input" />
-                <Input type="tel" placeholder="전화번호" value={formData.contactPhone} onChange={e => setFormData({ ...formData, contactPhone: e.target.value })} className="form-input" />
+          {photosPreviews.length > 0 && (
+            <div className="photos-preview">
+              {photosPreviews.map((preview, index) => (
+                <div key={index} className="photo-preview-item">
+                  <img src={preview} alt={`Preview ${index + 1}`} />
+                  <button
+                    type="button"
+                    className="remove-photo-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removePhoto(index);
+                    }}
+                  >
+                    <X style={{ width: '1rem', height: '1rem' }} />
+                  </button>
+                </div>
+              ))}
             </div>
-        </div>
-        
-        <div className="form-section">
-            <Label>리워드 포인트 ({formData.rewardPoints}P)</Label>
-            <p className="points-balance">보유: {userPoints}P</p>
-            <input type="range" min="0" max={userPoints} step="10" value={formData.rewardPoints} onChange={e => setFormData({ ...formData, rewardPoints: parseInt(e.target.value) })} className="points-slider" />
-        </div>
-        
-        <div className="form-section">
-            <Label htmlFor="lostDate">분실 날짜 *</Label>
-            <Input id="lostDate" type="date" value={formData.lostDate} max={new Date().toISOString().split('T')[0]} onChange={e => setFormData({ ...formData, lostDate: e.target.value })} className="form-input" />
+          )}
         </div>
 
+        {/* Location */}
+        <div className="form-section">
+          <div className="label-with-check">
+            <Label>분실 위치 (선택사항)</Label>
+            {formData.location.address && (
+              <span className="field-check completed">✓ 위치 설정됨</span>
+            )}
+          </div>
+          <p className="location-hint">
+            지도를 클릭하거나 마커를 드래그하여 위치를 선택하세요. 선택하지 않으면 기본 위치가 사용됩니다.
+          </p>
+          <button
+            type="button"
+            onClick={getCurrentLocation}
+            className="location-btn"
+          >
+            <MapPin style={{ width: '1rem', height: '1rem' }} />
+            현재 위치 사용
+          </button>
+          <div className="map-container" ref={mapRef} />
+          {formData.location.address ? (
+            <div className="location-address">
+              <MapPin style={{ width: '1rem', height: '1rem', color: 'var(--primary)' }} />
+              <span>{formData.location.address}</span>
+            </div>
+          ) : (
+            <div className="location-address default">
+              <MapPin style={{ width: '1rem', height: '1rem', color: '#9ca3af' }} />
+              <span>기본 위치 (서울) - 지도에서 정확한 위치를 선택해주세요</span>
+            </div>
+          )}
+        </div>
+
+        {/* Contact Info */}
+        <div className="form-section">
+          <div className="label-with-check">
+            <Label>연락처 정보 (하나 이상 필수)</Label>
+            {(formData.contactEmail || formData.contactPhone) && (
+              <span className="field-check completed">✓ 완료</span>
+            )}
+          </div>
+          <div className="contact-fields">
+            <Input
+              type="email"
+              placeholder="이메일"
+              value={formData.contactEmail}
+              onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+              className="form-input"
+            />
+            <Input
+              type="tel"
+              placeholder="전화번호 (010-1234-5678)"
+              value={formData.contactPhone}
+              onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+              className="form-input"
+            />
+          </div>
+        </div>
+
+        {/* Reward Points */}
+        <div className="form-section">
+          <div className="label-with-check">
+            <Label>
+              <Coins style={{ width: '1rem', height: '1rem' }} />
+              리워드 포인트 (선택사항)
+            </Label>
+            {formData.rewardPoints > 0 && (
+              <span className="field-check completed">✓ {formData.rewardPoints}P 설정됨</span>
+            )}
+          </div>
+          {/* [MODIFIED] 사용자 이름과 보유 포인트를 API에서 가져온 정보로 표시 */}
+          <p className="points-balance">
+            {currentUser ? `${currentUser.nickname}님의 보유 포인트: ${currentUser.point}P` : '포인트 불러오는 중...'}
+          </p>
+          <input
+            type="range"
+            min="0"
+            // [MODIFIED] max 값을 API에서 가져온 포인트로 설정
+            max={currentUser?.point || 0}
+            step="10"
+            value={formData.rewardPoints}
+            onChange={(e) => setFormData({ ...formData, rewardPoints: parseInt(e.target.value) })}
+            className="points-slider"
+          />
+          <div className="points-labels">
+            <span>0P</span>
+            {/* [MODIFIED] 최대 포인트 라벨을 API에서 가져온 포인트로 설정 */}
+            <span>{currentUser?.point || 0}P</span>
+          </div>
+        </div>
+        
+        {/* Lost Date */}
+        <div className="form-section">
+          <div className="label-with-check">
+            <Label htmlFor="lostDate">
+              <CalendarIcon style={{ width: '1rem', height: '1rem' }} />
+              분실 날짜 *
+            </Label>
+            {formData.lostDate && (
+              <span className="field-check completed">✓ 완료</span>
+            )}
+          </div>
+          <Input
+            id="lostDate"
+            type="date"
+            value={formData.lostDate}
+            max={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setFormData({ ...formData, lostDate: e.target.value })}
+            className="form-input"
+          />
+        </div>
+
+        {/* Error Message */}
         <AnimatePresence>
           {error && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="error-banner">
-              <AlertCircle size={20} /><span>{error}</span>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="error-banner"
+            >
+              <AlertCircle style={{ width: '1.25rem', height: '1.25rem' }} />
+              <span>{error}</span>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <Button type="submit" disabled={isLoading || !isFormValid()} className="submit-btn">
-          {isLoading ? <><Loader2 className="spinner" size={20} />등록 중...</> : '등록하기'}
+        {/* Submit Button */}
+        <Button
+          type="submit"
+          disabled={isLoading || !isFormValid()}
+          className="submit-btn"
+          onClick={(e) => {
+            console.log('버튼 클릭됨!');
+            console.log('버튼 disabled 상태:', isLoading || !isFormValid());
+            console.log('isLoading:', isLoading);
+            console.log('isFormValid:', isFormValid());
+            if (!isFormValid()) {
+              e.preventDefault();
+              alert('필수 항목을 모두 입력해주세요.\n\n아래 디버깅 정보를 확인하세요.');
+            }
+          }}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="spinner" style={{ width: '1.25rem', height: '1.25rem' }} />
+              등록 중...
+            </>
+          ) : (
+            '등록하기'
+          )}
         </Button>
 
+        {/* 디버깅 정보 */}
+        <div style={{ 
+          marginTop: '1rem', 
+          padding: '1rem', 
+          backgroundColor: '#f3f4f6', 
+          borderRadius: '0.5rem',
+          fontSize: '0.875rem'
+        }}>
+          <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>필수 필드 체크:</p>
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            <li style={{ color: formData.itemName ? '#10b981' : '#ef4444' }}>
+              {formData.itemName ? '✓' : '✗'} 분실물 이름: {formData.itemName || '미입력'}
+            </li>
+            <li style={{ color: formData.category ? '#10b981' : '#ef4444' }}>
+              {formData.category ? '✓' : '✗'} 카테고리: {formData.category || '미선택'}
+            </li>
+            <li style={{ color: formData.description.length >= 100 ? '#10b981' : '#ef4444' }}>
+              {formData.description.length >= 100 ? '✓' : '✗'} 상세 설명: {formData.description.length}/100자
+            </li>
+            <li style={{ color: (formData.contactEmail || formData.contactPhone) ? '#10b981' : '#ef4444' }}>
+              {(formData.contactEmail || formData.contactPhone) ? '✓' : '✗'} 연락처: {formData.contactEmail || formData.contactPhone || '미입력'}
+            </li>
+            <li style={{ color: formData.lostDate ? '#10b981' : '#ef4444' }}>
+              {formData.lostDate ? '✓' : '✗'} 분실 날짜: {formData.lostDate || '미선택'}
+            </li>
+          </ul>
+          <p style={{ marginTop: '0.5rem', fontWeight: 600, color: isFormValid() ? '#10b981' : '#ef4444' }}>
+            버튼 상태: {isFormValid() ? '활성화 ✓' : '비활성화 ✗'}
+          </p>
+        </div>
+
+        <p className="auto-save-hint">
+          {progress > 0 && '작성 중인 내용이 자동으로 저장됩니다'}
+        </p>
       </form>
     </div>
   );
 }
-
