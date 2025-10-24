@@ -70,7 +70,10 @@ export default function App() {
           path="/login"
           element={
             <PublicRoute>
+<<<<<<< HEAD
               {/* [CORRECTED] LoginPage로 수정 */}
+=======
+>>>>>>> main
               <LoginPage />
             </PublicRoute>
           }
