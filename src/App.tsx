@@ -36,6 +36,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   const { role } = userInfo;
+  console.log('User role:', role);
   const currentPath = location.pathname;
 
   if (role === 'NOT_REGISTERED' && currentPath !== '/signup') {
