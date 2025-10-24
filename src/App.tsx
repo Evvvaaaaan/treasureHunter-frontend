@@ -4,6 +4,7 @@ import AuthCallback from './components/AuthCallback';
 import SignupPage from './components/SignupPage';
 import HomePage from './components/HomePage';
 import PhoneVerificationPage from './components/PhoneVerificationPage';
+
 import MapPage from './components/MapPage'; // MapPage import 추가
 import CreateItemPage from './components/CreateLostItemPage'; // CreateItemPage import 추가
 import { getUserInfo } from './utils/auth';
@@ -70,10 +71,7 @@ export default function App() {
           path="/login"
           element={
             <PublicRoute>
-<<<<<<< HEAD
               {/* [CORRECTED] LoginPage로 수정 */}
-=======
->>>>>>> main
               <LoginPage />
             </PublicRoute>
           }
