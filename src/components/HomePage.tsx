@@ -52,9 +52,9 @@ interface ApiPost {
   isCompleted: boolean;
 }
 
-// [NEW] Interface for the overall API response
+// [MODIFIED] ApiResponse 인터페이스가 API 응답인 { posts: [...] }를 기대하도록 수정합니다.
 interface ApiResponse {
-    postList: ApiPost[];
+    posts: ApiPost[]; // 'postList'에서 'posts'로 변경
 }
 
 
@@ -143,9 +143,20 @@ export default function HomePage() {
            throw new Error("서버로부터 예상치 못한 형식의 응답을 받았습니다.");
        }
 
+      // [MODIFIED] API가 { posts: [...] } 객체를 반환하므로, data.posts를 사용합니다.
       const data: ApiResponse = await response.json();
-      const postList = data.postList || []; // Ensure postList is an array
-      console.log('Fetched Posts (no-cache):', postList); // Debug log
+      
+      // [DEBUG] API 전체 응답을 확인합니다.
+      console.log('API Response Data:', data); 
+
+      // [MODIFIED] data.posts가 배열인지 확인하고 postList 변수에 할당합니다.
+      const postList = data.posts || [];
+      if (!Array.isArray(postList)) {
+          console.error("API did not return an array in data.posts:", data);
+          throw new Error("서버로부터 게시글 목록(배열)을 받지 못했습니다.");
+      }
+      
+      console.log('Extracted postList:', postList); // 추출된 배열 확인
 
       // Format API data for display
       const formattedItems: LostItem[] = postList.map((post: ApiPost) => ({

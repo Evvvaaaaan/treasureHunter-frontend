@@ -341,7 +341,7 @@ export default function CreateLostItemPage() {
             }
         } catch (error) {
             console.error("Geocoding API error:", error);
-            address = `위도: ${roundedLat}, 경도: ${roundedLng} (주소 변환 실패)`;
+            address = `위도: ${roundedLat}, 경도: ${roundedLng}`;
         }
     } else {
         console.warn("Geocoder not available or Maps API not loaded.");
