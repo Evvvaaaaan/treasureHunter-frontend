@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react'; // useMemo 추가
 import { useNavigate, useLocation } from 'react-router-dom'; // [MODIFIED] useLocation 추가
 import { motion } from 'motion/react';
 import {
@@ -6,7 +6,7 @@ import {
   MapPin,
   Plus,
   Bell,
-  Calendar,
+  // Calendar, // 제거
   Tag,
   ChevronRight,
   Map,
@@ -15,6 +15,8 @@ import {
   Trash2,
   AlertCircle,
   Loader2, // Loader icon
+  Coins, // 포인트 아이콘 추가
+  Navigation, // 거리 아이콘 추가
 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -58,13 +60,16 @@ interface ApiResponse {
 }
 
 
-// Interface for displaying items on the page
+// [MODIFIED] Interface for displaying items on the page
 interface LostItem {
   id: string; // Use string for React keys
   title: string;
-  category: string;
-  location: string; // Processed location string
-  date: string; // Formatted date string
+  // category: string; // 제거
+  // location: string; // 제거
+  // date: string; // 제거
+  content: string; // content (10글자)
+  points: number; // 포인트
+  distance: number | null; // 내 위치로부터의 거리 (km)
   image: string; // First image URL or placeholder
   status: 'lost' | 'found';
   isCompleted: boolean;
@@ -73,13 +78,34 @@ interface LostItem {
 // [MODIFIED] API_BASE_URL을 올바른 기본 주소로 수정합니다.
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
+// [NEW] Haversine 거리 계산 함수 (km 단위)
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) {
+    return 0;
+  }
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // Distance in km
+  return distance;
+};
+
 export default function HomePage() {
   const navigate = useNavigate();
   const location = useLocation(); // [NEW] location 객체 가져오기
   const [userInfo, setUserInfo] = useState<UserInfo | null>(getUserInfo());
   const [searchQuery, setSearchQuery] = useState('');
-  // [MODIFIED] Initialize lostItems as empty array
-  const [lostItems, setLostItems] = useState<LostItem[]>([]);
+  // [MODIFIED] API 원본 데이터를 저장할 state
+  const [rawPosts, setRawPosts] = useState<ApiPost[]>([]);
+  // [NEW] 사용자 위치 state
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   // [NEW] Add loading and error states
@@ -158,24 +184,8 @@ export default function HomePage() {
       
       console.log('Extracted postList:', postList); // 추출된 배열 확인
 
-      // Format API data for display
-      const formattedItems: LostItem[] = postList.map((post: ApiPost) => ({
-        id: post.id.toString(),
-        title: post.title,
-        category: post.itemCategory,
-        // TODO: Implement actual geocoding if needed
-        location: `위도: ${post.lat.toFixed(4)}, 경도: ${post.lon.toFixed(4)}`, // Placeholder location
-        date: new Date(post.lostAt).toLocaleDateString('ko-KR', {
-            year: 'numeric', month: 'short', day: 'numeric'
-        }), // Format date
-        image: post.images && post.images.length > 0
-          ? post.images[0] // Use first image
-          : 'https://via.placeholder.com/400x225.png?text=No+Image', // Placeholder image
-        status: post.type,
-        isCompleted: post.isCompleted,
-      }));
-
-      setLostItems(formattedItems); // Update state with fetched items
+      // [MODIFIED] 원본 API 데이터를 state에 저장
+      setRawPosts(postList); 
 
     } catch (err) {
       console.error('게시글 로딩 실패:', err);
@@ -197,11 +207,33 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInfo, navigate, location]); // [MODIFIED] location을 의존성 배열에 추가
 
+  // [NEW] useEffect to get user's location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          });
+          console.log("User location set:", position.coords);
+        },
+        (error) => {
+          console.error("Error getting user location:", error);
+          // 위치 정보를 가져오지 못해도 앱은 계속 작동해야 함 (거리는 null로 표시됨)
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    } else {
+      console.warn("Geolocation not supported by this browser.");
+    }
+  }, []); // Run once on mount
+
   const handleLogout = () => {
     clearTokens();
     navigate('/login');
   };
-
+  
   const handleDeleteUser = () => {
     setShowProfileMenu(false);
     setIsDeleteDialogOpen(true);
@@ -221,6 +253,34 @@ export default function HomePage() {
   };
 
 
+  // [NEW] Memoized calculation for formatting posts and calculating distance
+  const lostItems: LostItem[] = useMemo(() => {
+    return rawPosts.map((post: ApiPost) => {
+      let distance: number | null = null;
+      if (userLocation) {
+        distance = getDistance(
+          userLocation.lat,
+          userLocation.lon,
+          post.lat,
+          post.lon
+        );
+      }
+  
+      return {
+        id: post.id.toString(),
+        title: post.title,
+        content: post.content.substring(0, 10) + (post.content.length > 10 ? '...' : ''),
+        points: post.setPoint,
+        distance: distance,
+        image: post.images && post.images.length > 0
+          ? post.images[0]
+          : 'https://via.placeholder.com/400x225.png?text=No+Image',
+        status: post.type,
+        isCompleted: post.isCompleted,
+      };
+    });
+  }, [rawPosts, userLocation]); // Re-calculates when rawPosts or userLocation changes
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Search:', searchQuery);
@@ -228,12 +288,13 @@ export default function HomePage() {
     // For now, filtering happens on the `filteredItems` variable below
   };
 
-  // Client-side filtering based on search query
+  // [MODIFIED] Client-side filtering based on search query
   const filteredItems = lostItems.filter(
     (item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase())
+      // item.location.toLowerCase().includes(searchQuery.toLowerCase()) || // 제거
+      // item.category.toLowerCase().includes(searchQuery.toLowerCase()) // 제거
+      item.content.toLowerCase().includes(searchQuery.toLowerCase()) // content로 검색
   );
 
   return (
@@ -433,19 +494,26 @@ export default function HomePage() {
                        </Badge>
                      )}
                   </div>
+                  {/* [MODIFIED] item-info 섹션 수정 */}
                   <div className="item-info">
-                    <h3 className="item-title">{item.title}</h3> {/* Added class for styling */}
+                    <h3 className="item-title">{item.title}</h3>
+                    <p className="item-content-snippet">{item.content}</p> {/* New */}
                     <div className="item-meta">
-                      <div className="meta-item" title={item.location}>
-                        <MapPin style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0 }} />
-                        <span className="meta-text">{item.location}</span> {/* Added class for styling */}
+                      <div className="meta-item" title={`리워드: ${item.points}P`}>
+                        <Coins style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0, color: '#f59e0b' }} />
+                        <span className="meta-text" style={{ color: item.points > 0 ? '#b45309' : 'inherit' }}>
+                          {item.points.toLocaleString()}P
+                        </span>
                       </div>
-                      <div className="meta-item">
-                        <Calendar style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0 }} />
-                        <span className="meta-text">{item.date}</span> {/* Added class for styling */}
+                      <div className="meta-item" title="내 위치로부터의 거리">
+                        <Navigation style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0 }} />
+                        <span className="meta-text">
+                          {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 계산 중...'}
+                        </span>
                       </div>
                     </div>
                   </div>
+                  {/* [END OF MODIFIED] item-info 섹션 */}
                 </motion.div>
               ))}
             </div>
