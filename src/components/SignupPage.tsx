@@ -5,8 +5,8 @@ import { Camera, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-// 1. 'UserInfo'를 타입 전용(type-only)으로 가져오도록 수정하여 ts(1484) 오류를 해결합니다.
-import { signupUser, saveUserInfo, getUserInfo, type UserInfo } from '../utils/auth';
+// [MODIFIED] checkToken을 import에 추가합니다.
+import { signupUser, saveUserInfo, getUserInfo, type UserInfo, checkToken } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
 
@@ -69,15 +69,21 @@ export default function SignupPage() {
       );
 
       if (success) {
-        const finalUserInfo: UserInfo = {
-          id: userId,
-          nickname: nickname,
-          profileImage: finalProfileImage,
-          name: name,
-        };
-        saveUserInfo(finalUserInfo);
+        // [MODIFIED] 회원가입 성공 시, 최신 유저 정보(role 포함)를 다시 가져옵니다.
+        const updatedUserInfo = await checkToken(userId);
 
-        navigate('/home');
+        if (updatedUserInfo) {
+          // 업데이트된 최신 정보를 로컬 스토리지에 저장합니다.
+          saveUserInfo(updatedUserInfo);
+          
+          // [MODIFIED] '/home' 대신 '/verify-phone'으로 이동합니다.
+          navigate('/verify-phone');
+        } else {
+          // 혹시 모를 예외 처리
+          setError('회원가입은 되었으나 정보 갱신에 실패했습니다. 다시 로그인해주세요.');
+          setTimeout(() => navigate('/login'), 2000);
+        }
+
       } else {
         setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
@@ -219,4 +225,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
