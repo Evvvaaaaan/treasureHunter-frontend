@@ -5,8 +5,8 @@ import { Camera, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-// [MODIFIED] checkToken을 import에 추가합니다.
-import { signupUser, saveUserInfo, getUserInfo, type UserInfo, checkToken } from '../utils/auth';
+// [MODIFIED] clearTokens 및 checkToken을 import에 추가합니다.
+import { signupUser, saveUserInfo, getUserInfo, type UserInfo, checkToken, clearTokens } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
 
@@ -27,8 +27,10 @@ export default function SignupPage() {
     const tempUserInfo = getUserInfo();
 
     if (!idFromUrl) {
-      setError('잘못된 접근입니다. 로그인 페이지로 이동합니다.');
-      setTimeout(() => navigate('/login'), 2000);
+      // [MODIFIED] 비정상 접근 시, 세션을 강제로 클리어하고 /login으로 보냅니다.
+      setError('잘못된 접근입니다. 세션을 초기화하고 로그인 페이지로 이동합니다.');
+      clearTokens(); // <-- 이 코드가 핵심입니다.
+      setTimeout(() => navigate('/login', { replace: true }), 2000);
       return;
     }
     

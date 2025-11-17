@@ -1,66 +1,181 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react'; // [MODIFIED]
+import { Loader2 } from 'lucide-react'; // [MODIFIED]
 import LoginPage from './components/LoginPage';
 import AuthCallback from './components/AuthCallback';
 import SignupPage from './components/SignupPage';
 import HomePage from './components/HomePage';
 import PhoneVerificationPage from './components/PhoneVerificationPage';
 
-import MapPage from './components/MapPage'; // MapPage import 추가
-import CreateItemPage from './components/CreateLostItemPage'; // CreateItemPage import 추가
-import { getUserInfo } from './utils/auth';
+import MapPage from './components/MapPage';
+import CreateItemPage from './components/CreateLostItemPage';
+// [MODIFIED] getValidAuthToken, clearTokens, checkToken 추가
+import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 
 /**
+ * [NEW] 앱 로딩 시 전체 화면 스피너
+ */
+function FullPageSpinner() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#ecfdf5' }}>
+      <Loader2 className="spinner" style={{ width: '3rem', height: '3rem', color: 'var(--primary)' }} />
+    </div>
+  );
+}
+
+/**
+ * [MODIFIED] PublicRoute: 비동기 토큰 유효성 검사 추가
  * 로그인하지 않은 사용자만 접근할 수 있는 경로를 처리합니다.
- * (예: 로그인 페이지)
  */
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const userInfo = getUserInfo();
-  
-  if (userInfo) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await getValidAuthToken();
+      if (token) {
+        setIsAuthenticated(true);
+      } else {
+        // [FIX] 토큰이 유효하지 않으면, 오래된 userInfo를 삭제합니다.
+        clearTokens(); 
+        setIsAuthenticated(false);
+      }
+      setIsLoading(false);
+    };
+    checkAuth();
+  }, []);
+
+  if (isLoading) {
+    return <FullPageSpinner />;
+  }
+
+  if (isAuthenticated) {
+    // 유효한 토큰이 있으므로 /home으로 보냅니다.
     return <Navigate to="/home" replace />;
   }
   
+  // 유효한 토큰이 없으므로 공개 페이지(로그인 등)를 보여줍니다.
   return <>{children}</>;
 }
 
 /**
- * 로그인한 사용자만 접근할 수 있는 경로를 처리하며,
- * 사용자의 역할(role)에 따라 올바른 페이지로 강제 이동시킵니다.
+ * [MODIFIED] ProtectedRoute: 비동기 토큰 유효성 및 *최신* 유저 정보 검사
+ * 로그인한 사용자만 접근할 수 있는 경로를 처리합니다.
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const userInfo = getUserInfo();
-  
+  const [isLoading, setIsLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await getValidAuthToken();
+      if (token) {
+        // [MODIFIED] 토큰이 유효하므로, 서버에서 최신 사용자 정보를 가져옵니다.
+        // 로컬 저장소의 ID를 기반으로 checkToken 호출
+        const staleUserInfo = getUserInfo(); 
+        if (staleUserInfo && staleUserInfo.id) {
+          const freshUserInfo = await checkToken(staleUserInfo.id.toString());
+          // checkToken은 실패 시 null을 반환하고 auth.ts에서 clearTokens를 호출할 수 있음
+          setUserInfo(freshUserInfo);
+        } else {
+          // 토큰은 있으나 로컬 정보가 없는 비정상 상태
+          clearTokens();
+          setUserInfo(null);
+        }
+      } else {
+        // [FIX] 토큰이 유효하지 않으면, 오래된 데이터를 삭제합니다.
+        clearTokens();
+        setUserInfo(null);
+      }
+      setIsLoading(false);
+    };
+    checkAuth();
+    // location.pathname을 의존성에 추가하여 페이지 이동 시(예: 회원가입 완료 후) 재검사
+  }, [location.pathname]);
+
+  if (isLoading) {
+    return <FullPageSpinner />;
+  }
+
   if (!userInfo) {
+    // 유효한 토큰/정보가 없으므로 로그인 페이지로 보냅니다.
     return <Navigate to="/login" replace />;
   }
 
+  // 사용자가 인증됨, 이제 역할(role) 기반 라우팅을 수행합니다.
   const { role } = userInfo;
-  console.log('User role:', role);
   const currentPath = location.pathname;
 
   if (role === 'NOT_REGISTERED' && currentPath !== '/signup') {
+    // 회원가입을 완료해야 함
     return <Navigate to="/signup" replace />;
   }
 
   if (role === 'NOT_VERIFIED' && currentPath !== '/verify-phone' && currentPath !== '/home') {
+    // 인증되지 않은 사용자는 /home (배너 표시) 또는 /verify-phone (인증 페이지)만 접근 가능
     return <Navigate to="/verify-phone" replace />;
   }
 
   if (role === 'USER' && (currentPath === '/signup' || currentPath === '/verify-phone')) {
+    // 인증된 사용자가 가입/인증 페이지로 가려는 것을 막고 /home으로 보냅니다.
     return <Navigate to="/home" replace />;
   }
   
+  // 모든 조건을 통과하면 요청한 페이지를 보여줍니다.
   return <>{children}</>;
 }
 
 /**
- * 앱 시작 시 로그인 상태를 확인하고 올바른 경로로 보내주는 컴포넌트
+ * [MODIFIED] RootRedirect: 비동기 토큰 유효성 및 *최신* 유저 정보 검사
+ * 앱 시작 시 '/' 경로에서 올바른 위치로 보내줍니다.
  */
 function RootRedirect() {
-  const userInfo = getUserInfo();
+  const [isLoading, setIsLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
-  return userInfo ? <Navigate to="/home" replace /> : <Navigate to="/login" replace />;
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await getValidAuthToken();
+      if (token) {
+        // [MODIFIED] 토큰이 유효하므로, 서버에서 최신 사용자 정보를 가져옵니다.
+        const staleUserInfo = getUserInfo();
+        if (staleUserInfo && staleUserInfo.id) {
+          const freshUserInfo = await checkToken(staleUserInfo.id.toString());
+          setUserInfo(freshUserInfo);
+        } else {
+          clearTokens();
+          setUserInfo(null);
+        }
+      } else {
+        clearTokens();
+        setUserInfo(null);
+      }
+      setIsLoading(false);
+    };
+    checkAuth();
+  }, []);
+
+  if (isLoading) {
+    return <FullPageSpinner />;
+  }
+
+  if (!userInfo) {
+    // 인증 정보 없음 -> 로그인
+    return <Navigate to="/login" replace />;
+  }
+  
+  // 인증 정보 있음 -> 역할(role)에 따라 분기
+  if (userInfo.role === 'NOT_REGISTERED') {
+    return <Navigate to="/signup" replace />;
+  }
+  if (userInfo.role === 'NOT_VERIFIED') {
+    // 홈으로 보내면 홈에서 인증 배너를 보여줍니다.
+    return <Navigate to="/home" replace />; 
+  }
+  // 'USER' 역할
+  return <Navigate to="/home" replace />;
 }
 
 export default function App() {
@@ -72,7 +187,6 @@ export default function App() {
           path="/login"
           element={
             <PublicRoute>
-              {/* [CORRECTED] LoginPage로 수정 */}
               <LoginPage />
             </PublicRoute>
           }
@@ -104,7 +218,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        {/* [NEW] /create 경로 추가 */}
         <Route
           path="/create"
           element={
@@ -129,4 +242,3 @@ export default function App() {
     </Router>
   );
 }
-
