@@ -26,6 +26,7 @@ import { getUserInfo, clearTokens, deleteUser, type UserInfo, getAuthToken, getV
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
 import { Button } from './ui/button';
+import BottomNavigation from './BottomNavigation';
 
 // [NEW] Interface matching the API response structure for a single post
 interface AuthorInfo {
@@ -567,6 +568,7 @@ export default function HomePage() {
 
       {/* Bottom Safe Area (Handled by MainLayout now) */}
       {/* <div className="bottom-safe-area" /> */}
+      <BottomNavigation />
     </div>
   );
 }

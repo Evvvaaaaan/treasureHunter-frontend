@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'; // [MODIFIED]
 import { Loader2 } from 'lucide-react'; // [MODIFIED]
 import LoginPage from './components/LoginPage';
 import AuthCallback from './components/AuthCallback';
+import ItemDetailPage from './components/ItemDetailPage';
 import SignupPage from './components/SignupPage';
 import HomePage from './components/HomePage';
 import PhoneVerificationPage from './components/PhoneVerificationPage';
@@ -11,6 +12,7 @@ import MapPage from './components/MapPage';
 import CreateItemPage from './components/CreateLostItemPage';
 // [MODIFIED] getValidAuthToken, clearTokens, checkToken 추가
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
+
 
 /**
  * [NEW] 앱 로딩 시 전체 화면 스피너
@@ -234,7 +236,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/items/:id"
+          element={
+            <ProtectedRoute>
+              <ItemDetailPage />
+            </ProtectedRoute>
+          }
+        />
         {/* Redirect Logic */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />

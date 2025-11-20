@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Navigation, Layers, MapPin, ChevronDown } from 'lucide-react';
 // import BottomNavigation from './BottomNavigation';
 import '../styles/map-page.css';
+import BottomNavigation from './BottomNavigation';
 
 interface MapMarker {
   id: string;
@@ -325,7 +326,7 @@ const MapPage: React.FC = () => {
         </div>
       )}
 
-      {/* <BottomNavigation /> */}
+      <BottomNavigation />
     </div>
   );
 };
