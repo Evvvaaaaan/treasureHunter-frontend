@@ -3,7 +3,33 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { MapPin, Calendar, Share2, Flag, Bookmark, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart } from 'lucide-react';
 import TopNavigation from './TopNavigation';
 import { useTheme } from '../utils/theme';
+import { getValidAuthToken } from '../utils/auth'; // 인증 토큰 함수 가져오기
 import '../styles/item-detail.css';
+
+// API 응답 데이터 타입 정의 (HomePage.tsx 등과 일치시킴)
+interface ApiPost {
+  id: number;
+  title: string;
+  content: string;
+  type: 'LOST' | 'FOUND'; // 대문자로 오는 경우 대비
+  author?: {
+    id: number;
+    nickname: string;
+    profileImage: string;
+    totalScore: number;
+    totalReviews: number;
+  };
+  images: string[];
+  setPoint: number;
+  itemCategory: string;
+  lat: number;
+  lon: number;
+  lostAt: string;
+  createdAt: string;
+  updatedAt: string;
+  isAnonymous: boolean;
+  isCompleted: boolean;
+}
 
 interface ItemDetail {
   id: string;
@@ -42,6 +68,8 @@ interface UserInfo {
   isOnline: boolean;
 }
 
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+
 const ItemDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -56,73 +84,136 @@ const ItemDetailPage: React.FC = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    loadItemDetail();
+    if (id) {
+      loadItemDetail(id);
+    }
   }, [id]);
 
-  const loadItemDetail = async () => {
+  const loadItemDetail = async (itemId: string) => {
     setIsLoading(true);
     try {
-      // Skip API call and use mock data directly
-      // Mock data for development
-      setItem({
-        id: id || '1',
-        type: 'lost',
-        title: 'iPhone 15 Pro 분실했습니다',
-        description: '강남역 2번 출구 근처에서 iPhone 15 Pro (퍼플색)을 분실했습니다. 투명 케이스에 스티커가 붙어있습니다.',
-        category: '전자기기',
-        images: [
-          'https://images.unsplash.com/photo-1592286927505-838d8be747f2?w=800',
-          'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800',
-          'https://images.unsplash.com/photo-1611472173362-3f53dbd65d80?w=800'
-        ],
-        location: {
-          address: '서울특별시 강남구 강남대로 지하 396',
-          coordinates: { lat: 37.498, lng: 127.028 }
-        },
-        dateInfo: {
-          lostDate: '2025-10-20',
-          postedDate: '2025-10-20'
-        },
-        reward: {
-          points: 50000,
-          description: '찾아주시면 5만 포인트 드립니다!'
-        },
-        status: 'active',
-        viewCount: 234,
-        bookmarkCount: 12,
-        isBookmarked: false,
-        likes: 42,
-        isLiked: false
+      // 1. 토큰 가져오기 (선택적, 비로그인 시에도 조회 가능하다면)
+      const token = await getValidAuthToken();
+      
+      const headers: HeadersInit = {
+        'Accept': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // 2. API 호출
+      const response = await fetch(`${API_BASE_URL}/post/${itemId}`, {
+        method: 'GET',
+        headers: headers,
       });
 
-      setUser({
-        id: 'user123',
-        nickname: '보물사냥꾼',
-        profileImage: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-        trustScore: 98,
-        successCount: 24,
-        badges: ['신뢰왕', '베테랑', '친절왕'],
-        isOnline: true
-      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch item details: ${response.status}`);
+      }
+
+      const data: ApiPost = await response.json();
+
+      // 3. 주소 변환 (좌표 -> 주소)
+      let address = '위치 정보 없음';
+      if (window.google && window.google.maps && window.google.maps.Geocoder) {
+        try {
+          const geocoder = new google.maps.Geocoder();
+          const geocodeResult = await geocoder.geocode({
+            location: { lat: data.lat, lng: data.lon }
+          });
+          if (geocodeResult.results && geocodeResult.results[0]) {
+            address = geocodeResult.results[0].formatted_address;
+          }
+        } catch (e) {
+          console.error("Geocoding failed:", e);
+          address = `위도: ${data.lat}, 경도: ${data.lon}`;
+        }
+      } else {
+         address = `위도: ${data.lat}, 경도: ${data.lon}`;
+      }
+
+      // 4. 데이터 매핑 (API 응답 -> 컴포넌트 상태)
+      const mappedItem: ItemDetail = {
+        id: data.id.toString(),
+        type: data.type.toLowerCase() as 'lost' | 'found',
+        title: data.title,
+        description: data.content,
+        category: data.itemCategory, // 필요시 한글 변환 로직 추가 가능
+        images: data.images && data.images.length > 0 
+          ? data.images 
+          : ['https://via.placeholder.com/800x600?text=No+Image'],
+        location: {
+          address: address,
+          coordinates: { lat: data.lat, lng: data.lon }
+        },
+        dateInfo: {
+          lostDate: data.lostAt,
+          postedDate: data.createdAt
+        },
+        reward: {
+          points: data.setPoint,
+          description: data.setPoint > 0 ? `${data.setPoint.toLocaleString()} 포인트` : '사례금 없음'
+        },
+        status: data.isCompleted ? 'completed' : 'active',
+        // 아래 필드들은 API에 없다면 기본값 사용
+        viewCount: 0, 
+        bookmarkCount: 0,
+        isBookmarked: false,
+        likes: 0,
+        isLiked: false
+      };
+
+      setItem(mappedItem);
+
+      // 5. 작성자 정보 매핑
+      if (data.author && !data.isAnonymous) {
+        setUser({
+          id: data.author.id.toString(),
+          nickname: data.author.nickname,
+          profileImage: data.author.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
+          trustScore: data.author.totalScore || 0,
+          successCount: 0, // API에 없다면 0
+          badges: [], // API에 없다면 빈 배열
+          isOnline: false
+        });
+      } else {
+        // 익명 또는 정보 없음
+        setUser({
+          id: 'anonymous',
+          nickname: '익명',
+          profileImage: 'https://via.placeholder.com/200?text=Anonymous',
+          trustScore: 0,
+          successCount: 0,
+          badges: [],
+          isOnline: false
+        });
+      }
+
+    } catch (error) {
+      console.error("Error loading item details:", error);
+      setItem(null); // 에러 시 null 처리하여 에러 UI 표시
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleBookmark = async () => {
+    // API 구현 필요 (예시)
+    /*
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`https://treasurehunter.seohamin.com/api/v1/items/${id}/bookmark`, {
+      const token = await getValidAuthToken();
+      await fetch(`${API_BASE_URL}/posts/${id}/bookmark`, {
         method: isBookmarked ? 'DELETE' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       setIsBookmarked(!isBookmarked);
     } catch (error) {
       console.error('Bookmark failed:', error);
-      setIsBookmarked(!isBookmarked);
     }
+    */
+    setIsBookmarked(!isBookmarked); // UI만 변경 (임시)
   };
 
   const handleShare = async () => {
@@ -149,7 +240,9 @@ const ItemDetailPage: React.FC = () => {
   };
 
   const handleStartChat = () => {
-    navigate(`/chat/${item?.id}`);
+    // 채팅 시작 로직 (API 호출 등 필요)
+    // navigate(`/chat/${item?.id}`); 
+    alert("채팅 기능 준비 중입니다.");
   };
 
   const handleLike = () => {
@@ -183,11 +276,11 @@ const ItemDetailPage: React.FC = () => {
     );
   }
 
-  if (!item || !user) {
+  if (!item) {
     return (
       <div className="item-detail-error">
         <p>게시물을 찾을 수 없습니다.</p>
-        <button onClick={() => navigate(-1)}>돌아가기</button>
+        <button onClick={() => navigate('/home')}>홈으로 돌아가기</button>
       </div>
     );
   }
@@ -212,11 +305,13 @@ const ItemDetailPage: React.FC = () => {
       {/* Image Slider */}
       <div className="image-slider">
         <div className="slider-container">
-          <img
-            src={item.images[currentImageIndex]}
-            alt={`${item.title} - ${currentImageIndex + 1}`}
-            onClick={() => setIsImageViewerOpen(true)}
-          />
+          {item.images.length > 0 && (
+            <img
+              src={item.images[currentImageIndex]}
+              alt={`${item.title} - ${currentImageIndex + 1}`}
+              onClick={() => setIsImageViewerOpen(true)}
+            />
+          )}
           {item.images.length > 1 && (
             <>
               <button className="slider-nav prev" onClick={prevImage}>
@@ -257,28 +352,30 @@ const ItemDetailPage: React.FC = () => {
         </div>
 
         {/* User Info */}
-        <div className="user-card" onClick={() => navigate(`/user/${user.id}`)}>
-          <div className="user-avatar-wrapper">
-            <img src={user.profileImage} alt={user.nickname} className="user-avatar" />
-            {user.isOnline && <span className="online-indicator"></span>}
-          </div>
-          <div className="user-info">
-            <div className="user-name">
-              <span>{user.nickname}</span>
-              {user.badges.map((badge, idx) => (
-                <span key={idx} className="user-badge">{badge}</span>
-              ))}
+        {user && (
+            <div className="user-card" onClick={() => user.id !== 'anonymous' && navigate(`/user/${user.id}`)}>
+            <div className="user-avatar-wrapper">
+                <img src={user.profileImage} alt={user.nickname} className="user-avatar" />
+                {user.isOnline && <span className="online-indicator"></span>}
             </div>
-            <div className="user-stats">
-              <span className="trust-score">
-                <Star size={14} fill="#10b981" stroke="#10b981" />
-                신뢰도 {user.trustScore}%
-              </span>
-              <span className="success-count">성공 거래 {user.successCount}회</span>
+            <div className="user-info">
+                <div className="user-name">
+                <span>{user.nickname}</span>
+                {user.badges.map((badge, idx) => (
+                    <span key={idx} className="user-badge">{badge}</span>
+                ))}
+                </div>
+                <div className="user-stats">
+                <span className="trust-score">
+                    <Star size={14} fill="#10b981" stroke="#10b981" />
+                    신뢰도 {user.trustScore}%
+                </span>
+                {/* <span className="success-count">성공 거래 {user.successCount}회</span> */}
+                </div>
             </div>
-          </div>
-          <ChevronRight size={20} className="chevron" />
-        </div>
+            {user.id !== 'anonymous' && <ChevronRight size={20} className="chevron" />}
+            </div>
+        )}
 
         {/* Reward */}
         {item.reward.points > 0 && (
@@ -294,7 +391,7 @@ const ItemDetailPage: React.FC = () => {
         {/* Description */}
         <div className="description-section">
           <h2>상세 설명</h2>
-          <p>{item.description}</p>
+          <p style={{whiteSpace: 'pre-wrap'}}>{item.description}</p>
         </div>
 
         {/* Date Info */}
@@ -324,13 +421,17 @@ const ItemDetailPage: React.FC = () => {
           </h2>
           <p className="location-address">{item.location.address}</p>
           <div className="map-container">
+             {/* Google Maps Embed API 사용 시 API 키 필요, 또는 단순 iframe 사용 */}
+             {/* 보안상의 이유로 API Key가 노출되지 않도록 주의하거나 백엔드 프록시 사용 권장 */}
+             {/* 여기서는 iframe 예시 유지하되 좌표 적용 */}
             <iframe
-              src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBN5hX-FL_N57xUwRVVuY4ExZQuro5Ti2s&q=${item.location.coordinates.lat},${item.location.coordinates.lng}`}
+              src={`https://maps.google.com/maps?q=${item.location.coordinates.lat},${item.location.coordinates.lng}&z=15&output=embed`}
               width="100%"
               height="250"
               style={{ border: 0, borderRadius: '12px' }}
               allowFullScreen
               loading="lazy"
+              title="map"
             />
           </div>
         </div>

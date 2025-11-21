@@ -471,7 +471,7 @@ export default function HomePage() {
                   transition={{ duration: 0.3, delay: index * 0.1 }}
                   // [MODIFIED] Add completed class and style
                   className={`item-card ${item.isCompleted ? 'completed' : ''}`}
-                  onClick={() => navigate(`/item/${item.id}`)} // Navigate to item detail page
+                  onClick={() => navigate(`/items/${item.id}`)} // Navigate to item detail page
                   style={item.isCompleted ? { opacity: 0.6 } : {}}
                 >
                   <div className="item-image">

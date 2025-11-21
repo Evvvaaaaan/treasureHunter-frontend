@@ -12,6 +12,7 @@ import MapPage from './components/MapPage';
 import CreateItemPage from './components/CreateLostItemPage';
 // [MODIFIED] getValidAuthToken, clearTokens, checkToken 추가
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
+import { ThemeProvider } from './utils/theme';
 
 
 /**
@@ -182,6 +183,7 @@ function RootRedirect() {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <Router>
       <Routes>
         {/* Public Routes */}
@@ -249,5 +251,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    </ThemeProvider>
   );
 }
