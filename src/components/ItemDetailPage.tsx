@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MapPin, Calendar, Share2, Flag, Bookmark, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart } from 'lucide-react';
-import TopNavigation from './TopNavigation';
 import { useTheme } from '../utils/theme';
-import { getValidAuthToken } from '../utils/auth'; // 인증 토큰 함수 가져오기
+import { getValidAuthToken } from '../utils/auth';
 import '../styles/item-detail.css';
 
-// API 응답 데이터 타입 정의 (HomePage.tsx 등과 일치시킴)
+// API 응답 데이터 타입 정의
 interface ApiPost {
   id: number;
   title: string;
   content: string;
-  type: 'LOST' | 'FOUND'; // 대문자로 오는 경우 대비
+  type: 'LOST' | 'FOUND';
   author?: {
     id: number;
     nickname: string;
@@ -70,6 +69,18 @@ interface UserInfo {
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
+// 카테고리 매핑 객체
+const CATEGORY_MAP: { [key: string]: string } = {
+  'PHONE': '휴대폰',
+  'WALLET': '지갑',
+  'KEY': '열쇠',
+  'BAG': '가방',
+  'ELECTRONICS': '전자기기',
+  'ACCESSORY': '액세서리',
+  'DOCUMENT': '문서',
+  'ETC': '기타',
+};
+
 const ItemDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -92,7 +103,6 @@ const ItemDetailPage: React.FC = () => {
   const loadItemDetail = async (itemId: string) => {
     setIsLoading(true);
     try {
-      // 1. 토큰 가져오기 (선택적, 비로그인 시에도 조회 가능하다면)
       const token = await getValidAuthToken();
       
       const headers: HeadersInit = {
@@ -103,7 +113,7 @@ const ItemDetailPage: React.FC = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // 2. API 호출
+      // API 호출 (/post/{id})
       const response = await fetch(`${API_BASE_URL}/post/${itemId}`, {
         method: 'GET',
         headers: headers,
@@ -115,7 +125,7 @@ const ItemDetailPage: React.FC = () => {
 
       const data: ApiPost = await response.json();
 
-      // 3. 주소 변환 (좌표 -> 주소)
+      // 주소 변환 (좌표 -> 주소)
       let address = '위치 정보 없음';
       if (window.google && window.google.maps && window.google.maps.Geocoder) {
         try {
@@ -134,13 +144,13 @@ const ItemDetailPage: React.FC = () => {
          address = `위도: ${data.lat}, 경도: ${data.lon}`;
       }
 
-      // 4. 데이터 매핑 (API 응답 -> 컴포넌트 상태)
+      // 데이터 매핑
       const mappedItem: ItemDetail = {
         id: data.id.toString(),
-        type: data.type.toLowerCase() as 'lost' | 'found',
+        type: (data.type || 'LOST').toLowerCase() as 'lost' | 'found',
         title: data.title,
         description: data.content,
-        category: data.itemCategory, // 필요시 한글 변환 로직 추가 가능
+        category: CATEGORY_MAP[data.itemCategory] || data.itemCategory,
         images: data.images && data.images.length > 0 
           ? data.images 
           : ['https://via.placeholder.com/800x600?text=No+Image'],
@@ -157,7 +167,6 @@ const ItemDetailPage: React.FC = () => {
           description: data.setPoint > 0 ? `${data.setPoint.toLocaleString()} 포인트` : '사례금 없음'
         },
         status: data.isCompleted ? 'completed' : 'active',
-        // 아래 필드들은 API에 없다면 기본값 사용
         viewCount: 0, 
         bookmarkCount: 0,
         isBookmarked: false,
@@ -167,19 +176,18 @@ const ItemDetailPage: React.FC = () => {
 
       setItem(mappedItem);
 
-      // 5. 작성자 정보 매핑
+      // 작성자 정보 매핑
       if (data.author && !data.isAnonymous) {
         setUser({
           id: data.author.id.toString(),
           nickname: data.author.nickname,
           profileImage: data.author.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
           trustScore: data.author.totalScore || 0,
-          successCount: 0, // API에 없다면 0
-          badges: [], // API에 없다면 빈 배열
+          successCount: 0,
+          badges: [],
           isOnline: false
         });
       } else {
-        // 익명 또는 정보 없음
         setUser({
           id: 'anonymous',
           nickname: '익명',
@@ -193,27 +201,14 @@ const ItemDetailPage: React.FC = () => {
 
     } catch (error) {
       console.error("Error loading item details:", error);
-      setItem(null); // 에러 시 null 처리하여 에러 UI 표시
+      setItem(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleBookmark = async () => {
-    // API 구현 필요 (예시)
-    /*
-    try {
-      const token = await getValidAuthToken();
-      await fetch(`${API_BASE_URL}/posts/${id}/bookmark`, {
-        method: isBookmarked ? 'DELETE' : 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setIsBookmarked(!isBookmarked);
-    } catch (error) {
-      console.error('Bookmark failed:', error);
-    }
-    */
-    setIsBookmarked(!isBookmarked); // UI만 변경 (임시)
+    setIsBookmarked(!isBookmarked);
   };
 
   const handleShare = async () => {
@@ -240,8 +235,6 @@ const ItemDetailPage: React.FC = () => {
   };
 
   const handleStartChat = () => {
-    // 채팅 시작 로직 (API 호출 등 필요)
-    // navigate(`/chat/${item?.id}`); 
     alert("채팅 기능 준비 중입니다.");
   };
 
@@ -342,8 +335,14 @@ const ItemDetailPage: React.FC = () => {
         {/* Title & Type */}
         <div className="item-header">
           <span className={`type-badge ${item.type}`}>
-            {item.type === 'lost' ? '분실물' : '발견물'}
+            {/* [수정] 발견물 -> 습득물 */}
+            {item.type === 'lost' ? '분실물' : '습득물'}
           </span>
+          {item.status === 'completed' && (
+             <span className="type-badge completed" style={{marginLeft: '8px', background: '#6b7280', color: 'white'}}>
+               완료
+             </span>
+          )}
           <h1>{item.title}</h1>
           <div className="item-meta">
             <span className="category">{item.category}</span>
@@ -370,7 +369,6 @@ const ItemDetailPage: React.FC = () => {
                     <Star size={14} fill="#10b981" stroke="#10b981" />
                     신뢰도 {user.trustScore}%
                 </span>
-                {/* <span className="success-count">성공 거래 {user.successCount}회</span> */}
                 </div>
             </div>
             {user.id !== 'anonymous' && <ChevronRight size={20} className="chevron" />}
@@ -400,7 +398,8 @@ const ItemDetailPage: React.FC = () => {
           <div className="info-item">
             <Calendar size={18} />
             <div>
-              <p className="info-label">{item.type === 'lost' ? '분실 날짜' : '발견 날짜'}</p>
+              {/* [수정] 발견 날짜 -> 습득 날짜 */}
+              <p className="info-label">{item.type === 'lost' ? '분실 날짜' : '습득 날짜'}</p>
               <p className="info-value">{new Date(item.dateInfo.lostDate).toLocaleDateString('ko-KR')}</p>
             </div>
           </div>
@@ -417,13 +416,11 @@ const ItemDetailPage: React.FC = () => {
         <div className="location-section">
           <h2>
             <MapPin size={20} />
-            {item.type === 'lost' ? '분실 위치' : '발견 위치'}
+            {/* [수정] 발견 위치 -> 습득 위치 */}
+            {item.type === 'lost' ? '분실 위치' : '습득 위치'}
           </h2>
           <p className="location-address">{item.location.address}</p>
           <div className="map-container">
-             {/* Google Maps Embed API 사용 시 API 키 필요, 또는 단순 iframe 사용 */}
-             {/* 보안상의 이유로 API Key가 노출되지 않도록 주의하거나 백엔드 프록시 사용 권장 */}
-             {/* 여기서는 iframe 예시 유지하되 좌표 적용 */}
             <iframe
               src={`https://maps.google.com/maps?q=${item.location.coordinates.lat},${item.location.coordinates.lng}&z=15&output=embed`}
               width="100%"

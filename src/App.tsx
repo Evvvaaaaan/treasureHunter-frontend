@@ -7,10 +7,13 @@ import ItemDetailPage from './components/ItemDetailPage';
 import SignupPage from './components/SignupPage';
 import HomePage from './components/HomePage';
 import PhoneVerificationPage from './components/PhoneVerificationPage';
-
+import ProfilePage from './components/ProfilePage';
+import MyItemsPage from './components/MyItemsPage';
 import MapPage from './components/MapPage';
 import CreateItemPage from './components/CreateLostItemPage';
-// [MODIFIED] getValidAuthToken, clearTokens, checkToken 추가
+import ChatListPage from './components/ChatListPage';
+import ChatPage from './components/ChatPage';
+import StorePage from './components/StorePage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 
@@ -243,6 +246,46 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ItemDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/profile'
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/my-items'
+          element={
+            <ProtectedRoute>
+              <MyItemsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/chat/:id'
+          element={
+            <ProtectedRoute>
+              <ChatPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/chat-list'
+          element={
+            <ProtectedRoute>
+              <ChatListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/store'
+          element={
+            <ProtectedRoute>
+              <StorePage />
             </ProtectedRoute>
           }
         />

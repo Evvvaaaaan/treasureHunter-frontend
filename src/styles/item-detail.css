@@ -939,3 +939,39 @@
 .dark .item-detail-error button:hover {
   background: #059669;
 }
+
+/* ... (기존 스타일 유지) ... */
+
+/* 기존 .type-badge 관련 스타일을 아래와 같이 수정/대체해주세요 */
+
+.type-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 12px;
+  font-weight: 600; /* 폰트 굵게 */
+}
+
+/* 분실물: 진한 빨강 배경 + 흰색 글씨 */
+.type-badge.lost {
+  background-color: #ef4444; 
+  color: white;
+}
+
+/* 습득물: 진한 초록 배경 + 흰색 글씨 */
+.type-badge.found {
+  background-color: #10b981; 
+  color: white;
+}
+
+/* 다크 모드 대응 (배경색이 진하므로 텍스트는 흰색 유지) */
+.dark .type-badge.lost {
+  background-color: #ef4444;
+  color: white;
+}
+
+.dark .type-badge.found {
+  background-color: #10b981;
+  color: white;
+}
