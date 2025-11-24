@@ -52,6 +52,7 @@ const CATEGORY_MAP: { [key: string]: string } = {
   'DOCUMENT': '문서',
   'ETC': '기타',
 };
+const DEFAULT_IMAGE = '/public/placeholder.png';
 
 // Haversine 거리 계산 함수 (km 단위)
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -187,7 +188,7 @@ const MyItemsPage: React.FC = () => {
         // 이미지가 있으면 첫 번째 이미지, 없으면 플레이스홀더
         image: post.images && post.images.length > 0
           ? post.images[0]
-          : 'https://via.placeholder.com/400x225.png?text=No+Image',
+          : DEFAULT_IMAGE, 
         status: post.isCompleted ? 'completed' : 'active',
         points: post.setPoint,
         distance: distance,
