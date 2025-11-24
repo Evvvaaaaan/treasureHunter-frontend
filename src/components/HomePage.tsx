@@ -112,6 +112,7 @@ export default function HomePage() {
   // [NEW] Add loading and error states
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0); // [NEW] 알림 개수 상태
 
   // [NEW] Function to fetch posts from the API
   const fetchPosts = async () => {
@@ -317,10 +318,24 @@ export default function HomePage() {
 
             {/* Right Section */}
             <div className="header-actions">
-              <button className="notification-btn">
-                <Bell style={{ width: '1.25rem', height: '1.25rem', color: '#4b5563' }} />
-                <span className="notification-badge" />
+               <button
+                className="notification-btn"
+                onClick={() => navigate('/notifications')}
+              >
+                <Bell
+                  style={{
+                    width: "1.25rem",
+                    height: "1.25rem",
+                    color: "#4b5563",
+                  }}
+                />
+                {unreadNotifications > 0 && (
+                  <span className="notification-badge">
+                    {unreadNotifications}
+                  </span>
+                )}
               </button>
+
 
               <div className="profile-menu-wrapper">
                 <button

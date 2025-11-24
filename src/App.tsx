@@ -15,6 +15,8 @@ import ChatListPage from './components/ChatListPage';
 import ChatPage from './components/ChatPage';
 import StorePage from './components/StorePage';
 import OtherUserProfilePage from './components/OtherUserProfilePage';
+import SettingsPage from './components/SettingsPage';
+import NotificationsPage from './components/NotificationsPage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 
@@ -298,6 +300,22 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route 
+          path='/settings'
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
+            </ProtectedRoute>
+          }
+        />  
+        <Route 
+          path='/notifications'
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />  
         {/* Redirect Logic */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
