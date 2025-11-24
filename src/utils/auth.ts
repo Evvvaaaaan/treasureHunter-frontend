@@ -474,13 +474,14 @@ export const getUserProfile = async (userId: string): Promise<UserInfo | null> =
         console.error(`Failed to fetch user profile. Status: ${response.status}`, errorBody);
         // If it's 401/403, potentially clear tokens as access is denied
         if (response.status === 401 || response.status === 403) {
-             clearTokens();
+             // clearTokens(); // 다른 사람 프로필 조회 실패가 내 로그아웃을 유발하면 안 될 수도 있음 (상황에 따라 결정)
         }
       return null;
     }
 
     const userInfo: UserInfo = await response.json();
-     saveUserInfo(userInfo); // Optionally update stored user info
+     // [FIXED] Don't overwrite local user info when viewing other profiles
+     // saveUserInfo(userInfo); 
     return userInfo;
 
   } catch (error) {
@@ -530,4 +531,3 @@ export const createPost = async (postData: PostData): Promise<ApiPost | null> =>
 export const getAuthToken = (): string | null => {
     return localStorage.getItem('accessToken');
 };
-
