@@ -14,6 +14,7 @@ import CreateItemPage from './components/CreateLostItemPage';
 import ChatListPage from './components/ChatListPage';
 import ChatPage from './components/ChatPage';
 import StorePage from './components/StorePage';
+import OtherUserProfilePage from './components/OtherUserProfilePage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 
@@ -286,6 +287,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <StorePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path='/other-profile/:id'
+          element={
+            <ProtectedRoute>
+              <OtherUserProfilePage />
             </ProtectedRoute>
           }
         />

@@ -352,7 +352,7 @@ const ItemDetailPage: React.FC = () => {
 
         {/* User Info */}
         {user && (
-            <div className="user-card" onClick={() => user.id !== 'anonymous' && navigate(`/user/${user.id}`)}>
+            <div className="user-card" onClick={() => user.id !== 'anonymous' && navigate(`/other-profile/${user.id}`)}>
             <div className="user-avatar-wrapper">
                 <img src={user.profileImage} alt={user.nickname} className="user-avatar" />
                 {user.isOnline && <span className="online-indicator"></span>}
