@@ -44,11 +44,11 @@
   const CATEGORIES = [
     { value: '휴대폰', icon: '📱', color: '#3b82f6' },
     { value: '지갑', icon: '💳', color: '#8b5cf6' },
-    { value: '열쇠', icon: '🔑', color: '#f59e0b' },
+    { value: '의류', icon: '👖', color: '#f59e0b' },
     { value: '가방', icon: '🎒', color: '#10b981' },
     { value: '전자기기', icon: '💻', color: '#06b6d4' },
     { value: '액세서리', icon: '💍', color: '#ec4899' },
-    { value: '문서', icon: '📄', color: '#6366f1' },
+    { value: '문구류', icon: '📄', color: '#6366f1' },
     { value: '기타', icon: '📦', color: '#64748b' },
   ];
 
@@ -56,11 +56,11 @@
   const categoryMapping: { [key: string]: string } = {
       '휴대폰': 'PHONE',
       '지갑': 'WALLET',
-      '열쇠': 'KEY',
+      '의류': 'CLOTHES',
       '가방': 'BAG',
       '전자기기': 'ELECTRONICS',
       '액세서리': 'ACCESSORY',
-      '문서': 'DOCUMENT',
+      '문구류': 'STATIONERY',
       '기타': 'ETC', // API에서 '기타'를 어떻게 받는지 확인 필요 (ETC 또는 OTHER 등)
   };
 
@@ -218,7 +218,6 @@
         formData.itemName.trim() !== '' && // 공백만 있는지 체크
         formData.category !== '' &&
         formData.description.trim().length >= 100 && // 공백 제외 100자
-        (formData.contactEmail.trim() || formData.contactPhone.trim()) && // 하나 이상 입력 & 공백 체크
         formData.lostDate !== ''
       );
 
@@ -612,20 +611,6 @@
       if (!formData.itemName.trim()) return '분실물 이름을 입력해주세요.';
       if (!formData.category) return '카테고리를 선택해주세요.';
       if (formData.description.trim().length < 100) return '상세 설명을 100자 이상 입력해주세요. (공백 제외)';
-      // 이메일 또는 전화번호 형식 검사 추가 (선택적)
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      // Updated phone regex for 010-xxxx-xxxx or 010-xxx-xxxx
-      const phoneRegex = /^010-(\d{3,4})-(\d{4})$/;
-      if (!formData.contactEmail.trim() && !formData.contactPhone.trim()) {
-          return '연락처(이메일 또는 전화번호)를 하나 이상 입력해주세요.';
-      }
-      if (formData.contactEmail.trim() && !emailRegex.test(formData.contactEmail.trim())) {
-          return '올바른 이메일 형식을 입력해주세요.';
-      }
-      if (formData.contactPhone.trim() && !phoneRegex.test(formData.contactPhone.trim())) {
-            return '올바른 전화번호 형식(010-xxxx-xxxx 또는 010-xxx-xxxx)을 입력해주세요.';
-      }
-
       if (!formData.lostDate) return '분실 날짜를 선택해주세요.';
 
       // 날짜 유효성 검사 (미래 날짜 선택 불가 등)
@@ -1094,51 +1079,6 @@
               <span>{formData.location.address || '지도에서 위치를 선택해주세요.'}</span>
             </div>
           </div>
-
-          {/* Contact Info */}
-          <div className="form-section">
-            {/* ... (이전과 동일) ... */}
-              <div className="label-with-check">
-              <Label>연락처 정보 (하나 이상 필수)</Label>
-              {(formData.contactEmail.trim() || formData.contactPhone.trim()) && (
-                <span className="field-check completed">✓ 완료</span>
-              )}
-            </div>
-            <div className="contact-fields">
-              <Label htmlFor="contactEmail" className="sr-only">이메일</Label>
-              <Input
-                id="contactEmail"
-                type="email"
-                placeholder="이메일 (example@email.com)"
-                value={formData.contactEmail}
-                onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                className="form-input"
-                aria-describedby="contact-hint"
-              />
-              <Label htmlFor="contactPhone" className="sr-only">전화번호</Label>
-              <Input
-                id="contactPhone"
-                type="tel"
-                placeholder="전화번호 (010-xxxx-xxxx)"
-                // Improved phone number formatting
-                value={formData.contactPhone}
-                onChange={(e) => {
-                    let formatted = e.target.value.replace(/[^\d]/g, ''); // Remove non-digits
-                    if (formatted.length > 3 && formatted.length <= 7) {
-                        formatted = `${formatted.slice(0, 3)}-${formatted.slice(3)}`;
-                    } else if (formatted.length > 7) {
-                        formatted = `${formatted.slice(0, 3)}-${formatted.slice(3, 7)}-${formatted.slice(7, 11)}`;
-                    }
-                    setFormData({ ...formData, contactPhone: formatted.slice(0, 13) });
-                }}
-                className="form-input"
-                maxLength={13}
-                aria-describedby="contact-hint"
-              />
-            </div>
-            <p id="contact-hint" className="input-hint">습득자가 연락할 수 있도록 이메일 또는 전화번호 중 하나 이상을 입력해주세요.</p>
-          </div>
-
           {/* Reward Points */}
           <div className="form-section">
             {/* ... (이전과 동일) ... */}
@@ -1263,12 +1203,8 @@
                   <li style={{ color: formData.itemName.trim() ? '#10b981' : '#ef4444' }}>{formData.itemName.trim() ? '✓' : '✗'} 이름</li>
                   <li style={{ color: formData.category ? '#10b981' : '#ef4444' }}>{formData.category ? '✓' : '✗'} 카테고리</li>
                   <li style={{ color: formData.description.trim().length >= 100 ? '#10b981' : '#ef4444' }}>{formData.description.trim().length >= 100 ? '✓' : '✗'} 설명 ({formData.description.trim().length}/100)</li>
-                  <li style={{ color: (formData.contactEmail.trim() || formData.contactPhone.trim()) ? '#10b981' : '#ef4444' }}>{(formData.contactEmail.trim() || formData.contactPhone.trim()) ? '✓' : '✗'} 연락처</li>
                   <li style={{ color: formData.lostDate ? '#10b981' : '#ef4444' }}>{formData.lostDate ? '✓' : '✗'} 날짜</li>
                 </ul>
-                <p style={{ color: isFormValid() ? '#10b981' : '#ef4444' }}>
-                  버튼 상태: {isFormValid() ? '활성화 ✓' : '비활성화 ✗'}
-                </p>
                 <p>익명: {isAnonymous ? '✓' : '✗'}</p>
               </div>
           )}
