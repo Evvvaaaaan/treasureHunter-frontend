@@ -5,8 +5,8 @@ import { Camera, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-// [MODIFIED] checkToken을 import에 추가합니다.
-import { signupUser, saveUserInfo, getUserInfo, type UserInfo, checkToken } from '../utils/auth';
+// [MODIFIED] clearTokens 및 checkToken을 import에 추가합니다.
+import { signupUser, saveUserInfo, getUserInfo, type UserInfo, checkToken, clearTokens } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
 
@@ -27,8 +27,10 @@ export default function SignupPage() {
     const tempUserInfo = getUserInfo();
 
     if (!idFromUrl) {
-      setError('잘못된 접근입니다. 로그인 페이지로 이동합니다.');
-      setTimeout(() => navigate('/login'), 2000);
+      // [MODIFIED] 비정상 접근 시, 세션을 강제로 클리어하고 /login으로 보냅니다.
+      setError('잘못된 접근입니다. 세션을 초기화하고 로그인 페이지로 이동합니다.');
+      clearTokens(); // <-- 이 코드가 핵심입니다.
+      setTimeout(() => navigate('/login', { replace: true }), 2000);
       return;
     }
     
@@ -61,6 +63,7 @@ export default function SignupPage() {
       const defaultProfileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400';
       const finalProfileImage = profileImage || defaultProfileImage;
 
+      // [MODIFIED] signupUser 함수는 이제 에러 발생 시 throw하므로, 결과를 받아서 처리합니다.
       const success = await signupUser(
         userId,
         nickname,
@@ -85,10 +88,14 @@ export default function SignupPage() {
         }
 
       } else {
-        setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
+          // signupUser가 false를 반환하는 경우 (일반적인 실패)
+          setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
-    } catch (err) {
-      setError('회원가입 중 오류가 발생했습니다. 관리자에게 문의해주세요.');
+    } catch (err: any) {
+      // [MODIFIED] 백엔드에서 전달된 에러 메시지를 표시합니다.
+      // err 객체가 Error 타입이거나 메시지를 가지고 있다면 그 메시지를 사용합니다.
+      const errorMessage = err.message;
+      setError(errorMessage);
       console.error("Signup failed:", err);
     } finally {
       setIsLoading(false);

@@ -369,6 +369,9 @@ export const checkToken = async (userId: string): Promise<UserInfo | null> => {
 
 
 // Sign up a new user
+// ... existing code ...
+
+// Sign up a new user
 export const signupUser = async (
   userId: string,
   nickname: string,
@@ -395,6 +398,12 @@ export const signupUser = async (
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
         console.error(`Signup failed. Status: ${response.status}`, errorBody);
+        
+        // [MODIFIED] 서버에서 보낸 에러 메시지를 throw합니다.
+        if (errorBody.message) {
+            throw new Error(errorBody.message);
+        }
+        
         return false;
     }
     console.log("Signup successful.");
@@ -402,7 +411,8 @@ export const signupUser = async (
 
   } catch (error) {
     console.error('Signup request failed:', error);
-    return false;
+    // [MODIFIED] 에러를 다시 던져서 컴포넌트에서 처리할 수 있게 합니다.
+    throw error;
   }
 };
 
