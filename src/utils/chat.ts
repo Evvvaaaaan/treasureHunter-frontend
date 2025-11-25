@@ -26,10 +26,11 @@ export const fetchChatRooms = async (): Promise<ChatRoom[]> => {
 };
 
 // 2. 메시지 내역 동기화 (가져오기)
-export const fetchChatMessages = async (roomId: string, lastChatId: number = 0, size: number = 100): Promise<ChatMessage[]> => {
+export const fetchChatMessages = async (roomId: string, lastChatId: number = 0, size: number = 300): Promise<ChatMessageListResponse> => {
   const token = await getValidAuthToken();
   if (!token) throw new Error("로그인이 필요합니다.");
 
+  // lastChatId가 0이면 처음부터(제일 오래된 것부터) 가져옵니다.
   const response = await fetch(`${API_BASE_URL}/chat/room/${roomId}/messages/sync?lastChatId=${lastChatId}&size=${size}`, {
     method: 'GET',
     headers: {
@@ -42,8 +43,7 @@ export const fetchChatMessages = async (roomId: string, lastChatId: number = 0, 
     throw new Error('메시지 내역을 불러오는데 실패했습니다.');
   }
 
-  const data: ChatMessageListResponse = await response.json();
-  return data.chats || [];
+  return await response.json();
 };
 
 // 3. 채팅 메시지 전송하기 (수정됨)
@@ -131,3 +131,32 @@ export const createChatRoom = async (name: string, postId: number, isAnonymous: 
   const data = await response.json();
   return data.roomId;
 };
+
+// 6. 메시지 읽음 처리 (커서 업데이트)
+// Endpoint: PATCH /api/v1/chat/room/{id}/messages/read
+export const updateReadCursor = async (roomId: string, lastReadChatId: number) => {
+  const token = await getValidAuthToken();
+  if (!token) return; // 로그인이 안 되어 있으면 무시
+
+  try {
+    await fetch(`${API_BASE_URL}/chat/room/${roomId}/messages/read`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        lastReadChatId: lastReadChatId 
+      }),
+    });
+    // 읽음 처리는 응답 데이터를 굳이 UI에 반영할 필요가 없을 때가 많아 로그만 남깁니다.
+    console.log(`[Read] 읽음 처리 완료: Message ID ${lastReadChatId}`);
+  } catch (error) {
+    console.error('읽음 처리 실패:', error);
+  }
+};
+
+export interface ChatReadEvent {
+  lastReadChatId: number;
+  userType: 'AUTHOR' | 'CALLER';
+}

@@ -4,7 +4,7 @@
 export interface ChatUser {
   id: number;        // 백엔드에서 Long 타입이지만 JS에서는 number로 처리
   nickname?: string; // (추정) 백엔드 필드 확인 필요, 일단 nickname으로 둡니다
-  image?: string;    // (추정) 프로필 이미지
+  profileImage?: string; // 프로필 이미지 URL
 }
 
 // 백엔드의 PostSimpleResponseDto에 대응
@@ -42,5 +42,15 @@ export interface ChatRoomListResponse {
 
 // 메시지 목록 동기화 응답 래퍼
 export interface ChatMessageListResponse {
-  chatList: ChatMessage[]; // 필드명이 chatList인지 messages인지 확인 필요 (일단 백엔드 DTO 변수명 추정)
+  chats: ChatMessage[];
+  nextCursor: number;
+  hasMore: boolean;
+  opponentLastReadChatId: number | null; // 값이 없으면 null일 수 있음
+}
+
+
+// [추가] 소켓으로 들어오는 읽음 이벤트 구조
+export interface ChatReadEvent {
+  lastReadChatId: number;
+  userType: 'AUTHOR' | 'CALLER';
 }

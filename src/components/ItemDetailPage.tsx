@@ -81,7 +81,7 @@ const CATEGORY_MAP: { [key: string]: string } = {
   'DOCUMENT': '문서',
   'ETC': '기타',
 };
-const DEFAULT_IMAGE = '/public/placeholder.png';
+const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
 const ItemDetailPage: React.FC = () => {
   const navigate = useNavigate();
