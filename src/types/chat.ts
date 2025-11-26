@@ -28,13 +28,14 @@ export interface ChatRoom {
 export interface ChatMessage {
   id: number;
   roomId: string;
-  type: 'TEXT' | 'IMAGE'; // ChatType Enum
-  userType: 'USER' | 'SYSTEM';
+  // 백엔드 ChatType: ENTER, MESSAGE, IMAGE, LOCATION, EXIT
+  type: 'ENTER' | 'MESSAGE' | 'IMAGE' | 'LOCATION' | 'EXIT' | 'TEXT'; // 'TEXT'는 프론트 편의상 남겨둠
+  // [핵심 수정] userType을 백엔드 Enum에 맞게 변경
+  userType: 'AUTHOR' | 'CALLER'; 
   message: string;
-  sentAt: string;        // LocalDateTime (ISO String)
+  sentAt: string;
   serverAt: string;
 }
-
 // 채팅방 목록 응답 래퍼
 export interface ChatRoomListResponse {
   chatRooms: ChatRoom[];

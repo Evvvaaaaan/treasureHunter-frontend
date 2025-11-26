@@ -325,9 +325,6 @@ const ChatPage: React.FC = () => {
       <div className="messages-area-new" onClick={() => setShowEmojiPicker(false)}>
         {messages.map((message, index) => {
           const isMyMessage = myUserType && message.userType === myUserType;
-          
-          // [읽음 표시 로직]
-          // 상대방이 읽은 ID(opponentLastReadId)보다 작거나 같으면 읽음 처리
           const isRead = message.id <= opponentLastReadId;
 
           return (
@@ -337,7 +334,11 @@ const ChatPage: React.FC = () => {
                   <img src={partnerInfo.image} alt={partnerInfo.name} />
                 </div>
               )}
-              <div className="message-group-new">
+              
+              {/* [수정] 메시지 그룹 컨테이너 스타일 조정 */}
+              <div className="message-group-new" style={{ display: 'flex', flexDirection: 'column', alignItems: isMyMessage ? 'flex-end' : 'flex-start' }}>
+                
+                {/* --- 메시지 본문 --- */}
                 {message.type === 'IMAGE' ? (
                   <div className={`message-image-new ${isMyMessage ? 'my-bubble' : 'other-bubble'}`} style={{ padding: '4px', background: 'transparent' }}>
                     <img 
@@ -354,13 +355,25 @@ const ChatPage: React.FC = () => {
                   </div>
                 )}
                 
-                <div className="flex items-center gap-1">
-                   <div className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}>
+                {/* [수정] 시간 및 읽음 표시 영역 */}
+                {/* flex-row로 배치하되, 내 메시지면 오른쪽 정렬, 아니면 왼쪽 정렬 */}
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '4px', 
+                    marginTop: '2px',
+                    flexDirection: isMyMessage ? 'row-reverse' : 'row' // 내 메시지면 시간-읽음 순서 반전 또는 정렬 방향 고려
+                  }}
+                >
+                   {/* 시간 표시 */}
+                   <span className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}>
                     {formatTime(message.sentAt)}
-                   </div>
-                   {/* [읽음 표시] 내 메시지이고, 상대가 읽었을 때만 표시 */}
+                   </span>
+                   
+                   {/* 읽음 표시 */}
                    {isMyMessage && isRead && (
-                     <span className="text-[3px] text-gray-400 font-medium" style={{ alignSelf: 'flex-end', fontSize: '11px'}}>읽음</span>
+                     <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 500 }}>읽음</span>
                    )}
                 </div>
               </div>
