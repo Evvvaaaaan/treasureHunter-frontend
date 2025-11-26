@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MapPin, Calendar, Share2, Flag, Bookmark, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart } from 'lucide-react';
 import { useTheme } from '../utils/theme';
-import { getValidAuthToken } from '../utils/auth';
+import { getValidAuthToken, getUserInfo } from '../utils/auth';
+import { createChatRoom } from '../utils/chat';
 import '../styles/item-detail.css';
 
 // API 응답 데이터 타입 정의
@@ -80,6 +81,7 @@ const CATEGORY_MAP: { [key: string]: string } = {
   'DOCUMENT': '문서',
   'ETC': '기타',
 };
+const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
 const ItemDetailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -153,7 +155,7 @@ const ItemDetailPage: React.FC = () => {
         category: CATEGORY_MAP[data.itemCategory] || data.itemCategory,
         images: data.images && data.images.length > 0 
           ? data.images 
-          : ['https://via.placeholder.com/800x600?text=No+Image'],
+          : [DEFAULT_IMAGE],
         location: {
           address: address,
           coordinates: { lat: data.lat, lng: data.lon }
@@ -234,8 +236,46 @@ const ItemDetailPage: React.FC = () => {
     }
   };
 
-  const handleStartChat = () => {
-    alert("채팅 기능 준비 중입니다.");
+  const handleStartChat = async () => {
+    // 1. 로그인 체크
+    const currentUser = getUserInfo();
+    if (!currentUser) {
+      if (confirm('로그인이 필요한 서비스입니다. 로그인 하시겠습니까?')) {
+        navigate('/login');
+      }
+      return;
+    }
+
+    // 2. 본인 게시물인지 체크 (선택 사항)
+    // author 정보가 있고, 내 ID와 같다면 채팅 금지
+    if (item?.id && user && user.id === currentUser.id.toString()) {
+      alert("자신의 게시물에는 채팅을 걸 수 없습니다.");
+      return;
+    }
+
+    // 3. 채팅방 생성 요청 및 이동
+    try {
+      // 채팅방 이름 생성 (예: "구매자닉네임 - 아이템제목")
+      // 백엔드에서 이름을 어떻게 처리하는지에 따라 다를 수 있지만, 일단 요청에 포함
+      const roomName = `${item?.title}`; 
+      
+      // item.id가 string이라 number로 변환 (백엔드가 Long 타입 받음)
+      const postId = parseInt(item?.id || '0', 10);
+
+      if (!postId) {
+        alert("잘못된 게시글 정보입니다.");
+        return;
+      }
+
+      const roomId = await createChatRoom(roomName, postId, false); // false: 실명 채팅
+      
+      // 채팅방으로 이동
+      navigate(`/chat/${roomId}`);
+      
+    } catch (error) {
+      console.error("채팅방 생성 실패:", error);
+      alert("채팅방을 만들 수 없습니다. 잠시 후 다시 시도해주세요.");
+    }
   };
 
   const handleLike = () => {

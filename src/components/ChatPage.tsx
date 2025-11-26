@@ -1,414 +1,393 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
-  ArrowLeft, Send, Mic, MoreVertical, Phone, Video, Search,
-  Image as ImageIcon, Paperclip, Smile, Play, Pause
+  ArrowLeft, Send, Mic, MoreVertical, Phone, Video, 
+  Paperclip, Smile, Loader2, X, Play, Pause
 } from 'lucide-react';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
+
 import { useTheme } from '../utils/theme';
 import { getUserInfo } from '../utils/auth';
+import { 
+  fetchChatRoomDetail, 
+  fetchChatMessages, 
+  sendChatMessage, 
+  updateReadCursor 
+} from '../utils/chat';
+import { fetchPostDetail } from '../utils/post';
+import { uploadImage } from '../utils/file';
+import type { ChatRoom, ChatMessage, ChatReadEvent } from '../types/chat';
+
 import '../styles/chat-page.css';
 
-interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderAvatar: string;
-  content: string;
-  type: 'text' | 'image' | 'voice';
-  timestamp: Date;
-  isRead: boolean;
-  voiceDuration?: string;
-}
-
-interface ChatUser {
-  id: string;
-  name: string;
-  avatar: string;
-  isOnline: boolean;
-  lastSeen?: string;
-}
+const WS_URL = 'https://treasurehunter.seohamin.com/ws';
 
 const ChatPage: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id: roomId } = useParams<{ id: string }>();
   const { theme } = useTheme();
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const currentUser = getUserInfo();
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [roomInfo, setRoomInfo] = useState<ChatRoom | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [opponentLastReadId, setOpponentLastReadId] = useState<number>(0);
+
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [chatUser, setChatUser] = useState<ChatUser | null>(null);
-  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [myUserType, setMyUserType] = useState<'AUTHOR' | 'CALLER' | null>(null);
+  
+  // [핵심 수정] myUserType을 소켓 콜백 안에서 즉시 참조하기 위한 Ref
+  const myUserTypeRef = useRef<'AUTHOR' | 'CALLER' | null>(null);
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   const [isRecording, setIsRecording] = useState(false);
+  const [playingVoice, setPlayingVoice] = useState<number | null>(null);
+  
+  const stompClient = useRef<Client | null>(null);
+  
+  // 읽음 요청 최적화용 Refs
+  const lastReadIdRef = useRef<number>(0);
+  const readUpdateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // myUserType 상태가 변하면 Ref도 업데이트 (동기화)
   useEffect(() => {
-    loadChatData();
-    scrollToBottom();
-  }, [id]);
+    myUserTypeRef.current = myUserType;
+  }, [myUserType]);
 
+  // 1. 데이터 로드
   useEffect(() => {
-    scrollToBottom();
+    if (!roomId || !currentUser) return;
+
+    const initChat = async () => {
+      setIsLoading(true);
+      try {
+        // 1. 채팅방 정보와 메시지 동기화 데이터 가져오기
+        const [roomData, syncData] = await Promise.all([
+          fetchChatRoomDetail(roomId),
+          fetchChatMessages(roomId, 0, 300)
+        ]);
+
+        setRoomInfo(roomData);
+        setMessages(syncData.chats || []);
+        
+        // [디버깅] 초기 읽음 상태 확인
+        console.log("[Sync] 상대방 마지막 읽음 ID:", syncData.opponentLastReadChatId);
+        setOpponentLastReadId(syncData.opponentLastReadChatId || 0);
+
+        // 2. 내 역할 판단
+        if (roomData.post?.id) {
+          try {
+            const postDetail = await fetchPostDetail(roomData.post.id);
+            const authorId = postDetail.user?.id || postDetail.author?.id;
+            const myId = Number(currentUser.id);
+
+            console.log(`[Role Check] 내ID: ${myId}, 작성자ID: ${authorId}`);
+
+            if (Number(authorId) === myId) {
+              setMyUserType('AUTHOR');
+            } else {
+              setMyUserType('CALLER');
+            }
+          } catch (e) {
+            console.error("게시글 정보 로드 실패", e);
+            setMyUserType('CALLER');
+          }
+        } else {
+          setMyUserType('CALLER');
+        }
+
+      } catch (error) {
+        console.error('채팅 데이터 로딩 실패:', error);
+        navigate(-1);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initChat();
+  }, [roomId, navigate]); 
+
+  // 2. WebSocket 연결
+  useEffect(() => {
+    if (!roomId || !currentUser) return;
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+
+    const client = new Client({
+      webSocketFactory: () => new SockJS(WS_URL),
+      connectHeaders: { Authorization: `Bearer ${token}` },
+      onConnect: () => {
+        console.log("WebSocket Connected");
+
+        // (1) 일반 메시지 구독
+        client.subscribe(`/topic/chat.room.${roomId}`, (message) => {
+          if (message.body) {
+            const newMessage: ChatMessage = JSON.parse(message.body);
+            setMessages((prev) => {
+              if (prev.some(m => m.id === newMessage.id)) return prev;
+              return [...prev, newMessage];
+            });
+          }
+        });
+
+        // (2) 읽음 이벤트 구독
+        client.subscribe(`/topic/chat.room.${roomId}.read`, (message) => {
+          if (message.body) {
+            const event: ChatReadEvent = JSON.parse(message.body);
+            console.log("[Socket] 읽음 이벤트 수신:", event);
+            
+            // [핵심 수정] Ref를 사용하여 최신 myUserType 값과 비교
+            const currentMyType = myUserTypeRef.current;
+            
+            console.log(`[Read Logic] 이벤트 유저: ${event.userType}, 내 유저: ${currentMyType}`);
+
+            // 내 역할이 확정되었고, 이벤트가 '상대방'이 읽은 것이라면 업데이트
+            if (currentMyType && event.userType !== currentMyType) {
+              console.log(`[Update] 상대방이 ${event.lastReadChatId}까지 읽음 -> 업데이트`);
+              setOpponentLastReadId((prev) => Math.max(prev, event.lastReadChatId));
+            }
+          }
+        });
+      },
+      onStompError: (frame) => {
+        console.error('STOMP Error:', frame.headers['message']);
+      },
+    });
+
+    client.activate();
+    stompClient.current = client;
+
+    return () => {
+      if (client.active) client.deactivate();
+      if (readUpdateTimerRef.current) clearTimeout(readUpdateTimerRef.current);
+    };
+    // [중요] 의존성 배열에서 myUserType을 제거하여 소켓 재연결 방지
+  }, [roomId]); 
+
+  // 3. 스크롤 자동 이동
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, previewUrl]);
+
+  // 4. 읽음 처리 요청 (0.5초 스로틀링)
+  const handleReadUpdate = (chatId: number) => {
+    // 더 큰 ID(최신)일 때만 갱신 요청
+    if (chatId <= lastReadIdRef.current) return;
+    
+    lastReadIdRef.current = chatId;
+
+    if (readUpdateTimerRef.current) return;
+
+    readUpdateTimerRef.current = setTimeout(() => {
+      if (roomId && lastReadIdRef.current > 0) {
+        // console.log(`[API] 읽음 처리 전송: ID ${lastReadIdRef.current}`);
+        updateReadCursor(roomId, lastReadIdRef.current);
+      }
+      readUpdateTimerRef.current = null;
+    }, 500);
+  };
+
+  // 메시지가 추가될 때마다 읽음 처리 시도
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.id) {
+        handleReadUpdate(lastMessage.id);
+      }
+    }
   }, [messages]);
 
-  const loadChatData = () => {
-    // Mock chat user
-    const mockUser: ChatUser = {
-      id: 'user123',
-      name: '홍길동',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-      isOnline: true
-    };
-
-    setChatUser(mockUser);
-
-    // Mock messages
-    const mockMessages: Message[] = [
-      {
-        id: '1',
-        senderId: 'user123',
-        senderName: '홍길동',
-        senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-        content: '안녕하세요! 혹시 이 분실물 아직 못 찾으셨나요?',
-        type: 'text',
-        timestamp: new Date(Date.now() - 3600000),
-        isRead: true
-      },
-      {
-        id: '2',
-        senderId: currentUser?.id || 'me',
-        senderName: currentUser?.nickname || 'Me',
-        senderAvatar: currentUser?.profileImage || '',
-        content: '네, 아직 못 찾았어요. 혹시 보신 적 있으신가요?',
-        type: 'text',
-        timestamp: new Date(Date.now() - 3000000),
-        isRead: true
-      },
-      {
-        id: '3',
-        senderId: 'user123',
-        senderName: '홍길동',
-        senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-        content: 'voice_message',
-        type: 'voice',
-        timestamp: new Date(Date.now() - 2400000),
-        isRead: true,
-        voiceDuration: '0:36'
-      },
-      {
-        id: '4',
-        senderId: 'user123',
-        senderName: '홍길동',
-        senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-        content: '제가 어제 강남역 근처에서 비슷한 물건을 본 것 같아요. 사진 한번 보시겠어요?',
-        type: 'text',
-        timestamp: new Date(Date.now() - 2400000),
-        isRead: true
-      },
-      {
-        id: '5',
-        senderId: currentUser?.id || 'me',
-        senderName: currentUser?.nickname || 'Me',
-        senderAvatar: currentUser?.profileImage || '',
-        content: '네! 사진 보내주시면 정말 감사하겠습니다 😊',
-        type: 'text',
-        timestamp: new Date(Date.now() - 1200000),
-        isRead: true
-      },
-      {
-        id: '6',
-        senderId: 'user123',
-        senderName: '홍길동',
-        senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-        content: 'https://images.unsplash.com/photo-1592286927505-b0501739b7a5?w=800',
-        type: 'image',
-        timestamp: new Date(Date.now() - 600000),
-        isRead: true
-      },
-      {
-        id: '7',
-        senderId: 'user123',
-        senderName: '홍길동',
-        senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-        content: '이거 맞나요? 강남역 2번 출구 벤치에서 찍었어요',
-        type: 'text',
-        timestamp: new Date(Date.now() - 600000),
-        isRead: true
-      }
-    ];
-
-    setMessages(mockMessages);
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // 5. 메시지 전송
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isSending) return;
+    if ((!inputMessage.trim() && !selectedFile) || isSending || !roomId) return;
 
     setIsSending(true);
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: currentUser?.id || 'me',
-      senderName: currentUser?.nickname || 'Me',
-      senderAvatar: currentUser?.profileImage || '',
-      content: inputMessage,
-      type: 'text',
-      timestamp: new Date(),
-      isRead: false
-    };
+    setShowEmojiPicker(false);
 
-    setMessages((prev) => [...prev, newMessage]);
-    setInputMessage('');
-    setIsSending(false);
+    try {
+      if (selectedFile) {
+        const imageUrl = await uploadImage(selectedFile);
+        // setMessages 호출 X (소켓 수신 대기)
+        await sendChatMessage(roomId, imageUrl, 'IMAGE');
+        handleClearFile();
+      }
 
-    // Simulate typing indicator
-    setTimeout(() => {
-      setIsTyping(true);
-      setTimeout(() => {
-        setIsTyping(false);
-      }, 2000);
-    }, 1000);
+      if (inputMessage.trim()) {
+        // setMessages 호출 X (소켓 수신 대기)
+        await sendChatMessage(roomId, inputMessage, 'TEXT');
+        setInputMessage('');
+      }
+    } catch (error) {
+      console.error('전송 실패:', error);
+      alert('메시지 전송 중 오류가 발생했습니다.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ... (나머지 헬퍼 함수들은 변경 없음) ...
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    if (file.size > 10 * 1024 * 1024) {
+      alert('파일 크기가 10MB를 초과할 수 없습니다.');
+      return;
+    }
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const imageMessage: Message = {
-        id: Date.now().toString(),
-        senderId: currentUser?.id || 'me',
-        senderName: currentUser?.nickname || 'Me',
-        senderAvatar: currentUser?.profileImage || '',
-        content: reader.result as string,
-        type: 'image',
-        timestamp: new Date(),
-        isRead: false
-      };
-      setMessages((prev) => [...prev, imageMessage]);
-    };
+    reader.onloadend = () => setPreviewUrl(reader.result as string);
     reader.readAsDataURL(file);
+    setSelectedFile(file);
+    e.target.value = '';
   };
 
-  const toggleVoicePlay = (messageId: string) => {
-    if (playingVoice === messageId) {
-      setPlayingVoice(null);
-    } else {
-      setPlayingVoice(messageId);
-    }
+  const handleClearFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+  };
+
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setInputMessage((prev) => prev + emojiData.emoji);
   };
 
   const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    
-    if (!isRecording) {
-      // Start recording
-      setTimeout(() => {
-        setIsRecording(false);
-        const voiceMessage: Message = {
-          id: Date.now().toString(),
-          senderId: currentUser?.id || 'me',
-          senderName: currentUser?.nickname || 'Me',
-          senderAvatar: currentUser?.profileImage || '',
-          content: 'voice_message',
-          type: 'voice',
-          timestamp: new Date(),
-          isRead: false,
-          voiceDuration: '0:05'
-        };
-        setMessages((prev) => [...prev, voiceMessage]);
-      }, 5000);
+    if (isRecording) {
+      setIsRecording(false);
+      alert('음성 녹음 기능은 아직 구현 중입니다.');
+    } else {
+      setIsRecording(true);
     }
   };
 
-  const formatTime = (date: Date) => {
-    const hours = date.getHours();
+  const toggleVoicePlay = (msgId: number) => {
+    setPlayingVoice(playingVoice === msgId ? null : msgId);
+  };
+
+  const getPartnerInfo = () => {
+    if (!roomInfo || !currentUser) return { name: '알 수 없음', image: '' };
+    const partner = roomInfo.participants.find(p => p.id !== Number(currentUser.id));
+    return {
+      name: partner?.nickname || roomInfo.name || '상대방',
+      image: partner?.profileImage || partner?.image || 'https://via.placeholder.com/150?text=User'
+    };
+  };
+  const partnerInfo = getPartnerInfo();
+
+  const formatTime = (isoString: string) => {
+    if (!isoString) return '';
+    if (!isoString.endsWith('Z')) isoString += 'Z';
+    const date = new Date(isoString);
+    let hours = date.getHours();
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? '오후' : '오전';
-    const displayHours = hours % 12 || 12;
-    return `${ampm} ${displayHours}:${minutes.toString().padStart(2, '0')}`;
+    hours = hours % 12 || 12; 
+    return `${ampm} ${hours}:${minutes.toString().padStart(2, '0')}`;
   };
 
-  const formatDate = (date: Date) => {
-    const today = new Date();
-    const messageDate = new Date(date);
-    
-    if (messageDate.toDateString() === today.toDateString()) {
-      return '오늘';
-    }
-    
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (messageDate.toDateString() === yesterday.toDateString()) {
-      return '어제';
-    }
-    
-    return messageDate.toLocaleDateString('ko-KR', { 
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
+  if (isLoading) {
+    return (
+      <div className={`chat-page-new ${theme} flex items-center justify-center h-screen`}>
+        <Loader2 className="animate-spin text-primary" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className={`chat-page-new ${theme}`}>
-      {/* Header */}
       <div className="chat-header-new">
         <button className="header-back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={24} />
         </button>
-        
-        <div className="header-user-info" onClick={() => navigate(`/user/${chatUser?.id}`)}>
+        <div className="header-user-info">
           <div className="header-avatar-wrapper">
-            <img src={chatUser?.avatar} alt={chatUser?.name} />
-            {chatUser?.isOnline && <span className="online-indicator-dot" />}
+            <img src={partnerInfo.image} alt={partnerInfo.name} />
           </div>
           <div className="header-user-details">
-            <h3>{chatUser?.name}</h3>
-            <p>{chatUser?.isOnline ? '온라인' : chatUser?.lastSeen || '오프라인'}</p>
+            <h3>{partnerInfo.name}</h3>
+            {roomInfo?.post && <p className="text-xs text-gray-500">{roomInfo.post.title}</p>}
           </div>
         </div>
-
         <div className="header-actions-new">
-          <button className="header-icon-btn">
-            <Phone size={20} />
-          </button>
-          <button className="header-icon-btn">
-            <Video size={20} />
-          </button>
-          <button className="header-icon-btn">
-            <MoreVertical size={20} />
-          </button>
+          <button className="header-icon-btn"><MoreVertical size={20} /></button>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="messages-area-new">
+      <div className="messages-area-new" onClick={() => setShowEmojiPicker(false)}>
         {messages.map((message, index) => {
-          const showDate = index === 0 || 
-            formatDate(messages[index - 1].timestamp) !== formatDate(message.timestamp);
-          const isMyMessage = message.senderId === (currentUser?.id || 'me');
-          const showAvatar = !isMyMessage && (
-            index === messages.length - 1 ||
-            messages[index + 1].senderId !== message.senderId ||
-            message.type !== messages[index + 1].type
-          );
+          const isMyMessage = myUserType && message.userType === myUserType;
+          
+          // [읽음 표시 로직]
+          // 상대방이 읽은 ID(opponentLastReadId)보다 작거나 같으면 읽음 처리
+          const isRead = message.id <= opponentLastReadId;
 
           return (
-            <React.Fragment key={message.id}>
-              {showDate && (
-                <div className="date-separator-new">
-                  <span>{formatDate(message.timestamp)}</span>
+            <div key={index} className={`message-row-new ${isMyMessage ? 'my-message-row' : 'other-message-row'}`}>
+              {!isMyMessage && (
+                <div className="message-avatar-new">
+                  <img src={partnerInfo.image} alt={partnerInfo.name} />
                 </div>
               )}
-              
-              <div className={`message-row-new ${isMyMessage ? 'my-message-row' : 'other-message-row'}`}>
-                {!isMyMessage && (
-                  <div className="message-avatar-new">
-                    {showAvatar ? (
-                      <img src={message.senderAvatar} alt={message.senderName} />
-                    ) : (
-                      <div className="avatar-spacer" />
-                    )}
+              <div className="message-group-new">
+                {message.type === 'IMAGE' ? (
+                  <div className={`message-image-new ${isMyMessage ? 'my-bubble' : 'other-bubble'}`} style={{ padding: '4px', background: 'transparent' }}>
+                    <img 
+                      src={message.message} 
+                      alt="전송된 이미지" 
+                      className="rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      style={{ maxWidth: '200px', maxHeight: '300px', objectFit: 'cover' }}
+                      onClick={() => window.open(message.message, '_blank')}
+                    />
+                  </div>
+                ) : (
+                  <div className={`message-bubble-new ${isMyMessage ? 'my-bubble' : 'other-bubble'}`}>
+                    <p>{message.message}</p>
                   </div>
                 )}
                 
-                <div className="message-group-new">
-                  {message.type === 'text' && (
-                    <div className={`message-bubble-new ${isMyMessage ? 'my-bubble' : 'other-bubble'}`}>
-                      <p>{message.content}</p>
-                    </div>
-                  )}
-                  
-                  {message.type === 'image' && (
-                    <div className="message-image-new">
-                      <img src={message.content} alt="Shared" />
-                    </div>
-                  )}
-                  
-                  {message.type === 'voice' && (
-                    <div className={`message-voice-new ${isMyMessage ? 'my-voice' : 'other-voice'}`}>
-                      <button 
-                        className="voice-play-button"
-                        onClick={() => toggleVoicePlay(message.id)}
-                      >
-                        {playingVoice === message.id ? (
-                          <Pause size={18} />
-                        ) : (
-                          <Play size={18} />
-                        )}
-                      </button>
-                      
-                      <div className="voice-waveform-new">
-                        <svg width="120" height="32" viewBox="0 0 120 32">
-                          {Array.from({ length: 40 }).map((_, i) => {
-                            const height = 4 + Math.random() * 24;
-                            const isActive = playingVoice === message.id && i < 20;
-                            return (
-                              <rect
-                                key={i}
-                                x={i * 3}
-                                y={(32 - height) / 2}
-                                width="2"
-                                height={height}
-                                rx="1"
-                                fill={isActive ? '#10b981' : isMyMessage ? '#ffffff' : '#9ca3af'}
-                                opacity={isActive ? 1 : 0.4}
-                              />
-                            );
-                          })}
-                        </svg>
-                      </div>
-                      
-                      <span className="voice-duration-new">{message.voiceDuration}</span>
-                    </div>
-                  )}
-                  
-                  <div className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}>
-                    {formatTime(message.timestamp)}
-                  </div>
+                <div className="flex items-center gap-1">
+                   <div className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}>
+                    {formatTime(message.sentAt)}
+                   </div>
+                   {/* [읽음 표시] 내 메시지이고, 상대가 읽었을 때만 표시 */}
+                   {isMyMessage && isRead && (
+                     <span className="text-[3px] text-gray-400 font-medium" style={{ alignSelf: 'flex-end', fontSize: '11px'}}>읽음</span>
+                   )}
                 </div>
               </div>
-            </React.Fragment>
+            </div>
           );
         })}
-
-        {isTyping && (
-          <div className="message-row-new other-message-row">
-            <div className="message-avatar-new">
-              <img src={chatUser?.avatar} alt={chatUser?.name} />
-            </div>
-            <div className="typing-indicator-new">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        )}
-        
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="input-area-new">
-        <button 
-          className="input-icon-btn-new"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Paperclip size={22} />
-        </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept="image/*"
-          onChange={handleImageUpload}
-          style={{ display: 'none' }}
-        />
+      {previewUrl && (
+        <div style={{ padding: '10px 16px', background: '#f9fafb', borderTop: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ position: 'relative' }}>
+            <img src={previewUrl} alt="Preview" style={{ height: '60px', width: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+            <button onClick={handleClearFile} style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', color: 'white', borderRadius: '50%', width: '18px', height: '18px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>✕</button>
+          </div>
+          <span style={{ fontSize: '13px', color: '#6b7280' }}>이미지 전송 대기 중...</span>
+        </div>
+      )}
+
+      <div className="input-area-new relative">
+        {showEmojiPicker && (
+          <div className="absolute bottom-16 left-0 z-50 shadow-xl">
+            <EmojiPicker onEmojiClick={onEmojiClick} width={300} height={400} searchDisabled skinTonesDisabled />
+          </div>
+        )}
+        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
+        <button className="input-icon-btn-new" onClick={() => fileInputRef.current?.click()}><Paperclip size={22} /></button>
         
         <div className="input-wrapper-new">
           <input
@@ -418,28 +397,16 @@ const ChatPage: React.FC = () => {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            onFocus={() => setShowEmojiPicker(false)}
           />
-          <button className="input-emoji-btn">
-            <Smile size={20} />
+          <button className={`input-emoji-btn ${showEmojiPicker ? 'text-primary' : ''}`} onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
+            {showEmojiPicker ? <X size={20} /> : <Smile size={20} />}
           </button>
         </div>
         
-        {inputMessage.trim() ? (
-          <button 
-            className="send-btn-new"
-            onClick={handleSendMessage}
-            disabled={isSending}
-          >
-            <Send size={20} />
-          </button>
-        ) : (
-          <button 
-            className={`mic-btn-new ${isRecording ? 'recording' : ''}`}
-            onClick={toggleRecording}
-          >
-            <Mic size={22} />
-          </button>
-        )}
+        <button className="send-btn-new" onClick={handleSendMessage} disabled={isSending || (!inputMessage.trim() && !selectedFile)}>
+          <Send size={20} />
+        </button>
       </div>
     </div>
   );

@@ -531,3 +531,74 @@ export const createPost = async (postData: PostData): Promise<ApiPost | null> =>
 export const getAuthToken = (): string | null => {
     return localStorage.getItem('accessToken');
 };
+
+// ... (기존 코드 유지)
+
+// [추가] 채팅방 생성 요청 DTO
+interface ChatRoomRequestDto {
+  name: string;
+  postId: number;
+  isAnonymous: boolean;
+}
+
+// [추가] 채팅방 응답 DTO (필요한 부분만 정의)
+interface ChatRoomResponseDto {
+  roomId: string;
+  name: string;
+  // ... other fields
+}
+
+// [추가] 채팅방 생성 함수
+export const createChatRoom = async (
+  postId: number,
+  name: string,
+  isAnonymous: boolean = false
+): Promise<string | null> => {
+  const token = await getValidAuthToken();
+  if (!token) {
+    console.error("createChatRoom: No valid token.");
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/room`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        postId,
+        name,
+        isAnonymous
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      
+      // 이미 존재하는 채팅방인 경우 (백엔드 에러코드 확인 필요, 보통 400 Bad Request)
+      if (errorBody.code === 'CHAT_ROOM_ALREADY_EXIST') {
+        alert("이미 존재하는 채팅방입니다. 채팅 목록을 확인해주세요.");
+        // TODO: 기획에 따라 기존 채팅방 ID를 조회해서 이동시키는 로직이 필요할 수 있음
+        return null;
+      }
+      
+      if (errorBody.code === 'CHAT_WITH_SELF_NOT_ALLOWED') {
+        alert("자기 자신과는 채팅할 수 없습니다.");
+        return null;
+      }
+
+      console.error(`Failed to create chat room. Status: ${response.status}`, errorBody);
+      throw new Error(errorBody.message || "채팅방 생성 실패");
+    }
+
+    const data: ChatRoomResponseDto = await response.json();
+    return data.roomId;
+
+  } catch (error) {
+    console.error('Error creating chat room:', error);
+    alert(error instanceof Error ? error.message : "채팅방을 만들 수 없습니다.");
+    return null;
+  }
+};

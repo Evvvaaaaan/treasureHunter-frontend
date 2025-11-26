@@ -65,9 +65,6 @@ interface ApiResponse {
 interface LostItem {
   id: string; // Use string for React keys
   title: string;
-  // category: string; // 제거
-  // location: string; // 제거
-  // date: string; // 제거
   content: string; // content (10글자)
   points: number; // 포인트
   distance: number | null; // 내 위치로부터의 거리 (km)
@@ -78,6 +75,7 @@ interface LostItem {
 
 // [MODIFIED] API_BASE_URL을 올바른 기본 주소로 수정합니다.
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png'; 
 
 // [NEW] Haversine 거리 계산 함수 (km 단위)
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -276,7 +274,7 @@ export default function HomePage() {
         distance: distance,
         image: post.images && post.images.length > 0
           ? post.images[0]
-          : 'https://via.placeholder.com/400x225.png?text=No+Image',
+          : DEFAULT_IMAGE,
         status: post.type,
         isCompleted: post.isCompleted,
       };
