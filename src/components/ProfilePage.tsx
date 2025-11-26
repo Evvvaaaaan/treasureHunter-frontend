@@ -47,8 +47,10 @@ const ProfilePage: React.FC = () => {
   const [nickname, setNickname] = useState('');
   
   // [질문] UserInfo에 bio 필드가 없어 임시 상태로 관리합니다.
-  const [bio, setBio] = useState('보물을 찾아 헤매는 탐험가'); 
+
   const [profileImage, setProfileImage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
   
   const [stats, setStats] = useState<UserStats>({
     totalItems: 0,
@@ -140,41 +142,67 @@ const ProfilePage: React.FC = () => {
   };
 
   // 3. 프로필 수정 저장
+  // [수정됨] 프로필 저장 함수
   const handleSaveProfile = async () => {
+    if (!user) return;
+    setIsSaving(true);
+
     try {
       const token = await getValidAuthToken();
-      if (!user || !token) return;
+      if (!token) throw new Error("인증 토큰이 없습니다.");
 
-      // [질문] 프로필 수정 API 엔드포인트가 auth.ts에 없습니다.
-      // 일반적으로 PUT /api/v1/user/{id} 형식을 사용한다고 가정하고 작성했습니다.
-      const response = await fetch(`${API_BASE_URL}/api/v1/user/${user.id}`, {
-        method: 'PUT', // 또는 PATCH
+      let finalImageUrl = user.profileImage; 
+
+      // 1. 이미지 변경 시 업로드 수행
+      if (editImageFile) {
+        try {
+          console.log("프로필 이미지 업로드 중...");
+          finalImageUrl = await uploadImage(editImageFile);
+        } catch (uploadError) {
+          console.error("이미지 업로드 실패:", uploadError);
+          alert("이미지 업로드에 실패했습니다.");
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // 2. 회원 정보 수정 API 호출
+      // [수정 포인트 1] URL에서 '/api/v1' 제거 (API_BASE_URL에 이미 포함됨)
+      const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
         },
+        // [수정 포인트 2] 올바른 상태 변수(editNickname, editName) 사용
+        // 사용자가 입력한 값이 없으면 기존 값(user.nickname, user.name)을 유지
         body: JSON.stringify({
-          nickname: nickname,
-          profileImage: profileImage,
-          // bio: bio // API 지원 여부 확인 필요
-        })
+          nickname: editNickname || user.nickname,
+          profileImage: finalImageUrl,
+          name: editName || user.name
+        }),
       });
 
       if (response.ok) {
         const updatedUser = await response.json();
-        // 로컬 스토리지 업데이트 등의 후처리
-        setIsEditing(false);
+        setUser(updatedUser);
+        
+        // [수정 포인트 3] 올바른 상태 업데이트 함수 사용
+        setIsEditOpen(false); 
         alert('프로필이 저장되었습니다!');
-        // 정보 다시 불러오기
-        checkToken(user.id.toString());
+        
+        // 필요한 경우 로컬 스토리지 정보도 갱신하거나 재조회
+        // fetchMyProfile(); 
       } else {
-        throw new Error('Update failed');
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || '프로필 수정 실패');
       }
-      
+
     } catch (error) {
       console.error('Failed to save profile:', error);
-      alert('프로필 저장 실패 (API 엔드포인트 확인 필요)');
-      setIsEditing(false);
+      alert(`프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -259,13 +287,6 @@ const ProfilePage: React.FC = () => {
               className="edit-input"
               placeholder="닉네임"
             />
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              className="edit-textarea"
-              placeholder="자기소개"
-              maxLength={100}
-            />
             <div className="edit-actions">
               <button className="cancel-btn" onClick={() => setIsEditing(false)}>
                 취소
@@ -283,7 +304,7 @@ const ProfilePage: React.FC = () => {
                 <Edit2 size={16} />
               </button>
             </div>
-            <p className="profile-bio">{bio}</p>
+            {/* <p className="profile-bio">{bio}</p> */}
             
             <div className="trust-badge">
               <Star size={16} fill="#10b981" stroke="#10b981" />

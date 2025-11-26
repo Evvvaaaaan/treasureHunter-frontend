@@ -11,14 +11,17 @@
   },
   "dependencies": {
     "@stomp/stompjs": "^7.2.1",
+    "clsx": "^2.1.1",
     "emoji-picker-react": "^4.15.2",
     "lucide": "^0.545.0",
     "lucide-react": "^0.545.0",
     "motion": "^12.23.24",
+    "radix-ui": "^1.4.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.4",
-    "sockjs-client": "^1.6.1"
+    "sockjs-client": "^1.6.1",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

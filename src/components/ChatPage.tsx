@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Send, Mic, MoreVertical, Phone, Video, 
-  Paperclip, Smile, Loader2, X, Play, Pause
+  Paperclip, Smile, Loader2, X, Play, Pause, LogOut
 } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -19,6 +19,12 @@ import {
 import { fetchPostDetail } from '../utils/post';
 import { uploadImage } from '../utils/file';
 import type { ChatRoom, ChatMessage, ChatReadEvent } from '../types/chat';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 import '../styles/chat-page.css';
 
@@ -28,6 +34,12 @@ const ChatPage: React.FC = () => {
   const navigate = useNavigate();
   const { id: roomId } = useParams<{ id: string }>();
   const { theme } = useTheme();
+  const handleEndChat = () => {
+    if (confirm("채팅을 종료하고 후기를 작성하시겠습니까?")) {
+      // 채팅방 ID를 가지고 후기 페이지로 이동
+      navigate(`/chat/${roomId}/review`);
+    }
+  };
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -318,7 +330,34 @@ const ChatPage: React.FC = () => {
           </div>
         </div>
         <div className="header-actions-new">
-          <button className="header-icon-btn"><MoreVertical size={20} /></button>
+          <button className="header-icon-btn"><Phone size={20} /></button>
+          <button className="header-icon-btn"><Video size={20} /></button>
+          
+          {/* [수정] MoreVertical 버튼을 DropdownMenu로 감싸기 */}
+          <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <button className="header-icon-btn transition-colors hover:bg-gray-100 rounded-full p-2 outline-none focus:ring-2 focus:ring-primary/20 active:bg-gray-200">
+      <MoreVertical size={20} />
+    </button>
+  </DropdownMenuTrigger>
+  
+  {/* 컨텐츠 영역 디자인 개선: 부드러운 그림자, 애니메이션, 둥근 모서리 */}
+  <DropdownMenuContent 
+    align="end" 
+    sideOffset={8}
+    className="w-56 z-50 p-2 bg-white/95 backdrop-blur-sm rounded-xl border border-gray-100 shadow-lg ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+  >
+    {/* 아이템 디자인 개선: 아이콘 추가, 호버 효과 강화 */}
+    <DropdownMenuItem 
+      onClick={handleEndChat}
+      className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition-all cursor-pointer hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 outline-none"
+    >
+        {/* 호버 시 아이콘이 살짝 움직이는 효과 */}
+      <LogOut size={18} className="transition-transform group-hover:-translate-x-0.5" />
+      <span>채팅 종료 및 후기 작성</span>
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
         </div>
       </div>
 
