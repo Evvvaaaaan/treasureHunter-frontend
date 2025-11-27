@@ -9,7 +9,7 @@ export default function BottomNavigation() {
   const navItems = [
     { path: "/home", icon: Home, label: "홈" },
     { path: "/map", icon: Map, label: "지도" },
-    { path: "/chat-list", icon: MessageCircle, label: "메시지", badge: 3 },
+    { path: "/chat-list", icon: MessageCircle, label: "메시지", badge: 1},
     { path: "/profile", icon: User, label: "프로필" },
   ];
 

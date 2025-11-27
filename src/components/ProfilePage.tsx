@@ -65,7 +65,7 @@ const ProfilePage: React.FC = () => {
   // [질문] 뱃지 상세 리스트 API가 확인되지 않아 우선 Mock 데이터 유지
   const [badges] = useState<Badge[]>([
     { id: '1', name: '신뢰왕', description: '신뢰도 95% 이상', icon: '🏆', earnedDate: '2025-09-15', rarity: 'legendary' },
-    { id: '2', name: '활동왕', description: '게시글 10개 작성', icon: '🔥', earnedDate: '2025-10-01', rarity: 'common' }
+    { id: '2', name: '활동왕', description: '게ç시글 10개 작성', icon: '🔥', earnedDate: '2025-10-01', rarity: 'common' }
   ]);
 
   // 1. 데이터 로드 및 동기화

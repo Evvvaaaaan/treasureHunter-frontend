@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MapPin, Calendar, Share2, Flag, Bookmark, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart } from 'lucide-react';
+// MoreVertical 추가 확인
+import { MapPin, Calendar, Share2, Flag, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart, Edit, Trash, Check, MoreVertical } from 'lucide-react';
 import { useTheme } from '../utils/theme';
 import { getValidAuthToken, getUserInfo } from '../utils/auth';
 import { createChatRoom } from '../utils/chat';
 import '../styles/item-detail.css';
 
-// API 응답 데이터 타입 정의
+// API 응답 데이터 타입 (백엔드 PostResponseDto 참조)
 interface ApiPost {
   id: number;
   title: string;
@@ -19,7 +20,8 @@ interface ApiPost {
     totalScore: number;
     totalReviews: number;
   };
-  images: string[];
+  // [수정] 백엔드 필드명에 맞춰 'imageUrls' -> 'images'로 변경
+  images: string[]; 
   setPoint: number;
   itemCategory: string;
   lat: number;
@@ -29,6 +31,8 @@ interface ApiPost {
   updatedAt: string;
   isAnonymous: boolean;
   isCompleted: boolean;
+  likeCount?: number;
+  isLiked?: boolean;
 }
 
 interface ItemDetail {
@@ -70,7 +74,6 @@ interface UserInfo {
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
-// 카테고리 매핑 객체
 const CATEGORY_MAP: { [key: string]: string } = {
   'PHONE': '휴대폰',
   'WALLET': '지갑',
@@ -81,19 +84,24 @@ const CATEGORY_MAP: { [key: string]: string } = {
   'DOCUMENT': '문서',
   'ETC': '기타',
 };
+
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
 const ItemDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { theme } = useTheme();
+  const currentUser = getUserInfo();
 
   const [item, setItem] = useState<ItemDetail | null>(null);
-  const [user, setUser] = useState<UserInfo | null>(null);
+  const [postAuthor, setPostAuthor] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // 내가 작성한 글인지 확인
+  const isMyPost = item && currentUser && postAuthor?.id === currentUser.id.toString();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -102,20 +110,14 @@ const ItemDetailPage: React.FC = () => {
     }
   }, [id]);
 
+  // [API 연결] 게시글 상세 조회
   const loadItemDetail = async (itemId: string) => {
     setIsLoading(true);
     try {
       const token = await getValidAuthToken();
-      
-      const headers: HeadersInit = {
-        'Accept': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const headers: HeadersInit = { 'Accept': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      // API 호출 (/post/{id})
       const response = await fetch(`${API_BASE_URL}/post/${itemId}`, {
         method: 'GET',
         headers: headers,
@@ -127,7 +129,7 @@ const ItemDetailPage: React.FC = () => {
 
       const data: ApiPost = await response.json();
 
-      // 주소 변환 (좌표 -> 주소)
+      // 주소 변환
       let address = '위치 정보 없음';
       if (window.google && window.google.maps && window.google.maps.Geocoder) {
         try {
@@ -142,20 +144,20 @@ const ItemDetailPage: React.FC = () => {
           console.error("Geocoding failed:", e);
           address = `위도: ${data.lat}, 경도: ${data.lon}`;
         }
-      } else {
-         address = `위도: ${data.lat}, 경도: ${data.lon}`;
       }
 
-      // 데이터 매핑
+      // [수정] 데이터 매핑: data.images 사용
+      const images = data.images && data.images.length > 0 
+          ? data.images 
+          : [DEFAULT_IMAGE];
+
       const mappedItem: ItemDetail = {
         id: data.id.toString(),
         type: (data.type || 'LOST').toLowerCase() as 'lost' | 'found',
         title: data.title,
         description: data.content,
         category: CATEGORY_MAP[data.itemCategory] || data.itemCategory,
-        images: data.images && data.images.length > 0 
-          ? data.images 
-          : [DEFAULT_IMAGE],
+        images: images,
         location: {
           address: address,
           coordinates: { lat: data.lat, lng: data.lon }
@@ -172,28 +174,28 @@ const ItemDetailPage: React.FC = () => {
         viewCount: 0, 
         bookmarkCount: 0,
         isBookmarked: false,
-        likes: 0,
-        isLiked: false
+        likes: data.likeCount || 0,
+        isLiked: data.isLiked || false
       };
 
       setItem(mappedItem);
 
       // 작성자 정보 매핑
       if (data.author && !data.isAnonymous) {
-        setUser({
+        setPostAuthor({
           id: data.author.id.toString(),
           nickname: data.author.nickname,
-          profileImage: data.author.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
+          profileImage: data.author.profileImage || 'https://via.placeholder.com/150?text=User',
           trustScore: data.author.totalScore || 0,
           successCount: 0,
           badges: [],
           isOnline: false
         });
       } else {
-        setUser({
+        setPostAuthor({
           id: 'anonymous',
           nickname: '익명',
-          profileImage: 'https://via.placeholder.com/200?text=Anonymous',
+          profileImage: 'https://via.placeholder.com/150?text=Anonymous',
           trustScore: 0,
           successCount: 0,
           badges: [],
@@ -209,8 +211,105 @@ const ItemDetailPage: React.FC = () => {
     }
   };
 
-  const handleBookmark = async () => {
-    setIsBookmarked(!isBookmarked);
+  // [API 연결] 게시글 완료 처리
+  const handleComplete = async () => {
+    if (!confirm('이 게시물을 완료(찾음/돌려줌) 처리하시겠습니까?\n완료 시 포인트가 지급됩니다.')) return;
+
+    try {
+      const token = await getValidAuthToken();
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/post/${id}/complete`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert('게시물이 완료 처리되었습니다.');
+        navigate('/home');
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || '완료 처리에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Complete failed:', error);
+      alert(`오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
+    setIsMenuOpen(false);
+  };
+
+  // [API 연결] 게시글 삭제
+  const handleDelete = async () => {
+    if (!confirm('정말 이 게시물을 삭제하시겠습니까?')) return;
+
+    try {
+      const token = await getValidAuthToken();
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/post/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert('게시물이 삭제되었습니다.');
+        navigate('/home');
+      } else {
+        throw new Error('삭제 실패');
+      }
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert('삭제에 실패했습니다.');
+    }
+    setIsMenuOpen(false);
+  };
+
+  // [API 연결] 좋아요 토글
+  const handleLike = async () => {
+    if (!item || !id) return;
+    
+    const token = await getValidAuthToken();
+    if (!token) {
+      if(confirm("로그인이 필요한 기능입니다. 로그인하시겠습니까?")) navigate('/login');
+      return;
+    }
+
+    const prevItem = { ...item };
+    setItem({
+      ...item,
+      likes: item.isLiked ? item.likes - 1 : item.likes + 1,
+      isLiked: !item.isLiked
+    });
+
+    try {
+      const action = prevItem.isLiked ? 'unlike' : 'like';
+      const response = await fetch(`${API_BASE_URL}/post/${id}/${action}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Like action failed');
+    } catch (error) {
+      console.error("Like failed:", error);
+      setItem(prevItem);
+    }
+  };
+
+  const handleEdit = () => {
+    setIsMenuOpen(false);
+    alert("게시글 수정 기능은 준비 중입니다.");
   };
 
   const handleShare = async () => {
@@ -237,7 +336,6 @@ const ItemDetailPage: React.FC = () => {
   };
 
   const handleStartChat = async () => {
-    // 1. 로그인 체크
     const currentUser = getUserInfo();
     if (!currentUser) {
       if (confirm('로그인이 필요한 서비스입니다. 로그인 하시겠습니까?')) {
@@ -246,20 +344,13 @@ const ItemDetailPage: React.FC = () => {
       return;
     }
 
-    // 2. 본인 게시물인지 체크 (선택 사항)
-    // author 정보가 있고, 내 ID와 같다면 채팅 금지
-    if (item?.id && user && user.id === currentUser.id.toString()) {
+    if (isMyPost) {
       alert("자신의 게시물에는 채팅을 걸 수 없습니다.");
       return;
     }
 
-    // 3. 채팅방 생성 요청 및 이동
     try {
-      // 채팅방 이름 생성 (예: "구매자닉네임 - 아이템제목")
-      // 백엔드에서 이름을 어떻게 처리하는지에 따라 다를 수 있지만, 일단 요청에 포함
       const roomName = `${item?.title}`; 
-      
-      // item.id가 string이라 number로 변환 (백엔드가 Long 타입 받음)
       const postId = parseInt(item?.id || '0', 10);
 
       if (!postId) {
@@ -267,24 +358,12 @@ const ItemDetailPage: React.FC = () => {
         return;
       }
 
-      const roomId = await createChatRoom(roomName, postId, false); // false: 실명 채팅
-      
-      // 채팅방으로 이동
+      const roomId = await createChatRoom(roomName, postId, false);
       navigate(`/chat/${roomId}`);
       
     } catch (error) {
       console.error("채팅방 생성 실패:", error);
       alert("채팅방을 만들 수 없습니다. 잠시 후 다시 시도해주세요.");
-    }
-  };
-
-  const handleLike = () => {
-    if (item) {
-      setItem({
-        ...item,
-        likes: item.isLiked ? item.likes - 1 : item.likes + 1,
-        isLiked: !item.isLiked
-      });
     }
   };
 
@@ -320,7 +399,6 @@ const ItemDetailPage: React.FC = () => {
 
   return (
     <div className={`item-detail-page ${theme}`}>
-      {/* Header */}
       <div className="detail-header">
         <button className="back-button" onClick={() => navigate(-1)}>
           <ChevronLeft size={24} />
@@ -329,13 +407,45 @@ const ItemDetailPage: React.FC = () => {
           <button className="icon-button" onClick={handleShare}>
             <Share2 size={20} />
           </button>
-          <button className="icon-button" onClick={handleReport}>
-            <Flag size={20} />
-          </button>
+          {isMyPost ? (
+            <div className="menu-wrapper">
+              <button 
+                className="icon-button" 
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                <MoreVertical size={20} />
+              </button>
+              {isMenuOpen && (
+                <>
+                  <div 
+                    className="menu-backdrop" 
+                    onClick={() => setIsMenuOpen(false)}
+                  />
+                  <div className="post-menu">
+                    <button className="menu-item edit" onClick={handleEdit}>
+                      <Edit size={18} />
+                      <span>수정</span>
+                    </button>
+                    <button className="menu-item complete" onClick={handleComplete}>
+                      <Check size={18} />
+                      <span>완료</span>
+                    </button>
+                    <button className="menu-item delete" onClick={handleDelete}>
+                      <Trash size={18} />
+                      <span>삭제</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <button className="icon-button" onClick={handleReport}>
+              <Flag size={20} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Image Slider */}
       <div className="image-slider">
         <div className="slider-container">
           {item.images.length > 0 && (
@@ -370,12 +480,9 @@ const ItemDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Content */}
       <div className="detail-content">
-        {/* Title & Type */}
         <div className="item-header">
           <span className={`type-badge ${item.type}`}>
-            {/* [수정] 발견물 -> 습득물 */}
             {item.type === 'lost' ? '분실물' : '습득물'}
           </span>
           {item.status === 'completed' && (
@@ -386,36 +493,33 @@ const ItemDetailPage: React.FC = () => {
           <h1>{item.title}</h1>
           <div className="item-meta">
             <span className="category">{item.category}</span>
-            <span className="views">조회 {item.viewCount}</span>
           </div>
         </div>
 
-        {/* User Info */}
-        {user && (
-            <div className="user-card" onClick={() => user.id !== 'anonymous' && navigate(`/other-profile/${user.id}`)}>
+        {postAuthor && (
+            <div className="user-card" onClick={() => postAuthor.id !== 'anonymous' && navigate(`/other-profile/${postAuthor.id}`)}>
             <div className="user-avatar-wrapper">
-                <img src={user.profileImage} alt={user.nickname} className="user-avatar" />
-                {user.isOnline && <span className="online-indicator"></span>}
+                <img src={postAuthor.profileImage} alt={postAuthor.nickname} className="user-avatar" />
+                {postAuthor.isOnline && <span className="online-indicator"></span>}
             </div>
             <div className="user-info">
                 <div className="user-name">
-                <span>{user.nickname}</span>
-                {user.badges.map((badge, idx) => (
+                <span>{postAuthor.nickname}</span>
+                {postAuthor.badges.map((badge, idx) => (
                     <span key={idx} className="user-badge">{badge}</span>
                 ))}
                 </div>
                 <div className="user-stats">
                 <span className="trust-score">
                     <Star size={14} fill="#10b981" stroke="#10b981" />
-                    신뢰도 {user.trustScore}%
+                    신뢰도 {postAuthor.trustScore}%
                 </span>
                 </div>
             </div>
-            {user.id !== 'anonymous' && <ChevronRight size={20} className="chevron" />}
+            {postAuthor.id !== 'anonymous' && <ChevronRight size={20} className="chevron" />}
             </div>
         )}
 
-        {/* Reward */}
         {item.reward.points > 0 && (
           <div className="reward-card">
             <div className="reward-icon">💰</div>
@@ -426,19 +530,16 @@ const ItemDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* Description */}
         <div className="description-section">
           <h2>상세 설명</h2>
           <p style={{whiteSpace: 'pre-wrap'}}>{item.description}</p>
         </div>
 
-        {/* Date Info */}
         <div className="info-section">
           <h2>날짜 정보</h2>
           <div className="info-item">
             <Calendar size={18} />
             <div>
-              {/* [수정] 발견 날짜 -> 습득 날짜 */}
               <p className="info-label">{item.type === 'lost' ? '분실 날짜' : '습득 날짜'}</p>
               <p className="info-value">{new Date(item.dateInfo.lostDate).toLocaleDateString('ko-KR')}</p>
             </div>
@@ -452,11 +553,9 @@ const ItemDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Location */}
         <div className="location-section">
           <h2>
             <MapPin size={20} />
-            {/* [수정] 발견 위치 -> 습득 위치 */}
             {item.type === 'lost' ? '분실 위치' : '습득 위치'}
           </h2>
           <p className="location-address">{item.location.address}</p>
@@ -474,7 +573,6 @@ const ItemDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Actions */}
       <div className="bottom-actions">
         <button 
           className={`like-button ${item.isLiked ? 'active' : ''}`}
@@ -487,19 +585,19 @@ const ItemDetailPage: React.FC = () => {
           />
           <span>{item.likes}</span>
         </button>
-        <button 
-          className={`bookmark-button ${isBookmarked ? 'active' : ''}`}
-          onClick={handleBookmark}
-        >
-          <Bookmark size={24} fill={isBookmarked ? '#10b981' : 'none'} />
-        </button>
-        <button className="chat-button" onClick={handleStartChat}>
-          <MessageCircle size={20} />
-          채팅하기
-        </button>
+        
+        {isMyPost ? (
+            <button className="chat-button" style={{background: '#e5e7eb', color: '#374151', cursor: 'default'}}>
+                내가 쓴 글
+            </button>
+        ) : (
+            <button className="chat-button" onClick={handleStartChat}>
+            <MessageCircle size={20} />
+            채팅하기
+            </button>
+        )}
       </div>
 
-      {/* Image Viewer Modal */}
       {isImageViewerOpen && (
         <div className="image-viewer-modal" onClick={() => setIsImageViewerOpen(false)}>
           <button className="close-viewer">

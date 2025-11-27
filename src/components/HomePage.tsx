@@ -41,7 +41,7 @@ interface ApiPost {
   id: number;
   title: string;
   content: string;
-  type: 'lost' | 'found';
+  type: 'LOST' | 'FOUND'; // [MODIFIED] Changed to match typical API enum (uppercase)
   author?: AuthorInfo; // Optional author field
   images: string[];
   setPoint: number;
@@ -69,7 +69,7 @@ interface LostItem {
   points: number; // 포인트
   distance: number | null; // 내 위치로부터의 거리 (km)
   image: string; // First image URL or placeholder
-  status: 'lost' | 'found';
+  status: 'lost' | 'found' ;
   isCompleted: boolean;
 }
 
@@ -275,7 +275,7 @@ export default function HomePage() {
         image: post.images && post.images.length > 0
           ? post.images[0]
           : DEFAULT_IMAGE,
-        status: post.type,
+        status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found', // [MODIFIED] Handle 'LOST'/'FOUND' from API
         isCompleted: post.isCompleted,
       };
     });
@@ -501,11 +501,26 @@ export default function HomePage() {
                          완료
                        </Badge>
                      ) : (
-                       <Badge
-                         className={item.status === 'lost' ? 'status-badge badge-lost' : 'status-badge badge-found'}
-                       >
-                         {item.status === 'lost' ? '분실' : '습득'}
-                       </Badge>
+                      <Badge
+                    className={
+                      item.status === "lost"
+                        ? "badge-lost"
+                        : "badge-found"
+                    }
+                    style={{
+                      position: "absolute",
+                      top: "0.75rem",
+                      right: "0.75rem",
+                      backgroundColor:
+                        item.status === "lost"
+                          ? "#ef4444"
+                          : "#22c55e",
+                      color: "white",
+                    }}
+                  >
+                    {item.status === "lost" ? "분실물" : "습득물"}
+                    
+                  </Badge>
                      )}
                   </div>
                   {/* [MODIFIED] item-info 섹션 수정 */}
@@ -585,4 +600,3 @@ export default function HomePage() {
     </div>
   );
 }
-
