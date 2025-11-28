@@ -1,324 +1,207 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Navigation, Layers, MapPin, ChevronDown } from 'lucide-react';
-// import BottomNavigation from './BottomNavigation';
-import '../styles/map-page.css';
+import { MapPin, Crosshair, Search, List, ArrowRight, ChevronDown } from 'lucide-react';
 import BottomNavigation from './BottomNavigation';
+import { useTheme } from '../utils/theme';
+import { getValidAuthToken } from '../utils/auth';
+import '../styles/map-page.css';
 
-interface MapMarker {
-  id: string;
-  type: 'lost' | 'found';
-  position: { lat: number; lng: number };
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
+
+// [수정] API 응답 데이터 타입 정의 (HomePage와 일치)
+interface MapPost {
+  id: number;
   title: string;
-  description: string;
-  thumbnail: string;
-  rewardPoints: number;
-  postedDate: string;
-  matchProbability: number;
+  content: string;
+  type: 'LOST' | 'FOUND';
+  lat: number;
+  lon: number;
+  itemCategory: string;
+  images: string[];
+  setPoint: number;
+  // 필요한 경우 matchProbability 등 추가
 }
 
-const MapPage: React.FC = () => {
+interface ApiResponse {
+  posts: MapPost[];
+}
+
+export default function MapPage() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const mapRef = useRef<HTMLDivElement>(null);
-  const googleMapRef = useRef<google.maps.Map | null>(null);
+  
+  // 상태 관리
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [posts, setPosts] = useState<MapPost[]>([]); // 게시글 데이터 (마커용)
+  const [selectedPost, setSelectedPost] = useState<MapPost | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
+  
+  // 마커 인스턴스 관리를 위한 Ref (지도에서 제거할 때 필요)
   const markersRef = useRef<google.maps.Marker[]>([]);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [radius, setRadius] = useState(5); // km
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
+  // 1. 게시글 데이터 불러오기 (API 연결)
+  const fetchPosts = async () => {
+    try {
+      const token = await getValidAuthToken();
+      // 토큰이 없어도 지도는 볼 수 있도록 처리 (필요 시 로그인 페이지 리다이렉트)
+      
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-  const categories = ['전자기기', '지갑/가방', '의류', '액세서리', '서류/카드', '기타'];
+      const response = await fetch(`${API_BASE_URL}/posts`, {
+        headers: headers,
+      });
 
-  const mockMarkers: MapMarker[] = [
-    {
-      id: '1',
-      type: 'lost',
-      position: { lat: 37.498, lng: 127.028 },
-      title: 'iPhone 15 Pro 분실',
-      description: '강남역 2번 출구 근처',
-      thumbnail: 'https://images.unsplash.com/photo-1592286927505-838d8be747f2?w=200',
-      rewardPoints: 50000,
-      postedDate: '2025-10-20',
-      matchProbability: 95
-    },
-    {
-      id: '2',
-      type: 'found',
-      position: { lat: 37.5, lng: 127.03 },
-      title: '지갑 습득',
-      description: '신사역 근처 카페',
-      thumbnail: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=200',
-      rewardPoints: 30000,
-      postedDate: '2025-10-21',
-      matchProbability: 88
-    },
-    {
-      id: '3',
-      type: 'lost',
-      position: { lat: 37.497, lng: 127.025 },
-      title: '에어팟 프로 분실',
-      description: '강남역 지하 상가',
-      thumbnail: 'https://images.unsplash.com/photo-1606841837239-c5a1a4a07af7?w=200',
-      rewardPoints: 20000,
-      postedDate: '2025-10-22',
-      matchProbability: 72
+      if (response.ok) {
+        const data: ApiResponse = await response.json();
+        // API에서 받아온 리스트를 상태에 저장
+        setPosts(data.posts || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch posts for map:", error);
+    } finally {
+      setIsLoading(false);
     }
-  ];
-
-  useEffect(() => {
-    initializeMap();
-    getUserLocation();
-  }, []);
-
-  useEffect(() => {
-    if (googleMapRef.current) {
-      updateMarkers();
-    }
-  }, [radius, selectedCategories]);
-
-  const initializeMap = () => {
-    if (!mapRef.current) return;
-
-    // Initialize Google Maps
-    const defaultCenter = { lat: 37.5665, lng: 126.9780 }; // Seoul
-    
-    const map = new google.maps.Map(mapRef.current, {
-      center: defaultCenter,
-      zoom: 14,
-      mapTypeId: mapType,
-      disableDefaultUI: true,
-      zoomControl: true,
-      styles: [
-        {
-          featureType: 'poi',
-          elementType: 'labels',
-          stylers: [{ visibility: 'off' }]
-        }
-      ]
-    });
-
-    googleMapRef.current = map;
-
-    // Add markers
-    updateMarkers();
-    
-    setIsLoading(false);
   };
 
-  const getUserLocation = () => {
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  // 2. 지도 초기화
+  useEffect(() => {
+    if (!mapRef.current || typeof google === 'undefined') return;
+
+    const initialCenter = { lat: 37.5665, lng: 126.9780 }; // 서울 시청
+    const googleMap = new google.maps.Map(mapRef.current, {
+      center: initialCenter,
+      zoom: 14,
+      disableDefaultUI: true,
+      zoomControl: true,
+    });
+
+    setMap(googleMap);
+
+    // 내 위치 가져오기
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const location = {
+          const pos = {
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
           };
-          setUserLocation(location);
+          setMyLocation(pos);
+          googleMap.setCenter(pos);
           
-          if (googleMapRef.current) {
-            googleMapRef.current.setCenter(location);
-            
-            // Add user location marker
-            new google.maps.Marker({
-              position: location,
-              map: googleMapRef.current,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: '#10b981',
-                fillOpacity: 1,
-                strokeColor: 'white',
-                strokeWeight: 3
-              }
-            });
-          }
+          // 내 위치 표시 마커
+          new google.maps.Marker({
+            position: pos,
+            map: googleMap,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#4285F4",
+              fillOpacity: 1,
+              strokeColor: "white",
+              strokeWeight: 2,
+            },
+            title: "내 위치",
+            zIndex: 999, // 다른 마커보다 위에 표시
+          });
         },
-        (error) => {
-          console.error('Error getting location:', error);
-        }
+        () => console.warn("Geolocation error")
       );
     }
-  };
+  }, []);
 
-  const updateMarkers = () => {
-    if (!googleMapRef.current) return;
+  // 3. 마커 렌더링 (posts 데이터가 변경될 때 실행)
+  useEffect(() => {
+    if (!map || posts.length === 0) return;
 
-    // Clear existing markers
+    // 기존 마커들 지도에서 제거
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
 
-    // Add new markers
-    mockMarkers.forEach((item) => {
+    // 새로운 마커 생성
+    posts.forEach((post) => {
+      // 좌표 데이터가 유효한지 확인
+      if (!post.lat || !post.lon) return;
+
       const marker = new google.maps.Marker({
-        position: item.position,
-        map: googleMapRef.current,
-        icon: {
-          url: item.type === 'lost' 
-            ? 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="50" viewBox="0 0 40 50">
-                  <path d="M20 0C9 0 0 9 0 20c0 15 20 30 20 30s20-15 20-30C40 9 31 0 20 0z" fill="#dc2626"/>
-                  <circle cx="20" cy="20" r="8" fill="white"/>
-                </svg>
-              `)
-            : 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="50" viewBox="0 0 40 50">
-                  <path d="M20 0C9 0 0 9 0 20c0 15 20 30 20 30s20-15 20-30C40 9 31 0 20 0z" fill="#10b981"/>
-                  <circle cx="20" cy="20" r="8" fill="white"/>
-                </svg>
-              `),
-          scaledSize: new google.maps.Size(40, 50),
-          anchor: new google.maps.Point(20, 50)
-        },
-        title: item.title
+        position: { lat: post.lat, lng: post.lon },
+        map: map,
+        title: post.title,
+        // 게시글 타입에 따라 마커 색상 구분 (빨강: 분실, 초록: 습득)
+        icon: post.type === 'LOST' 
+          ? 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+          : 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
       });
 
-      marker.addListener('click', () => {
-        setSelectedMarker(item);
+      // 마커 클릭 시 해당 게시글 정보 표시
+      marker.addListener("click", () => {
+        setSelectedPost(post);
+        map.panTo(marker.getPosition() as google.maps.LatLng);
       });
 
       markersRef.current.push(marker);
     });
-  };
+  }, [map, posts]);
 
-  const handleCenterToUserLocation = () => {
-    if (userLocation && googleMapRef.current) {
-      googleMapRef.current.setCenter(userLocation);
-      googleMapRef.current.setZoom(16);
+  const handleMyLocationClick = () => {
+    if (map && myLocation) {
+      map.panTo(myLocation);
+      map.setZoom(15);
     } else {
-      getUserLocation();
+      alert("현재 위치를 확인할 수 없습니다.");
     }
-  };
-
-  const toggleMapType = () => {
-    const newType = mapType === 'roadmap' ? 'satellite' : 'roadmap';
-    setMapType(newType);
-    if (googleMapRef.current) {
-      googleMapRef.current.setMapTypeId(newType);
-    }
-  };
-
-  const toggleCategory = (category: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
   };
 
   return (
-    <div className="map-page">
-      {/* Header */}
-      <div className="map-header">
-        <div className="search-bar">
-          <Search size={20} />
-          <input
-            type="text"
-            placeholder="장소 또는 아이템 검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <button className="filter-button" onClick={() => setShowFilters(!showFilters)}>
-          <Filter size={20} />
-        </button>
-      </div>
+    <div className={`map-page ${theme}`}>
+      {/* 지도 컨테이너 */}
+      <div ref={mapRef} className="map-container" />
 
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="filters-panel">
-          <div className="filter-section">
-            <label>검색 반경: {radius}km</label>
-            <input
-              type="range"
-              min="1"
-              max="20"
-              value={radius}
-              onChange={(e) => setRadius(Number(e.target.value))}
-              className="radius-slider"
-            />
-          </div>
+      
 
-          <div className="filter-section">
-            <label>카테고리</label>
-            <div className="category-chips">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  className={`category-chip ${selectedCategories.includes(category) ? 'active' : ''}`}
-                  onClick={() => toggleCategory(category)}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Map Container */}
-      <div className="map-container">
-        <div ref={mapRef} className="google-map" />
-        
-        {isLoading && (
-          <div className="map-loading">
-            <div className="loading-spinner"></div>
-            <p>보물 지도를 펼치는 중...</p>
-          </div>
-        )}
-
-        {/* Map Controls */}
-        <div className="map-controls">
-          <button className="map-control-btn" onClick={handleCenterToUserLocation}>
-            <Navigation size={20} />
-          </button>
-          <button className="map-control-btn" onClick={toggleMapType}>
-            <Layers size={20} />
-          </button>
-        </div>
-
-        {/* Legend */}
-        <div className="map-legend">
-          <div className="legend-item">
-            <span className="legend-marker lost"></span>
-            <span>분실물</span>
-          </div>
-          <div className="legend-item">
-            <span className="legend-marker found"></span>
-            <span>발견물</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Selected Marker Info */}
-      {selectedMarker && (
-        <div className="marker-info-card" onClick={() => navigate(`/items/${selectedMarker.id}`)}>
-          <button className="close-info" onClick={(e) => { e.stopPropagation(); setSelectedMarker(null); }}>
+      {/* 마커 정보 카드 (선택된 게시글이 있을 때 표시) */}
+      {selectedPost && (
+        <div className="marker-info-card" onClick={() => navigate(`/items/${selectedPost.id}`)}>
+          <button 
+            className="close-info" 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              setSelectedPost(null); 
+            }}
+          >
             <ChevronDown size={24} />
           </button>
           
           <div className="info-content">
-            <img src={selectedMarker.thumbnail} alt={selectedMarker.title} />
+            {/* 이미지 */}
+            <img 
+              src={selectedPost.images && selectedPost.images.length > 0 
+                ? selectedPost.images[0] 
+                : DEFAULT_IMAGE} 
+              alt={selectedPost.title} 
+            />
+            
+            {/* 상세 정보 */}
             <div className="info-details">
-              <span className={`info-type ${selectedMarker.type}`}>
-                {selectedMarker.type === 'lost' ? '분실물' : '발견물'}
+              <span className={`info-type ${selectedPost.type.toLowerCase()}`}>
+                {selectedPost.type === 'LOST' ? '분실물' : '습득물'}
               </span>
-              <h3>{selectedMarker.title}</h3>
-              <p>{selectedMarker.description}</p>
+              <h3>{selectedPost.title}</h3>
+              <p className="info-desc">{selectedPost.content}</p>
               
-              {selectedMarker.matchProbability >= 70 && (
-                <div className="match-badge">
-                  🎯 매칭 확률 {selectedMarker.matchProbability}%
-                </div>
-              )}
-              
-              {selectedMarker.rewardPoints > 0 && (
+              {/* 포인트 정보 (있을 경우만 표시) */}
+              {selectedPost.setPoint > 0 && (
                 <div className="reward-info">
-                  💰 {selectedMarker.rewardPoints.toLocaleString()} 포인트
+                  💰 {selectedPost.setPoint.toLocaleString()} 포인트
                 </div>
               )}
             </div>
@@ -326,9 +209,9 @@ const MapPage: React.FC = () => {
         </div>
       )}
 
+      
+
       <BottomNavigation />
     </div>
   );
-};
-
-export default MapPage;
+}
