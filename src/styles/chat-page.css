@@ -590,9 +590,9 @@
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
-  .header-actions-new {
+  /* .header-actions-new {
     display: none;
-  }
+  } */
 
   .message-group-new {
     max-width: 85%;

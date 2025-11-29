@@ -86,3 +86,50 @@ button {
 input, textarea, select {
   font-family: inherit;
 }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+.dark {
+  /* Dark Mode Colors */
+  --background: #111827; /* Gray 900 */
+  --foreground: #f9fafb; /* Gray 50 */
+  --card: #1f2937; /* Gray 800 */
+  --card-foreground: #f9fafb;
+  --popover: #1f2937;
+  --popover-foreground: #f9fafb;
+  --primary: #3b82f6; /* Blue 500 */
+  --primary-foreground: #ffffff;
+  --secondary: #374151; /* Gray 700 */
+  --secondary-foreground: #f9fafb;
+  --muted: #374151;
+  --muted-foreground: #9ca3af; /* Gray 400 */
+  --accent: #374151;
+  --accent-foreground: #f9fafb;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #374151;
+  --input: #374151;
+  --ring: #3b82f6;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease; /* 부드러운 전환 효과 */
+}
+
+/* 추가적인 유틸리티 클래스들 (필요한 경우) */
+.page-container {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+  padding-bottom: 80px; /* Bottom Navigation Space */
+}

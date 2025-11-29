@@ -17,6 +17,7 @@ import StorePage from './components/StorePage';
 import OtherUserProfilePage from './components/OtherUserProfilePage';
 import SettingsPage from './components/SettingsPage';
 import NotificationsPage from './components/NotificationsPage';
+import ReviewPage from './components/ReviewPage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 
@@ -316,6 +317,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />  
+        <Route 
+          path='/review/:id'
+          element={
+            <ProtectedRoute>
+              <ReviewPage />
+            </ProtectedRoute>
+          }
+        /> 
+        <Route path="/chat/:id/review" element={<ReviewPage />} />
+
         {/* Redirect Logic */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
