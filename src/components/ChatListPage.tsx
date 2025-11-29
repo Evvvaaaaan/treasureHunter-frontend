@@ -211,7 +211,8 @@ const ChatListPage: React.FC = () => {
     // 서버 시간이 UTC('Z' 미포함)로 오는 경우를 대비하여 'Z'를 추가하여 UTC로 파싱되도록 유도
     // 이미 'Z'나 타임존 오프셋이 있으면 그대로 사용
     let safeTimestamp = timestamp;
-    if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:\d{2}/.test(safeTimestamp)) {
+    // ISO 8601 형식에서 Z가 없고, +09:00 같은 오프셋도 없는 경우 UTC로 간주하여 Z 추가
+    if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
       safeTimestamp += 'Z';
     }
 
@@ -247,11 +248,12 @@ const ChatListPage: React.FC = () => {
       return `${diffInDays}일 전`;
     }
 
-    // 7일 이상 지난 경우 날짜 표시
-    return date.toLocaleDateString('ko-KR', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
+    // 7일 이상 지난 경우 날짜 표시 (KST 기준)
+    return new Intl.DateTimeFormat('ko-KR', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Asia/Seoul', // KST 강제
+    }).format(date);
   };
 
   const getLastMessagePreview = (room: ChatRoomUI) => {
