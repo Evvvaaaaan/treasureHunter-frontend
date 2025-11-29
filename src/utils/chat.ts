@@ -160,3 +160,25 @@ export interface ChatReadEvent {
   lastReadChatId: number;
   userType: 'AUTHOR' | 'CALLER';
 }
+export const fetchTotalUnreadCount = async (): Promise<number> => {
+  const token = await getValidAuthToken();
+  if (!token) return 0;
+
+  try {
+    // 1. 만약 백엔드에 전용 API가 있다면:
+    // const response = await fetch(`${API_BASE_URL}/chat/unread-count`, { ... });
+    
+    // 2. 없다면 채팅방 목록을 가져와서 합산 (비효율적일 수 있음)
+    // 여기서는 fetchChatRooms를 재사용하여 계산하는 방식을 예시로 듭니다.
+    // 하지만 fetchChatRooms 자체에는 unreadCount가 포함되어 있지 않으므로, 
+    // 각 방의 메시지 동기화 정보를 가져와야 정확합니다. 
+    // 이는 너무 무거우므로, 백엔드에서 제공해주지 않는다면 0으로 두거나 
+    // ChatListPage에서 계산한 값을 전역 상태로 관리하는 것이 좋습니다.
+    
+    // 임시: 0 리턴 (백엔드 API 확인 필요)
+    return 0; 
+  } catch (error) {
+    console.error('Failed to fetch unread count:', error);
+    return 0;
+  }
+};

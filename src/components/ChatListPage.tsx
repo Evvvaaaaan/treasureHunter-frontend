@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MessageCircle, Image, MapPin, X, MoreVertical, Loader2 } from 'lucide-react';
-import { Client } from '@stomp/stompjs'; // [추가] 소켓 클라이언트
-import SockJS from 'sockjs-client';       // [추가] SockJS
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 import { useTheme } from '../utils/theme';
 import BottomNavigation from './BottomNavigation';
 import { fetchChatRooms, fetchChatMessages } from '../utils/chat';
 import { getUserInfo } from '../utils/auth';
-import type { ChatRoom as ApiChatRoom, ChatMessage } from '../types/chat'; // ChatMessage 타입 추가
+import type { ChatRoom as ApiChatRoom, ChatMessage } from '../types/chat';
 import '../styles/chat-list-page.css';
 
-const WS_URL = 'https://treasurehunter.seohamin.com/ws'; // WebSocket 주소
+const WS_URL = 'https://treasurehunter.seohamin.com/ws';
 
 interface ChatRoomUI {
   id: string;
@@ -37,9 +37,7 @@ const ChatListPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // [추가] 소켓 클라이언트 Ref
   const stompClient = useRef<Client | null>(null);
-  // 구독 정보를 관리하여 중복 구독 방지 (key: roomId, value: subscription object)
   const subscriptions = useRef<Map<string, any>>(new Map());
 
   // 1. 초기 데이터 로드
@@ -60,14 +58,12 @@ const ChatListPage: React.FC = () => {
     }
   }, [searchQuery, chatRooms]);
 
-  // 3. [추가] WebSocket 연결 및 전체 방 구독
+  // 3. WebSocket 연결 및 전체 방 구독
   useEffect(() => {
-    // 채팅방 목록이 로드되지 않았거나, 토큰이 없으면 중단
     if (chatRooms.length === 0) return;
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
-    // 이미 연결되어 있다면 구독만 갱신
     if (stompClient.current && stompClient.current.active) {
       subscribeToRooms(chatRooms);
       return;
@@ -89,23 +85,19 @@ const ChatListPage: React.FC = () => {
     stompClient.current = client;
 
     return () => {
-      // 컴포넌트 언마운트 시 연결 해제
       if (client.active) {
         client.deactivate();
       }
       subscriptions.current.clear();
     };
-  }, [chatRooms.length]); // chatRooms 개수가 변할 때(로딩 완료 시) 실행
+  }, [chatRooms.length]);
 
-  // [추가] 방 목록을 순회하며 구독하는 함수
   const subscribeToRooms = (rooms: ChatRoomUI[]) => {
     if (!stompClient.current || !stompClient.current.active) return;
 
     rooms.forEach((room) => {
-      // 이미 구독한 방이면 패스
       if (subscriptions.current.has(room.id)) return;
 
-      // 구독: /topic/chat.room.{id}
       const sub = stompClient.current!.subscribe(`/topic/chat.room.${room.id}`, (message) => {
         if (message.body) {
           const newMsg: ChatMessage = JSON.parse(message.body);
@@ -113,21 +105,17 @@ const ChatListPage: React.FC = () => {
         }
       });
       
-      // 구독 관리 맵에 저장
       subscriptions.current.set(room.id, sub);
     });
   };
 
-  // [추가] 새 메시지 수신 시 목록 업데이트 핸들러
   const handleNewMessage = (newMsg: ChatMessage) => {
     setChatRooms((prevRooms) => {
-      // 해당 메시지의 방 찾기
-      const targetRoomIndex = prevRooms.findIndex(r => r.id === newMsg.roomId);
-      if (targetRoomIndex === -1) return prevRooms; // 없는 방이면 무시
+      const targetRoomIndex = prevRooms.findIndex(r => r.id === newMsg.roomId.toString());
+      if (targetRoomIndex === -1) return prevRooms;
 
       const targetRoom = prevRooms[targetRoomIndex];
       
-      // 메시지 타입에 따른 텍스트 처리
       let displayMessage = newMsg.message;
       let displayType: 'text' | 'image' | 'location' = 'text';
       
@@ -136,25 +124,21 @@ const ChatListPage: React.FC = () => {
         displayType = 'image';
       }
 
-      // 업데이트된 방 객체 생성
       const updatedRoom = {
         ...targetRoom,
         lastMessage: displayMessage,
         lastMessageType: displayType,
-        timestamp: newMsg.serverAt, // 서버 시간으로 갱신
-        // 채팅 리스트에 있다는 건 아직 안 읽은 상태일 가능성이 높음 -> 카운트 +1
-        // (단, 내가 보낸 메시지라면 카운트 증가 X 로직이 필요할 수 있음. 여기선 단순화)
-        unreadCount: targetRoom.unreadCount + 1 
+        timestamp: newMsg.serverAt,
+        // 현재 목록에 있다는 것은 아직 안 읽었을 가능성이 큼 -> 1 증가
+        unreadCount: (targetRoom.unreadCount || 0) + 1 
       };
 
-      // 해당 방을 목록에서 제거하고
-      const otherRooms = prevRooms.filter(r => r.id !== newMsg.roomId);
+      const otherRooms = prevRooms.filter(r => r.id !== newMsg.roomId.toString());
       
-      // 맨 앞에 추가 (최신순 정렬 효과)
+      // 최신 메시지가 온 방을 맨 위로 이동
       return [updatedRoom, ...otherRooms];
     });
   };
-
 
   const loadChatRooms = async () => {
     setIsLoading(true);
@@ -169,8 +153,9 @@ const ChatListPage: React.FC = () => {
         let timestamp = room.post?.createdAt || new Date().toISOString();
         let unreadCount = 0; 
 
+        // 메시지 미리보기를 위해 최근 메시지 로드 (size를 20으로 늘려 최신 메시지 확보)
         try {
-          const response = await fetchChatMessages(room.roomId, 0, 100);
+          const response = await fetchChatMessages(room.roomId, 0, 20);
           const messages = response.chats || [];
           
           if (messages.length > 0) {
@@ -189,10 +174,6 @@ const ChatListPage: React.FC = () => {
           console.error(`채팅방(${room.roomId}) 데이터 로드 실패`, e);
         }
 
-        if (timestamp && !timestamp.endsWith('Z')) {
-            timestamp += 'Z';
-        }
-
         return {
           id: room.roomId,
           userId: partner?.id.toString() || 'unknown',
@@ -202,7 +183,7 @@ const ChatListPage: React.FC = () => {
           lastMessage: lastMessageText, 
           lastMessageType: lastMessageType,
           timestamp: timestamp,
-          unreadCount: unreadCount,
+          unreadCount: unreadCount, 
           itemTitle: room.post?.title,
           itemImage: room.post?.image
         };
@@ -223,29 +204,53 @@ const ChatListPage: React.FC = () => {
     }
   };
 
-  const formatTimestamp = (timestamp: string) => {
+  // [수정됨] 시간 경과(Time Ago) 계산 함수
+  const formatTimeAgo = (timestamp: string) => {
     if (!timestamp) return '';
     
-    // 타임스탬프 보정 (혹시 handleNewMessage에서 온 데이터에 Z가 없을 경우 대비)
-    if (!timestamp.endsWith('Z')) timestamp += 'Z';
+    // 서버 시간이 UTC('Z' 미포함)로 오는 경우를 대비하여 'Z'를 추가하여 UTC로 파싱되도록 유도
+    // 이미 'Z'나 타임존 오프셋이 있으면 그대로 사용
+    let safeTimestamp = timestamp;
+    if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:\d{2}/.test(safeTimestamp)) {
+      safeTimestamp += 'Z';
+    }
 
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime(); 
-
-    if (diff < 60 * 1000) return '방금 전';
-
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (minutes < 60) return `${minutes}분 전`;
-    if (hours < 24) return `${hours}시간 전`;
-    if (days < 7) return `${days}일 전`;
+    const date = new Date(safeTimestamp);
     
+    // 날짜가 유효하지 않은 경우 처리
+    if (isNaN(date.getTime())) return '';
+
+    const now = new Date();
+    
+    // 초 단위 차이 계산
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    // 미래 시간인 경우 (서버 시간과 클라이언트 시간 차이 등) 방금 전으로 표시
+    if (diffInSeconds < 0) return '방금 전';
+    
+    if (diffInSeconds < 60) {
+      return '방금 전';
+    }
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes}분 전`;
+    }
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+      return `${diffInHours}시간 전`;
+    }
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) {
+      return `${diffInDays}일 전`;
+    }
+
+    // 7일 이상 지난 경우 날짜 표시
     return date.toLocaleDateString('ko-KR', { 
       month: 'short', 
-      day: 'numeric'
+      day: 'numeric' 
     });
   };
 
@@ -344,16 +349,11 @@ const ChatListPage: React.FC = () => {
                       {room.userName}
                       {room.itemTitle && <span style={{fontSize: '0.8em', color: '#888', fontWeight: 'normal', marginLeft: '6px'}}> • {room.itemTitle}</span>}
                     </h3>
-                    <span className="room-time-new">{formatTimestamp(room.timestamp)}</span>
+                    {/* formatTimeAgo 함수를 사용하여 경과 시간을 표시합니다. */}
+                    <span className="room-time-new">{formatTimeAgo(room.timestamp)}</span>
                   </div>
                   <div className="room-bottom-row">
-                    <p 
-                      className="room-message-new"
-                      style={{ 
-                        fontWeight: room.unreadCount > 0 ? 'bold' : 'normal',
-                        color: room.unreadCount > 0 ? '#000000' : undefined 
-                      }}
-                    >
+                    <p className="room-message-new">
                       {getLastMessagePreview(room)}
                     </p>
                     {room.unreadCount > 0 && (
