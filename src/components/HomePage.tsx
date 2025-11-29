@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'; // useMemo 추가
-import { useNavigate, useLocation } from 'react-router-dom'; // [MODIFIED] useLocation 추가
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   Search,
   MapPin,
   Plus,
   Bell,
-  // Calendar, // 제거
   Tag,
   ChevronRight,
   Map,
@@ -14,21 +13,19 @@ import {
   LogOut,
   Trash2,
   AlertCircle,
-  Loader2, // Loader icon
-  Coins, // 포인트 아이콘 추가
-  Navigation, // 거리 아이콘 추가
+  Loader2,
+  Coins,
+  Navigation,
 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
-// [MODIFIED] Import getAuthToken (or preferably getValidAuthToken if available)
-import { getUserInfo, clearTokens, deleteUser, type UserInfo, getAuthToken, getValidAuthToken } from '../utils/auth';
+import { getUserInfo, clearTokens, deleteUser, type UserInfo, getValidAuthToken } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
 import { Button } from './ui/button';
 import BottomNavigation from './BottomNavigation';
 
-// [NEW] Interface matching the API response structure for a single post
 interface AuthorInfo {
   id: number;
   nickname: string;
@@ -41,48 +38,43 @@ interface ApiPost {
   id: number;
   title: string;
   content: string;
-  type: 'LOST' | 'FOUND'; // [MODIFIED] Changed to match typical API enum (uppercase)
-  author?: AuthorInfo; // Optional author field
+  type: 'LOST' | 'FOUND';
+  author?: AuthorInfo;
   images: string[];
   setPoint: number;
   itemCategory: string;
   lat: number;
   lon: number;
-  lostAt: string; // ISO Date string
-  createdAt: string; // ISO Date string
-  updatedAt: string; // ISO Date string
+  lostAt: string;
+  createdAt: string;
+  updatedAt: string;
   isAnonymous: boolean;
   isCompleted: boolean;
 }
 
-// [MODIFIED] ApiResponse 인터페이스가 API 응답인 { posts: [...] }를 기대하도록 수정합니다.
 interface ApiResponse {
-    posts: ApiPost[]; // 'postList'에서 'posts'로 변경
+    posts: ApiPost[];
 }
 
-
-// [MODIFIED] Interface for displaying items on the page
 interface LostItem {
-  id: string; // Use string for React keys
+  id: string;
   title: string;
-  content: string; // content (10글자)
-  points: number; // 포인트
-  distance: number | null; // 내 위치로부터의 거리 (km)
-  image: string; // First image URL or placeholder
-  status: 'lost' | 'found' ;
+  content: string;
+  points: number;
+  distance: number | null;
+  image: string;
+  status: 'lost' | 'found';
   isCompleted: boolean;
 }
 
-// [MODIFIED] API_BASE_URL을 올바른 기본 주소로 수정합니다.
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png'; 
 
-// [NEW] Haversine 거리 계산 함수 (km 단위)
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   if (!lat1 || !lon1 || !lat2 || !lon2) {
     return 0;
   }
-  const R = 6371; // Radius of the Earth in km
+  const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
@@ -92,48 +84,41 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): nu
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distance in km
+  const distance = R * c;
   return distance;
 };
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const location = useLocation(); // [NEW] location 객체 가져오기
+  const location = useLocation();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(getUserInfo());
   const [searchQuery, setSearchQuery] = useState('');
-  // [MODIFIED] API 원본 데이터를 저장할 state
   const [rawPosts, setRawPosts] = useState<ApiPost[]>([]);
-  // [NEW] 사용자 위치 state
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  // [NEW] Add loading and error states
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [unreadNotifications, setUnreadNotifications] = useState(0); // [NEW] 알림 개수 상태
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
-  // [NEW] Function to fetch posts from the API
   const fetchPosts = async () => {
     setIsLoading(true);
     setError(null);
-    // Use getValidAuthToken to ensure token is not expired and try refreshing if needed
-    const token = await getValidAuthToken(); // Changed from getAuthToken
+    const token = await getValidAuthToken();
 
     if (!token) {
       setError('로그인이 필요합니다. 다시 로그인해주세요.');
       setIsLoading(false);
-      navigate('/login'); // Redirect to login if no valid token
+      navigate('/login');
       return;
     }
 
     try {
-      // [MODIFIED] fetch URL을 수정하여 올바른 엔드포인트(/posts)를 호출합니다.
       const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json', // Indicate we expect JSON
-          // [MODIFIED] 캐시 방지 헤더 추가
+          'Accept': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0',
@@ -141,7 +126,6 @@ export default function HomePage() {
       });
 
       if (!response.ok) {
-        // Try parsing error response first
         let errorMessage = `HTTP 오류! 상태: ${response.status}`;
         try {
           const errorData = await response.json();
@@ -150,7 +134,6 @@ export default function HomePage() {
            try {
                const errorText = await response.text();
                console.error("API Error Response (Non-JSON):", errorText);
-               // 404 Not Found에 대한 더 구체적인 메시지 (선택적)
                if (response.status === 404) {
                    errorMessage = `API 엔드포인트를 찾을 수 없습니다: ${API_BASE_URL}/posts`;
                } else {
@@ -161,7 +144,6 @@ export default function HomePage() {
         throw new Error(errorMessage);
       }
 
-      // Check content type before parsing
        const contentType = response.headers.get("content-type");
        if (!contentType || !contentType.includes("application/json")) {
            const responseText = await response.text();
@@ -169,45 +151,38 @@ export default function HomePage() {
            throw new Error("서버로부터 예상치 못한 형식의 응답을 받았습니다.");
        }
 
-      // [MODIFIED] API가 { posts: [...] } 객체를 반환하므로, data.posts를 사용합니다.
       const data: ApiResponse = await response.json();
       
-      // [DEBUG] API 전체 응답을 확인합니다.
       console.log('API Response Data:', data); 
 
-      // [MODIFIED] data.posts가 배열인지 확인하고 postList 변수에 할당합니다.
       const postList = data.posts || [];
       if (!Array.isArray(postList)) {
           console.error("API did not return an array in data.posts:", data);
           throw new Error("서버로부터 게시글 목록(배열)을 받지 못했습니다.");
       }
       
-      console.log('Extracted postList:', postList); // 추출된 배열 확인
+      console.log('Extracted postList:', postList);
 
-      // [MODIFIED] 원본 API 데이터를 state에 저장
       setRawPosts(postList); 
 
     } catch (err) {
       console.error('게시글 로딩 실패:', err);
       setError(err instanceof Error ? err.message : '게시글을 불러오는 중 오류가 발생했습니다.');
     } finally {
-      setIsLoading(false); // Stop loading indicator
+      setIsLoading(false);
     }
   };
 
-
-  // [MODIFIED] useEffect to check login status and fetch posts on mount OR location change
   useEffect(() => {
     if (!userInfo) {
-      navigate('/login'); // Redirect if not logged in
+      navigate('/login');
     } else {
-      console.log('HomePage effect triggered, fetching posts for:', location.pathname); // [MODIFIED] Log
-      fetchPosts(); // Fetch posts if logged in
+      console.log('HomePage effect triggered, fetching posts for:', location.pathname);
+      fetchPosts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userInfo, navigate, location]); // [MODIFIED] location을 의존성 배열에 추가
+  }, [userInfo, navigate, location]);
 
-  // [NEW] useEffect to get user's location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -220,14 +195,13 @@ export default function HomePage() {
         },
         (error) => {
           console.error("Error getting user location:", error);
-          // 위치 정보를 가져오지 못해도 앱은 계속 작동해야 함 (거리는 null로 표시됨)
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     } else {
       console.warn("Geolocation not supported by this browser.");
     }
-  }, []); // Run once on mount
+  }, []);
 
   const handleLogout = () => {
     clearTokens();
@@ -252,8 +226,6 @@ export default function HomePage() {
     }
   };
 
-
-  // [NEW] Memoized calculation for formatting posts and calculating distance
   const lostItems: LostItem[] = useMemo(() => {
     return rawPosts.map((post: ApiPost) => {
       let distance: number | null = null;
@@ -275,35 +247,28 @@ export default function HomePage() {
         image: post.images && post.images.length > 0
           ? post.images[0]
           : DEFAULT_IMAGE,
-        status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found', // [MODIFIED] Handle 'LOST'/'FOUND' from API
+        status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
         isCompleted: post.isCompleted,
       };
     });
-  }, [rawPosts, userLocation]); // Re-calculates when rawPosts or userLocation changes
+  }, [rawPosts, userLocation]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Search:', searchQuery);
-    // TODO: Implement search filtering logic (client-side or API call)
-    // For now, filtering happens on the `filteredItems` variable below
   };
 
-  // [MODIFIED] Client-side filtering based on search query
   const filteredItems = lostItems.filter(
     (item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      // item.location.toLowerCase().includes(searchQuery.toLowerCase()) || // 제거
-      // item.category.toLowerCase().includes(searchQuery.toLowerCase()) // 제거
-      item.content.toLowerCase().includes(searchQuery.toLowerCase()) // content로 검색
+      item.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="home-page">
-       {/* Header */}
       <header className="home-header">
         <div className="header-container">
           <div className="header-content">
-            {/* Logo */}
             <div className="header-logo">
               <div className="logo-icon">
                 <MapPin style={{ width: '1.5rem', height: '1.5rem', color: 'white' }} />
@@ -314,7 +279,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right Section */}
             <div className="header-actions">
                <button
                 className="notification-btn"
@@ -334,7 +298,6 @@ export default function HomePage() {
                 )}
               </button>
 
-
               <div className="profile-menu-wrapper">
                 <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
@@ -348,7 +311,6 @@ export default function HomePage() {
                   </Avatar>
                 </button>
 
-                {/* Profile Menu */}
                 {showProfileMenu && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
@@ -359,7 +321,6 @@ export default function HomePage() {
                       <p style={{ fontSize: '0.875rem', color: '#111827' }}>{userInfo?.nickname}</p>
                       <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>{userInfo?.name}</p>
                     </div>
-                    {/* [MODIFIED] Correct navigate path for profile */}
                     <button onClick={() => navigate('/profile')} className="menu-item">
                       <User style={{ width: '1rem', height: '1rem' }} />
                       <span>프로필</span>
@@ -378,7 +339,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Search Bar */}
           <form onSubmit={handleSearch} style={{ marginTop: '1rem' }}>
             <div className="search-wrapper">
               <Search className="search-icon" style={{ width: '1.25rem', height: '1.25rem', color: '#9ca3af' }} />
@@ -400,9 +360,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="main-content">
-        {/* Verification Banner */}
         {userInfo?.role === 'NOT_VERIFIED' && (
           <div className="verification-banner">
             <AlertCircle className="banner-icon" />
@@ -416,9 +374,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Quick Actions */}
         <div className="quick-actions">
-          {/* [MODIFIED] Correct navigate paths */}
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate('/map')}
@@ -436,7 +392,6 @@ export default function HomePage() {
             <ChevronRight style={{ width: '1.25rem', height: '1.25rem', color: '#9ca3af' }} />
           </motion.button>
 
-          {/* Assuming /my-items is the correct route for user's posts */}
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate('/my-items')}
@@ -455,14 +410,12 @@ export default function HomePage() {
           </motion.button>
         </div>
 
-        {/* Recent Items Section */}
         <div style={{ marginBottom: '1.5rem' }}>
           <div className="section-header">
             <h2 style={{ fontSize: '1.125rem', color: '#111827' }}>최근 등록된 물건</h2>
-            <button className="view-all-btn">전체보기</button> {/* TODO: Implement view all */}
+            <button className="view-all-btn">전체보기</button>
           </div>
 
-          {/* [MODIFIED] Conditional rendering for loading, error, data, and no results */}
           {isLoading ? (
             <div className="loading-indicator">
               <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
@@ -482,51 +435,57 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
-                  // [MODIFIED] Add completed class and style
-                  className={`item-card ${item.isCompleted ? 'completed' : ''}`}
-                  onClick={() => navigate(`/items/${item.id}`)} // Navigate to item detail page
-                  style={item.isCompleted ? { opacity: 0.6 } : {}}
+                  className="item-card"
+                  onClick={() => navigate(`/items/${item.id}`)}
                 >
-                  <div className="item-image">
+                  <div className="item-image" style={{ position: 'relative' }}>
                     <ImageWithFallback
                       src={item.image}
                       alt={item.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    {/* [MODIFIED] Display "Completed" badge or Lost/Found badge */}
-                    {item.isCompleted ? (
-                       <Badge
-                         className="status-badge completed-badge"
-                       >
-                         완료
-                       </Badge>
-                     ) : (
-                      <Badge
-                    className={
-                      item.status === "lost"
-                        ? "badge-lost"
-                        : "badge-found"
-                    }
-                    style={{
-                      position: "absolute",
-                      top: "0.75rem",
-                      right: "0.75rem",
-                      backgroundColor:
-                        item.status === "lost"
-                          ? "#ef4444"
-                          : "#22c55e",
-                      color: "white",
-                    }}
-                  >
-                    {item.status === "lost" ? "분실물" : "습득물"}
                     
-                  </Badge>
-                     )}
+                    <Badge
+                      className={
+                        item.status === "lost"
+                          ? "badge-lost"
+                          : "badge-found"
+                      }
+                      style={{
+                        position: "absolute",
+                        top: "0.75rem",
+                        right: "0.75rem",
+                        backgroundColor:
+                          item.status === "lost"
+                            ? "#ef4444"
+                            : "#22c55e",
+                        color: "white",
+                        zIndex: 1
+                      }}
+                    >
+                      {item.status === "lost" ? "분실물" : "습득물"}
+                    </Badge>
+
+                    {item.isCompleted && (
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        zIndex: 5
+                      }}>
+                        완료됨
+                      </div>
+                    )}
                   </div>
-                  {/* [MODIFIED] item-info 섹션 수정 */}
                   <div className="item-info">
                     <h3 className="item-title">{item.title}</h3>
-                    <p className="item-content-snippet">{item.content}</p> {/* New */}
+                    <p className="item-content-snippet">{item.content}</p> 
                     <div className="item-meta">
                       <div className="meta-item" title={`리워드: ${item.points}P`}>
                         <Coins style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0, color: '#f59e0b' }} />
@@ -542,7 +501,6 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                  {/* [END OF MODIFIED] item-info 섹션 */}
                 </motion.div>
               ))}
             </div>
@@ -554,7 +512,6 @@ export default function HomePage() {
               <p style={{ color: '#4b5563' }}>
                 {searchQuery ? '검색 결과가 없습니다' : '등록된 게시물이 없습니다.'}
               </p>
-               {/* Suggest creating a post if no posts exist and no search query */}
                {!searchQuery && lostItems.length === 0 && (
                    <Button onClick={() => navigate('/create')} style={{marginTop: '1rem'}}>
                        <Plus size={16} style={{marginRight: '0.5rem'}} /> 첫 게시물 등록하기
@@ -565,18 +522,16 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Floating Action Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => navigate('/create')}
         className="fab"
-        aria-label="게시물 등록" // Accessibility
+        aria-label="게시물 등록"
       >
         <Plus style={{ width: '2rem', height: '2rem', color: 'white' }} />
       </motion.button>
 
-      {/* 회원 탈퇴 확인 모달 */}
       {isDeleteDialogOpen && (
         <div className="delete-dialog-overlay">
           <motion.div
@@ -594,8 +549,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Bottom Safe Area (Handled by MainLayout now) */}
-      {/* <div className="bottom-safe-area" /> */}
       <BottomNavigation />
     </div>
   );

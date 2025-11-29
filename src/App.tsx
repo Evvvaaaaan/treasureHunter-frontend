@@ -18,6 +18,7 @@ import OtherUserProfilePage from './components/OtherUserProfilePage';
 import SettingsPage from './components/SettingsPage';
 import NotificationsPage from './components/NotificationsPage';
 import ReviewPage from './components/ReviewPage';
+import FavoritesPage from './components/FavoritesPage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 
@@ -325,6 +326,14 @@ export default function App() {
             </ProtectedRoute>
           }
         /> 
+        <Route 
+          path='/favorites'
+          element={
+            <ProtectedRoute>
+              <FavoritesPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/chat/:id/review" element={<ReviewPage />} />
 
         {/* Redirect Logic */}
