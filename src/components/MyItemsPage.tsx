@@ -6,7 +6,6 @@ import { getValidAuthToken, getUserInfo, type UserInfo } from '../utils/auth';
 import BottomNavigation from './BottomNavigation';
 import '../styles/my-items-page.css';
 
-// API 응답 타입 (auth.ts의 Post 인터페이스와 일치)
 interface ApiPost {
   id: number;
   title: string;
@@ -24,7 +23,6 @@ interface ApiPost {
   isCompleted: boolean;
 }
 
-// 컴포넌트 UI용 타입
 interface MyItem {
   id: string;
   type: 'lost' | 'found';
@@ -41,7 +39,6 @@ interface MyItem {
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
-// 카테고리 매핑 (API Enum -> 한글)
 const CATEGORY_MAP: { [key: string]: string } = {
   'PHONE': '휴대폰',
   'WALLET': '지갑',
@@ -54,10 +51,9 @@ const CATEGORY_MAP: { [key: string]: string } = {
 };
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
-// Haversine 거리 계산 함수 (km 단위)
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
-  const R = 6371; // Earth radius in km
+  const R = 6371; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
@@ -81,7 +77,6 @@ const MyItemsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. 사용자 위치 가져오기
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -99,7 +94,6 @@ const MyItemsPage: React.FC = () => {
     }
   }, []);
 
-  // 2. 내 게시물 데이터 로드
   useEffect(() => {
     loadMyItems();
   }, []);
@@ -109,7 +103,6 @@ const MyItemsPage: React.FC = () => {
     setError(null);
 
     try {
-      // A. 토큰 확인
       const token = await getValidAuthToken();
       if (!token) {
         setError('로그인이 필요합니다.');
@@ -117,7 +110,6 @@ const MyItemsPage: React.FC = () => {
         return;
       }
 
-      // B. 로컬 스토리지에서 내 ID 확인
       const localUserInfo = getUserInfo();
       if (!localUserInfo || !localUserInfo.id) {
         setError('사용자 정보를 확인할 수 없습니다. 다시 로그인해주세요.');
@@ -125,7 +117,6 @@ const MyItemsPage: React.FC = () => {
         return;
       }
 
-      // C. API 호출: 내 프로필 정보(/user/{id})를 조회하여 posts 배열을 가져옴
       const response = await fetch(`${API_BASE_URL}/user/${localUserInfo.id}`, {
         method: 'GET',
         headers: {
@@ -141,16 +132,12 @@ const MyItemsPage: React.FC = () => {
 
       const userData: UserInfo = await response.json();
       
-      // D. 데이터 설정 (posts가 없으면 빈 배열)
       const myPosts = userData.posts || [];
       
-      // 최신순 정렬 (생성일 기준 내림차순)
-      // 타입 단언(any)을 사용하여 API 응답 필드 접근
       myPosts.sort((a: any, b: any) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
-      // ApiPost 타입으로 캐스팅하여 상태 저장
       setRawPosts(myPosts as unknown as ApiPost[]);
 
     } catch (err) {
@@ -161,12 +148,10 @@ const MyItemsPage: React.FC = () => {
     }
   };
 
-  // 3. 데이터 가공 (Memoization)
   const items: MyItem[] = useMemo(() => {
     return rawPosts.map((post) => {
       let distance: number | null = null;
       
-      // 위치 정보가 있고, 게시글 좌표가 유효할 때 거리 계산
       if (userLocation && post.lat && post.lon) {
         distance = getDistance(
           userLocation.lat,
@@ -178,14 +163,12 @@ const MyItemsPage: React.FC = () => {
 
       return {
         id: post.id.toString(),
-        // 타입 안전하게 변환 (기본값 'LOST')
         type: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
         title: post.title,
         category: CATEGORY_MAP[post.itemCategory] || post.itemCategory,
         content: post.content,
         location: `위도: ${post.lat}, 경도: ${post.lon}`,
         date: post.lostAt,
-        // 이미지가 있으면 첫 번째 이미지, 없으면 플레이스홀더
         image: post.images && post.images.length > 0
           ? post.images[0]
           : DEFAULT_IMAGE, 
@@ -196,13 +179,11 @@ const MyItemsPage: React.FC = () => {
     });
   }, [rawPosts, userLocation]);
 
-  // 4. 탭 필터링
   const filteredItems = items.filter(item => {
     if (activeTab === 'all') return true;
     return item.type === activeTab;
   });
 
-  // 날짜 포맷팅 함수
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -216,11 +197,8 @@ const MyItemsPage: React.FC = () => {
     }
   };
 
-  
-
   return (
     <div className={`my-items-page ${theme}`}>
-      {/* Header */}
       <div className="my-items-header">
         <button className="back-button" onClick={() => navigate(-1)}>
           <ArrowLeft size={24} />
@@ -231,7 +209,6 @@ const MyItemsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="my-items-tabs">
         <button 
           className={`tab ${activeTab === 'all' ? 'active' : ''}`}
@@ -253,7 +230,6 @@ const MyItemsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Content */}
       <div className="my-items-content">
         {isLoading ? (
           <div className="loading-container">
@@ -288,15 +264,30 @@ const MyItemsPage: React.FC = () => {
                 className="item-card"
                 onClick={() => navigate(`/items/${item.id}`)}
               >
-                <div className="item-image-container">
+                <div className="item-image-container" style={{ position: 'relative' }}>
                   <img src={item.image} alt={item.title} className="item-image" />
+                  
                   <div className="image-overlay">
                     <div className={`type-badge ${item.type}`}>
                       {item.type === 'lost' ? '분실물' : '습득물'}
                     </div>
                   </div>
+
                   {item.status === 'completed' && (
-                    <div className="status-overlay">완료됨</div>
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: '14px',
+                      zIndex: 5
+                    }}>
+                      완료됨
+                    </div>
                   )}
                 </div>
                 <div className="item-content">

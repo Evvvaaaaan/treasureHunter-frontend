@@ -32,8 +32,9 @@ const ReviewPage: React.FC = () => {
   const { theme } = useTheme();
   const currentUser = getUserInfo();
 
-  // 상대방 정보 및 게시글 ID 저장
+  // 상대방 정보 저장 (targetUserId로 사용)
   const [partner, setPartner] = useState<{ id: number; nickname: string; profileImage: string } | null>(null);
+  // [수정] postId는 선택 사항이거나 제거될 수 있음 (API 명세에 따라 유지하거나 제거)
   const [postId, setPostId] = useState<number | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -78,11 +79,9 @@ const ReviewPage: React.FC = () => {
         throw new Error("대화 상대방을 찾을 수 없습니다.");
       }
 
-      // 게시글 ID 저장
+      // 게시글 ID 저장 (필요하다면 유지)
       if (roomData.post?.id) {
         setPostId(roomData.post.id);
-      } else {
-        console.warn("이 채팅방에는 연결된 게시글이 없습니다.");
       }
 
     } catch (error) {
@@ -146,8 +145,10 @@ const ReviewPage: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    if (!postId) {
-      alert("게시글 정보가 없어 후기를 작성할 수 없습니다.");
+    
+    // [수정] targetUserId(상대방 ID) 확인
+    if (!partner?.id) {
+      alert("후기 대상 정보가 없어 작성할 수 없습니다.");
       return;
     }
 
@@ -165,12 +166,14 @@ const ReviewPage: React.FC = () => {
       }
 
       // 2. API 요청 데이터 구성
+      // [핵심 수정] postId 대신 targetUserId 사용
       const payload = {
         title: reviewData.title,
         content: reviewData.content,
         score: reviewData.score,
-        postId: postId, // 조회한 게시글 ID 사용
-        images: imageUrls // 업로드된 URL 리스트
+        targetUserId: partner.id, // [수정됨] 리뷰 대상 유저 ID
+        // postId: postId, // 필요 시 주석 해제하여 함께 전송 가능
+        images: imageUrls 
       };
 
       // 3. 후기 등록 API 호출
@@ -188,29 +191,20 @@ const ReviewPage: React.FC = () => {
         throw new Error(errData.message || "후기 등록에 실패했습니다.");
       }
 
-      // [추가] 4. 게시글 완료 처리 API 호출 (거래 완료 및 포인트 전송)
-      // Endpoint: POST /api/v1/post/{id}/complete
-      try {
-        console.log(`게시글(${postId}) 완료 처리 시도...`);
-        const completeResponse = await fetch(`${API_BASE_URL}/post/${postId}/complete`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!completeResponse.ok) {
-          // 후기는 등록됐지만 완료 처리가 실패했을 경우 (경고 로그만 남김)
-          console.warn(`게시글 완료 처리 실패: ${completeResponse.status}`);
-        } else {
-          console.log("게시글 완료 처리 성공");
+      // 4. 게시글 완료 처리 (선택 사항: 후기 작성 시 완료 처리도 함께 한다면 유지)
+      if (postId) {
+        try {
+          await fetch(`${API_BASE_URL}/post/${postId}/complete`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+        } catch (completeError) {
+          console.warn("게시글 완료 처리 실패 (후기는 등록됨)", completeError);
         }
-      } catch (completeError) {
-        console.error("게시글 완료 처리 중 오류:", completeError);
       }
 
       alert("후기가 소중하게 전달되었습니다!");
-      navigate('/home'); // 홈으로 이동
+      navigate('/home'); 
     } catch (error) {
       console.error("후기 등록 오류:", error);
       alert(`후기 등록 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
@@ -289,7 +283,7 @@ const ReviewPage: React.FC = () => {
           />
           <div className="user-info-review">
             <p className="user-nickname-review">{partner.nickname}</p>
-            <p className="user-subtitle-review">님에 대해서 후기를 작성해주세요.</p>
+            <p className="user-subtitle-review">님과의 거래는 어떠셨나요?</p>
           </div>
         </div>
 
