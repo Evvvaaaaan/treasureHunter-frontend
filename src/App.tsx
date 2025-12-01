@@ -21,6 +21,7 @@ import ReviewPage from './components/ReviewPage';
 import FavoritesPage from './components/FavoritesPage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
+import { ChatProvider } from './components/ChatContext';
 
 
 /**
@@ -192,6 +193,7 @@ function RootRedirect() {
 export default function App() {
   return (
     <ThemeProvider>
+      <ChatProvider>
     <Router>
       <Routes>
         {/* Public Routes */}
@@ -335,12 +337,12 @@ export default function App() {
           }
         />
         <Route path="/chat/:id/review" element={<ReviewPage />} />
-
         {/* Redirect Logic */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    </ChatProvider>
     </ThemeProvider>
   );
 }

@@ -18,6 +18,7 @@ import {
 } from '../utils/chat';
 import { fetchPostDetail } from '../utils/post';
 import { uploadImage } from '../utils/file';
+import { useChat } from '../components/ChatContext'; // Context hook 추가
 import type { ChatRoom, ChatMessage, ChatReadEvent } from '../types/chat';
 import {
   DropdownMenu,
@@ -34,9 +35,10 @@ const ChatPage: React.FC = () => {
   const navigate = useNavigate();
   const { id: roomId } = useParams<{ id: string }>();
   const { theme } = useTheme();
+  const { updateUnreadCount } = useChat(); // unread count 업데이트 함수 가져오기
+  
   const handleEndChat = () => {
     if (confirm("채팅을 종료하고 후기를 작성하시겠습니까?")) {
-      // 채팅방 ID를 가지고 후기 페이지로 이동
       navigate(`/chat/${roomId}/review`);
     }
   };
@@ -57,22 +59,20 @@ const ChatPage: React.FC = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [myUserType, setMyUserType] = useState<'AUTHOR' | 'CALLER' | null>(null);
   
-  // [핵심 수정] myUserType을 소켓 콜백 안에서 즉시 참조하기 위한 Ref
+  // 소켓 콜백 내부에서 최신 state 참조를 위한 Ref
   const myUserTypeRef = useRef<'AUTHOR' | 'CALLER' | null>(null);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
-  const [playingVoice, setPlayingVoice] = useState<number | null>(null);
   
   const stompClient = useRef<Client | null>(null);
   
-  // 읽음 요청 최적화용 Refs
+  // 읽음 처리 최적화를 위한 Refs
   const lastReadIdRef = useRef<number>(0);
   const readUpdateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // myUserType 상태가 변하면 Ref도 업데이트 (동기화)
   useEffect(() => {
     myUserTypeRef.current = myUserType;
   }, [myUserType]);
@@ -84,7 +84,6 @@ const ChatPage: React.FC = () => {
     const initChat = async () => {
       setIsLoading(true);
       try {
-        // 1. 채팅방 정보와 메시지 동기화 데이터 가져오기
         const [roomData, syncData] = await Promise.all([
           fetchChatRoomDetail(roomId),
           fetchChatMessages(roomId, 0, 300)
@@ -93,18 +92,15 @@ const ChatPage: React.FC = () => {
         setRoomInfo(roomData);
         setMessages(syncData.chats || []);
         
-        // [디버깅] 초기 읽음 상태 확인
-        console.log("[Sync] 상대방 마지막 읽음 ID:", syncData.opponentLastReadChatId);
+        console.log("[Sync] Opponent Last Read ID:", syncData.opponentLastReadChatId);
         setOpponentLastReadId(syncData.opponentLastReadChatId || 0);
 
-        // 2. 내 역할 판단
+        // 내 역할(UserType) 결정
         if (roomData.post?.id) {
           try {
             const postDetail = await fetchPostDetail(roomData.post.id);
             const authorId = postDetail.user?.id || postDetail.author?.id;
             const myId = Number(currentUser.id);
-
-            console.log(`[Role Check] 내ID: ${myId}, 작성자ID: ${authorId}`);
 
             if (Number(authorId) === myId) {
               setMyUserType('AUTHOR');
@@ -112,7 +108,7 @@ const ChatPage: React.FC = () => {
               setMyUserType('CALLER');
             }
           } catch (e) {
-            console.error("게시글 정보 로드 실패", e);
+            console.error("Failed to load post info", e);
             setMyUserType('CALLER');
           }
         } else {
@@ -120,7 +116,7 @@ const ChatPage: React.FC = () => {
         }
 
       } catch (error) {
-        console.error('채팅 데이터 로딩 실패:', error);
+        console.error('Failed to load chat data:', error);
         navigate(-1);
       } finally {
         setIsLoading(false);
@@ -128,7 +124,7 @@ const ChatPage: React.FC = () => {
     };
 
     initChat();
-  }, [roomId, navigate]); 
+  }, [roomId, navigate]);
 
   // 2. WebSocket 연결
   useEffect(() => {
@@ -142,7 +138,7 @@ const ChatPage: React.FC = () => {
       onConnect: () => {
         console.log("WebSocket Connected");
 
-        // (1) 일반 메시지 구독
+        // 메시지 수신 구독
         client.subscribe(`/topic/chat.room.${roomId}`, (message) => {
           if (message.body) {
             const newMessage: ChatMessage = JSON.parse(message.body);
@@ -153,20 +149,16 @@ const ChatPage: React.FC = () => {
           }
         });
 
-        // (2) 읽음 이벤트 구독
+        // 읽음 이벤트 수신 구독
         client.subscribe(`/topic/chat.room.${roomId}.read`, (message) => {
           if (message.body) {
             const event: ChatReadEvent = JSON.parse(message.body);
-            console.log("[Socket] 읽음 이벤트 수신:", event);
+            console.log("[Socket] Read event:", event);
             
-            // [핵심 수정] Ref를 사용하여 최신 myUserType 값과 비교
             const currentMyType = myUserTypeRef.current;
             
-            console.log(`[Read Logic] 이벤트 유저: ${event.userType}, 내 유저: ${currentMyType}`);
-
-            // 내 역할이 확정되었고, 이벤트가 '상대방'이 읽은 것이라면 업데이트
+            // 상대방이 읽은 이벤트인 경우 UI 업데이트
             if (currentMyType && event.userType !== currentMyType) {
-              console.log(`[Update] 상대방이 ${event.lastReadChatId}까지 읽음 -> 업데이트`);
               setOpponentLastReadId((prev) => Math.max(prev, event.lastReadChatId));
             }
           }
@@ -184,33 +176,37 @@ const ChatPage: React.FC = () => {
       if (client.active) client.deactivate();
       if (readUpdateTimerRef.current) clearTimeout(readUpdateTimerRef.current);
     };
-    // [중요] 의존성 배열에서 myUserType을 제거하여 소켓 재연결 방지
   }, [roomId]); 
 
-  // 3. 스크롤 자동 이동
+  // 3. 자동 스크롤
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, previewUrl]);
 
-  // 4. 읽음 처리 요청 (0.5초 스로틀링)
+  // 4. 읽음 처리 요청 (쓰로틀링 적용 & 로컬 스토리지 업데이트)
   const handleReadUpdate = (chatId: number) => {
-    // 더 큰 ID(최신)일 때만 갱신 요청
     if (chatId <= lastReadIdRef.current) return;
     
     lastReadIdRef.current = chatId;
+    
+    // ChatListPage와의 동기화를 위해 로컬 스토리지 업데이트
+    localStorage.setItem(`lastRead_${roomId}`, chatId.toString());
+    
+    // 전역 읽지 않은 메시지 수 업데이트 (약간의 지연 후 호출하여 UI 반영)
+    setTimeout(updateUnreadCount, 1000);
 
     if (readUpdateTimerRef.current) return;
 
+    // 0.5초마다 서버로 읽음 상태 전송
     readUpdateTimerRef.current = setTimeout(() => {
       if (roomId && lastReadIdRef.current > 0) {
-        // console.log(`[API] 읽음 처리 전송: ID ${lastReadIdRef.current}`);
         updateReadCursor(roomId, lastReadIdRef.current);
       }
       readUpdateTimerRef.current = null;
     }, 500);
   };
 
-  // 메시지가 추가될 때마다 읽음 처리 시도
+  // 메시지 목록이 업데이트될 때마다 읽음 처리 시도
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -230,25 +226,22 @@ const ChatPage: React.FC = () => {
     try {
       if (selectedFile) {
         const imageUrl = await uploadImage(selectedFile);
-        // setMessages 호출 X (소켓 수신 대기)
         await sendChatMessage(roomId, imageUrl, 'IMAGE');
         handleClearFile();
       }
 
       if (inputMessage.trim()) {
-        // setMessages 호출 X (소켓 수신 대기)
         await sendChatMessage(roomId, inputMessage, 'TEXT');
         setInputMessage('');
       }
     } catch (error) {
-      console.error('전송 실패:', error);
+      console.error('Send failed:', error);
       alert('메시지 전송 중 오류가 발생했습니다.');
     } finally {
       setIsSending(false);
     }
   };
 
-  // ... (나머지 헬퍼 함수들은 변경 없음) ...
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -272,33 +265,24 @@ const ChatPage: React.FC = () => {
     setInputMessage((prev) => prev + emojiData.emoji);
   };
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      alert('음성 녹음 기능은 아직 구현 중입니다.');
-    } else {
-      setIsRecording(true);
-    }
-  };
-
-  const toggleVoicePlay = (msgId: number) => {
-    setPlayingVoice(playingVoice === msgId ? null : msgId);
-  };
-
   const getPartnerInfo = () => {
     if (!roomInfo || !currentUser) return { name: '알 수 없음', image: '' };
     const partner = roomInfo.participants.find(p => p.id !== Number(currentUser.id));
     return {
       name: partner?.nickname || roomInfo.name || '상대방',
-      image: partner?.profileImage || partner?.image || 'https://via.placeholder.com/150?text=User'
+      image: partner?.profileImage || 'https://via.placeholder.com/150?text=User'
     };
   };
   const partnerInfo = getPartnerInfo();
 
   const formatTime = (isoString: string) => {
     if (!isoString) return '';
-    if (!isoString.endsWith('Z')) isoString += 'Z';
-    const date = new Date(isoString);
+    // UTC 시간 보정 (Z가 없는 경우 추가하여 로컬 시간으로 변환되도록 함)
+    let safeTimestamp = isoString;
+    if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
+        safeTimestamp += 'Z';
+    }
+    const date = new Date(safeTimestamp);
     let hours = date.getHours();
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? '오후' : '오전';
@@ -333,31 +317,27 @@ const ChatPage: React.FC = () => {
           <button className="header-icon-btn"><Phone size={20} /></button>
           <button className="header-icon-btn"><Video size={20} /></button>
           
-          {/* [수정] MoreVertical 버튼을 DropdownMenu로 감싸기 */}
           <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <button className="header-icon-btn transition-colors hover:bg-gray-100 rounded-full p-2 outline-none focus:ring-2 focus:ring-primary/20 active:bg-gray-200">
-      <MoreVertical size={20} />
-    </button>
-  </DropdownMenuTrigger>
-  
-  {/* 컨텐츠 영역 디자인 개선: 부드러운 그림자, 애니메이션, 둥근 모서리 */}
-  <DropdownMenuContent 
-    align="end" 
-    sideOffset={8}
-    className="w-56 z-50 p-2 bg-white/95 backdrop-blur-sm rounded-xl border border-gray-100 shadow-lg ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-  >
-    {/* 아이템 디자인 개선: 아이콘 추가, 호버 효과 강화 */}
-    <DropdownMenuItem 
-      onClick={handleEndChat}
-      className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition-all cursor-pointer hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 outline-none"
-    >
-        {/* 호버 시 아이콘이 살짝 움직이는 효과 */}
-      <LogOut size={18} className="transition-transform group-hover:-translate-x-0.5" />
-      <span>채팅 종료 및 후기 작성</span>
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="header-icon-btn transition-colors hover:bg-gray-100 rounded-full p-2 outline-none focus:ring-2 focus:ring-primary/20 active:bg-gray-200">
+                <MoreVertical size={20} />
+              </button>
+            </DropdownMenuTrigger>
+            
+            <DropdownMenuContent 
+              align="end" 
+              sideOffset={8}
+              className="w-56 z-50 p-2 bg-white/95 backdrop-blur-sm rounded-xl border border-gray-100 shadow-lg ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+            >
+              <DropdownMenuItem 
+                onClick={handleEndChat}
+                className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition-all cursor-pointer hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 outline-none"
+              >
+                <LogOut size={18} className="transition-transform group-hover:-translate-x-0.5" />
+                <span>채팅 종료 및 후기 작성</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -374,10 +354,8 @@ const ChatPage: React.FC = () => {
                 </div>
               )}
               
-              {/* [수정] 메시지 그룹 컨테이너 스타일 조정 */}
               <div className="message-group-new" style={{ display: 'flex', flexDirection: 'column', alignItems: isMyMessage ? 'flex-end' : 'flex-start' }}>
                 
-                {/* --- 메시지 본문 --- */}
                 {message.type === 'IMAGE' ? (
                   <div className={`message-image-new ${isMyMessage ? 'my-bubble' : 'other-bubble'}`} style={{ padding: '4px', background: 'transparent' }}>
                     <img 
@@ -394,23 +372,19 @@ const ChatPage: React.FC = () => {
                   </div>
                 )}
                 
-                {/* [수정] 시간 및 읽음 표시 영역 */}
-                {/* flex-row로 배치하되, 내 메시지면 오른쪽 정렬, 아니면 왼쪽 정렬 */}
                 <div 
                   style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
                     gap: '4px', 
                     marginTop: '2px',
-                    flexDirection: isMyMessage ? 'row-reverse' : 'row' // 내 메시지면 시간-읽음 순서 반전 또는 정렬 방향 고려
+                    flexDirection: isMyMessage ? 'row-reverse' : 'row'
                   }}
                 >
-                   {/* 시간 표시 */}
                    <span className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}>
                     {formatTime(message.sentAt)}
                    </span>
                    
-                   {/* 읽음 표시 */}
                    {isMyMessage && isRead && (
                      <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 500 }}>읽음</span>
                    )}
