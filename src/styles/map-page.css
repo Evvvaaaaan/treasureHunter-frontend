@@ -518,3 +518,41 @@
     color: #d1d5db;
   }
 }
+
+/* 내 위치 버튼 스타일 */
+.my-location-btn {
+  position: absolute;
+  bottom: 100px; /* 정보창 위에 위치하도록 조정 */
+  right: 16px;
+  width: 48px;
+  height: 48px;
+  background-color: white;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10; /* 지도 위에 표시 */
+  transition: all 0.2s ease;
+}
+
+.my-location-btn:hover {
+  background-color: #f0f0f0;
+  transform: scale(1.05);
+}
+
+.my-location-btn:active {
+  transform: scale(0.95);
+}
+
+/* 다크 모드 */
+.dark .my-location-btn {
+  background-color: #2a2a2a;
+  color: #f5f5f5;
+}
+
+.dark .my-location-btn:hover {
+  background-color: #3a3a3a;
+}
