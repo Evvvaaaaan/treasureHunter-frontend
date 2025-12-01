@@ -8,6 +8,7 @@ import { useTheme } from '../utils/theme';
 import BottomNavigation from './BottomNavigation';
 import { fetchChatRooms, fetchChatMessages } from '../utils/chat';
 import { getUserInfo } from '../utils/auth';
+import { useChat } from '../components/ChatContext'; // Import useChat
 import type { ChatRoom as ApiChatRoom, ChatMessage } from '../types/chat';
 import '../styles/chat-list-page.css';
 
@@ -31,6 +32,7 @@ const ChatListPage: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const myInfo = getUserInfo();
+  const { updateUnreadCount } = useChat(); // Get updateUnreadCount function
 
   const [chatRooms, setChatRooms] = useState<ChatRoomUI[]>([]);
   const [filteredRooms, setFilteredRooms] = useState<ChatRoomUI[]>([]);
@@ -40,9 +42,31 @@ const ChatListPage: React.FC = () => {
   const stompClient = useRef<Client | null>(null);
   const subscriptions = useRef<Map<string, any>>(new Map());
 
-  // 1. 초기 데이터 로드
+  // [NEW] 주기적 데이터 갱신을 위한 타이머 Ref
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 1. 초기 데이터 로드 및 주기적 갱신 설정
   useEffect(() => {
-    loadChatRooms();
+    // 초기 로드 시에도 전역 카운트 업데이트
+    const initialLoad = async () => {
+        await loadChatRooms();
+        updateUnreadCount(); 
+    };
+    initialLoad();
+
+    // 5초마다 채팅 목록 갱신 (읽지 않은 메시지 수 업데이트 등)
+    refreshIntervalRef.current = setInterval(() => {
+      // 로딩 중이 아닐 때만 조용히 갱신 (Silent Refresh)
+      loadChatRooms(true);
+      // [ADDED] 주기적으로 전역 unread count도 업데이트하여 뱃지 갱신
+      updateUnreadCount();
+    }, 5000);
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
   }, []);
 
   // 2. 검색 필터링
@@ -132,6 +156,9 @@ const ChatListPage: React.FC = () => {
         // 현재 목록에 있다는 것은 아직 안 읽었을 가능성이 큼 -> 1 증가
         unreadCount: (targetRoom.unreadCount || 0) + 1 
       };
+      
+      // [ADDED] 새 메시지가 오면 전역 카운트도 업데이트
+      updateUnreadCount();
 
       const otherRooms = prevRooms.filter(r => r.id !== newMsg.roomId.toString());
       
@@ -140,8 +167,9 @@ const ChatListPage: React.FC = () => {
     });
   };
 
-  const loadChatRooms = async () => {
-    setIsLoading(true);
+  // [MODIFIED] silentRefresh 인자 추가
+  const loadChatRooms = async (silentRefresh = false) => {
+    if (!silentRefresh) setIsLoading(true);
     try {
       const apiRooms = await fetchChatRooms();
       
@@ -155,6 +183,13 @@ const ChatListPage: React.FC = () => {
 
         // 메시지 미리보기를 위해 최근 메시지 로드 (size를 20으로 늘려 최신 메시지 확보)
         try {
+          // [중요] unreadCount 계산을 위해 충분한 양의 메시지를 가져오거나,
+          // API가 unreadCount를 제공하지 않는다면 클라이언트에서 계산해야 함.
+          // 여기서는 최근 메시지를 가져와서 로컬 unreadCount 로직(예: lastReadId 비교)을 적용하거나
+          // 단순히 최신 메시지 정보를 업데이트함.
+          // *실제 unreadCount는 서버 API가 지원해야 정확함.*
+          // 현재는 임시로 0 또는 소켓 이벤트로 증가된 값 사용.
+          
           const response = await fetchChatMessages(room.roomId, 0, 20);
           const messages = response.chats || [];
           
@@ -169,6 +204,10 @@ const ChatListPage: React.FC = () => {
               lastMessageType = 'text';
             }
             timestamp = lastMsg.serverAt;
+            
+             // [추가] unreadCount 로직 (예시: 로컬 스토리지 lastReadId와 비교)
+             // const lastReadId = parseInt(localStorage.getItem(`lastRead_${room.roomId}`) || '0', 10);
+             // unreadCount = messages.filter(m => m.id > lastReadId && m.userType !== 'AUTHOR').length; // 예시
           }
         } catch (e) {
           console.error(`채팅방(${room.roomId}) 데이터 로드 실패`, e);
@@ -196,11 +235,14 @@ const ChatListPage: React.FC = () => {
       });
 
       setChatRooms(uiRooms);
-      setFilteredRooms(uiRooms);
+      // 검색 중이 아닐 때만 필터 목록 갱신
+      if (!searchQuery) {
+          setFilteredRooms(uiRooms);
+      }
     } catch (error) {
       console.error('Failed to load chat rooms:', error);
     } finally {
-      setIsLoading(false);
+      if (!silentRefresh) setIsLoading(false);
     }
   };
 
@@ -211,7 +253,6 @@ const ChatListPage: React.FC = () => {
     // 서버 시간이 UTC('Z' 미포함)로 오는 경우를 대비하여 'Z'를 추가하여 UTC로 파싱되도록 유도
     // 이미 'Z'나 타임존 오프셋이 있으면 그대로 사용
     let safeTimestamp = timestamp;
-    // ISO 8601 형식에서 Z가 없고, +09:00 같은 오프셋도 없는 경우 UTC로 간주하여 Z 추가
     if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
       safeTimestamp += 'Z';
     }
@@ -351,7 +392,6 @@ const ChatListPage: React.FC = () => {
                       {room.userName}
                       {room.itemTitle && <span style={{fontSize: '0.8em', color: '#888', fontWeight: 'normal', marginLeft: '6px'}}> • {room.itemTitle}</span>}
                     </h3>
-                    {/* formatTimeAgo 함수를 사용하여 경과 시간을 표시합니다. */}
                     <span className="room-time-new">{formatTimeAgo(room.timestamp)}</span>
                   </div>
                   <div className="room-bottom-row">
