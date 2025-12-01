@@ -264,8 +264,13 @@
   background-color: #f3f4f6;
 }
 
-.chat-list-page-new.dark .chat-room-item-new:active {
-  background-color: #3d3d3d;
+/* [NEW] Unread Item Styles - Highlighted */
+.chat-room-item-new.has-unread {
+  background-color: #fff1f2; /* Light red tint */
+}
+
+.chat-list-page-new.dark .chat-room-item-new.has-unread {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* ===== AVATAR ===== */
@@ -329,8 +334,13 @@
   color: #f1f5f9;
 }
 
+/* [NEW] Bold title for unread */
 .chat-room-item-new.has-unread .room-name-new {
-  font-weight: 700;
+  font-weight: 800;
+  color: #000000;
+}
+.chat-list-page-new.dark .chat-room-item-new.has-unread .room-name-new {
+  color: #ffffff;
 }
 
 .room-time-new {
@@ -340,8 +350,9 @@
   font-weight: 500;
 }
 
+/* [NEW] Accent color for time in unread */
 .chat-room-item-new.has-unread .room-time-new {
-  color: #10b981;
+  color: #ef4444; /* Red accent */
   font-weight: 600;
 }
 
@@ -366,13 +377,14 @@
   color: #9ca3af;
 }
 
+/* [NEW] Darker text for unread message preview */
 .chat-room-item-new.has-unread .room-message-new {
-  color: #111827;
+  color: #374151;
   font-weight: 600;
 }
 
 .chat-list-page-new.dark .chat-room-item-new.has-unread .room-message-new {
-  color: #f1f5f9;
+  color: #e2e8f0;
 }
 
 .message-with-icon {
@@ -392,12 +404,14 @@
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  background-color: #10b981;
+  /* [NEW] Changed to Red for better visibility */
+  background-color: #ef4444; 
   color: #ffffff;
   font-size: 11px;
   font-weight: 700;
   border-radius: 10px;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
 }
 
 /* ===== SCROLLBAR ===== */

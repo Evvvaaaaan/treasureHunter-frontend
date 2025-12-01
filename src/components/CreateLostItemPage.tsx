@@ -969,7 +969,7 @@
             </div>
             <Textarea
               id="description"
-              placeholder="분실물의 특징, 브랜드, 색상, 크기 등을 자세히 설명해주세요. (최소 100자 이상)"
+              placeholder="물건의 발견 or 습득 지역, 특징, 브랜드, 색상, 크기 등을 자세히 설명해주세요. (최소 100자 이상)"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="form-textarea"
@@ -979,7 +979,6 @@
               minLength={100} // HTML5 유효성 검사
               aria-describedby="description-hint"
             />
-            <p id="description-hint" className="input-hint">공백을 제외하고 100자 이상 입력해야 합니다.</p>
           </div>
 
           {/* Photo Upload */}

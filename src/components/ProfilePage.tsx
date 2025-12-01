@@ -388,6 +388,13 @@ const ProfilePage: React.FC = () => {
 
       {/* Menu Items */}
       <div className="menu-section">
+        <button className="menu-item" onClick={() => navigate('/reviews')}>
+          <div className="menu-left">
+            <div className="menu-icon">⭐</div>
+            <span>받은 후기</span>
+          </div>
+          <ChevronRight size={20} />
+        </button>
         <button className="menu-item" onClick={() => navigate('/store')}>
           <div className="menu-left">
             <div className="menu-icon">💰</div>
@@ -402,11 +409,10 @@ const ProfilePage: React.FC = () => {
           </div>
           <ChevronRight size={20} />
         </button>
-        {/* Favorite Items 기능이 auth.ts 데이터에는 likedPosts로 존재함 */}
         <button className="menu-item" onClick={() => navigate('/favorites')}>
           <div className="menu-left">
-            <div className="menu-icon">⭐</div>
-            <span>관심 목록 ({user.likedPosts?.length || 0})</span>
+            <div className="menu-icon">💖</div>
+            <span>즐겨찾기</span>
           </div>
           <ChevronRight size={20} />
         </button>
