@@ -182,3 +182,26 @@ export const fetchTotalUnreadCount = async (): Promise<number> => {
     return 0;
   }
 };
+export const deleteChatRoom = async (roomId: string) => {
+  const token = await getValidAuthToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+
+  const response = await fetch(`${API_BASE_URL}/chat/room/${roomId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || '채팅방 삭제에 실패했습니다.');
+  }
+
+  return true;
+};
+
+export interface ChatReadEvent {
+  lastReadChatId: number;
+  userType: 'AUTHOR' | 'CALLER';
+}
