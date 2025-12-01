@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, Send, Mic, MoreVertical, Phone, Video, 
-  Paperclip, Smile, Loader2, X, Play, Pause, LogOut
+  Paperclip, Smile, Loader2, X, Play, Pause, LogOut, Trash2
 } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -14,11 +14,12 @@ import {
   fetchChatRoomDetail, 
   fetchChatMessages, 
   sendChatMessage, 
-  updateReadCursor 
+  updateReadCursor,
+  deleteChatRoom 
 } from '../utils/chat';
 import { fetchPostDetail } from '../utils/post';
 import { uploadImage } from '../utils/file';
-import { useChat } from '../components/ChatContext'; // Context hook 추가
+import { useChat } from '../components/ChatContext'; 
 import type { ChatRoom, ChatMessage, ChatReadEvent } from '../types/chat';
 import {
   DropdownMenu,
@@ -35,11 +36,37 @@ const ChatPage: React.FC = () => {
   const navigate = useNavigate();
   const { id: roomId } = useParams<{ id: string }>();
   const { theme } = useTheme();
-  const { updateUnreadCount } = useChat(); // unread count 업데이트 함수 가져오기
+  const { updateUnreadCount } = useChat();
   
-  const handleEndChat = () => {
-    if (confirm("채팅을 종료하고 후기를 작성하시겠습니까?")) {
-      navigate(`/chat/${roomId}/review`);
+  // [수정] 채팅방 나가기 (EXIT 메시지 전송)
+  const handleLeaveChat = async () => {
+    if (!confirm("채팅방을 나가시겠습니까? 상대방에게 알림이 전송됩니다.")) {
+      return;
+    }
+    try {
+      if (roomId) {
+        await sendChatMessage(roomId, "채팅방을 나갔습니다.", 'EXIT');
+        navigate('/chat-list');
+      }
+    } catch (error) {
+      console.error("채팅방 나가기 실패:", error);
+      alert("채팅방 나가기에 실패했습니다.");
+    }
+  };
+
+  // [추가] 채팅방 삭제 (DB에서 삭제)
+  const handleDeleteChat = async () => {
+    if (!confirm("채팅방을 삭제하시겠습니까? 대화 내역이 모두 사라지며 복구할 수 없습니다.")) {
+      return;
+    }
+    try {
+      if (roomId) {
+        await deleteChatRoom(roomId);
+        navigate('/chat-list');
+      }
+    } catch (error) {
+      console.error("채팅방 삭제 실패:", error);
+      alert("채팅방 삭제에 실패했습니다.");
     }
   };
   
@@ -59,7 +86,6 @@ const ChatPage: React.FC = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [myUserType, setMyUserType] = useState<'AUTHOR' | 'CALLER' | null>(null);
   
-  // 소켓 콜백 내부에서 최신 state 참조를 위한 Ref
   const myUserTypeRef = useRef<'AUTHOR' | 'CALLER' | null>(null);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -69,7 +95,6 @@ const ChatPage: React.FC = () => {
   
   const stompClient = useRef<Client | null>(null);
   
-  // 읽음 처리 최적화를 위한 Refs
   const lastReadIdRef = useRef<number>(0);
   const readUpdateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -95,7 +120,6 @@ const ChatPage: React.FC = () => {
         console.log("[Sync] Opponent Last Read ID:", syncData.opponentLastReadChatId);
         setOpponentLastReadId(syncData.opponentLastReadChatId || 0);
 
-        // 내 역할(UserType) 결정
         if (roomData.post?.id) {
           try {
             const postDetail = await fetchPostDetail(roomData.post.id);
@@ -138,7 +162,6 @@ const ChatPage: React.FC = () => {
       onConnect: () => {
         console.log("WebSocket Connected");
 
-        // 메시지 수신 구독
         client.subscribe(`/topic/chat.room.${roomId}`, (message) => {
           if (message.body) {
             const newMessage: ChatMessage = JSON.parse(message.body);
@@ -149,15 +172,11 @@ const ChatPage: React.FC = () => {
           }
         });
 
-        // 읽음 이벤트 수신 구독
         client.subscribe(`/topic/chat.room.${roomId}.read`, (message) => {
           if (message.body) {
             const event: ChatReadEvent = JSON.parse(message.body);
-            console.log("[Socket] Read event:", event);
-            
             const currentMyType = myUserTypeRef.current;
             
-            // 상대방이 읽은 이벤트인 경우 UI 업데이트
             if (currentMyType && event.userType !== currentMyType) {
               setOpponentLastReadId((prev) => Math.max(prev, event.lastReadChatId));
             }
@@ -183,21 +202,16 @@ const ChatPage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, previewUrl]);
 
-  // 4. 읽음 처리 요청 (쓰로틀링 적용 & 로컬 스토리지 업데이트)
+  // 4. 읽음 처리 요청
   const handleReadUpdate = (chatId: number) => {
     if (chatId <= lastReadIdRef.current) return;
     
     lastReadIdRef.current = chatId;
-    
-    // ChatListPage와의 동기화를 위해 로컬 스토리지 업데이트
     localStorage.setItem(`lastRead_${roomId}`, chatId.toString());
-    
-    // 전역 읽지 않은 메시지 수 업데이트 (약간의 지연 후 호출하여 UI 반영)
     setTimeout(updateUnreadCount, 1000);
 
     if (readUpdateTimerRef.current) return;
 
-    // 0.5초마다 서버로 읽음 상태 전송
     readUpdateTimerRef.current = setTimeout(() => {
       if (roomId && lastReadIdRef.current > 0) {
         updateReadCursor(roomId, lastReadIdRef.current);
@@ -206,7 +220,6 @@ const ChatPage: React.FC = () => {
     }, 500);
   };
 
-  // 메시지 목록이 업데이트될 때마다 읽음 처리 시도
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -270,14 +283,13 @@ const ChatPage: React.FC = () => {
     const partner = roomInfo.participants.find(p => p.id !== Number(currentUser.id));
     return {
       name: partner?.nickname || roomInfo.name || '상대방',
-      image: partner?.profileImage || 'https://via.placeholder.com/150?text=User'
+      image: partner?.profileImage || partner?.image || 'https://via.placeholder.com/150?text=User'
     };
   };
   const partnerInfo = getPartnerInfo();
 
   const formatTime = (isoString: string) => {
     if (!isoString) return '';
-    // UTC 시간 보정 (Z가 없는 경우 추가하여 로컬 시간으로 변환되도록 함)
     let safeTimestamp = isoString;
     if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
         safeTimestamp += 'Z';
@@ -329,12 +341,14 @@ const ChatPage: React.FC = () => {
               sideOffset={8}
               className="w-56 z-50 p-2 bg-white/95 backdrop-blur-sm rounded-xl border border-gray-100 shadow-lg ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
             >
+              {/* [수정] 메뉴 아이템 변경: 나가기 및 삭제 */}
+              
               <DropdownMenuItem 
-                onClick={handleEndChat}
+                onClick={handleDeleteChat}
                 className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition-all cursor-pointer hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 outline-none"
               >
-                <LogOut size={18} className="transition-transform group-hover:-translate-x-0.5" />
-                <span>채팅 종료 및 후기 작성</span>
+                <Trash2 size={18} className="transition-transform group-hover:-translate-x-0.5" />
+                <span>채팅방 나가기</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

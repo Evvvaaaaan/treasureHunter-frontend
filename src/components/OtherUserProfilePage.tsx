@@ -9,6 +9,7 @@ import {
   Shield,
   Award,
   AlertCircle,
+  Edit3 // 리뷰 아이콘 추가
 } from "lucide-react";
 import { useTheme } from "../utils/theme";
 import { getUserProfile, type UserInfo } from "../utils/auth";
@@ -20,7 +21,7 @@ interface UserProfile {
   nickname: string;
   profileImage: string;
   bio: string;
-  trustScore: number; // API의 totalScore와 연결됨
+  trustScore: number;
   isOnline: boolean;
   location: string;
   joinedDate: string;
@@ -40,7 +41,7 @@ interface UserProfile {
 
 const OtherUserProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>(); // id는 조회 대상 유저의 ID
   const { theme } = useTheme();
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -57,49 +58,31 @@ const OtherUserProfilePage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // 1. API 호출 (src/utils/auth.ts의 getUserProfile 사용)
       const userData: UserInfo | null = await getUserProfile(userId);
 
       if (!userData) {
         throw new Error("사용자 정보를 찾을 수 없습니다.");
       }
 
-      // 2. API 응답(UserInfo)을 UI 상태(UserProfile)로 매핑
       const mappedProfile: UserProfile = {
         id: userData.id.toString(),
         nickname: userData.nickname,
         profileImage: userData.profileImage || "https://via.placeholder.com/400x400?text=No+Image",
-        // API에 bio(자기소개) 필드가 없으므로 기본값 설정
         bio: "안녕하세요! 보물찾기를 통해 잃어버린 물건을 찾고 있습니다.",
-        
-        // [요청사항 반영] 신뢰도를 totalScore로 연결
         trustScore: userData.totalScore || 0,
-        
-        // API에 접속 상태/위치 정보가 없으므로 기본값 설정
         isOnline: false, 
         location: "활동 지역 정보 없음", 
-        
         joinedDate: new Date(userData.createdAt).toLocaleDateString('ko-KR', {
           year: 'numeric', month: 'long', day: 'numeric'
         }),
-        
         stats: {
-          // 찾아준 물건 개수
           itemsFound: userData.returnedItemsCount || 0,
-          
-          // 잃어버린 물건 개수 (게시글 중 type이 LOST인 것 카운트)
           itemsLost: userData.posts ? userData.posts.filter(p => 
             (p.type || '').toUpperCase() === 'LOST'
           ).length : 0,
-          
-          // 도움 준 횟수 (받은 리뷰 수로 대체)
           helpedOthers: userData.totalReviews || 0,
-          
-          // 성공률 (임시 계산: 리뷰 수 / (찾은 수 + 1) * 100 등으로 계산하거나 고정값)
           successRate: 95, 
         },
-        
-        // 뱃지 상세 정보가 없으므로 badgeCount를 기반으로 더미 뱃지 생성
         badges: Array.from({ length: userData.badgeCount || 0 }).map((_, idx) => ({
           id: `badge-${idx}`,
           name: `뱃지 ${idx + 1}`,
@@ -118,7 +101,7 @@ const OtherUserProfilePage: React.FC = () => {
   };
 
   const handleStartChat = () => {
-    navigate(`/chat/${id}`);
+    navigate(`/chat/${id}`); // 채팅방 생성 로직이 있는 페이지나 채팅방으로 이동
   };
 
   const handleReport = () => {
@@ -126,14 +109,17 @@ const OtherUserProfilePage: React.FC = () => {
       alert("신고가 접수되었습니다. 검토 후 조치하겠습니다.");
     }
   };
+  
+  // [수정] 리뷰 페이지 이동 핸들러
+  const handleWriteReview = () => {
+      // /review/:userId 경로로 이동
+      navigate(`/review/${id}`);
+  };
 
   const getTrustScoreColor = (score: number) => {
-    // 점수 기준에 따라 색상 변경 (totalScore 기준)
-    // 예: 100점 이상 초록, 50점 이상 노랑, 그 외 빨강
-    // totalScore의 범위에 따라 기준 점수 조정이 필요할 수 있습니다.
-    if (score >= 100) return "#10b981"; // Green
-    if (score >= 50) return "#f59e0b"; // Yellow
-    return "#ef4444"; // Red
+    if (score >= 100) return "#10b981";
+    if (score >= 50) return "#f59e0b";
+    return "#ef4444";
   };
 
   if (isLoading) {
@@ -166,7 +152,6 @@ const OtherUserProfilePage: React.FC = () => {
 
   return (
     <div className={`other-user-profile-page ${theme}`}>
-      {/* Header */}
       <div className="profile-header-other">
         <button
           className="back-btn-other"
@@ -183,9 +168,7 @@ const OtherUserProfilePage: React.FC = () => {
         </button>
       </div>
 
-      {/* Profile Content */}
       <div className="profile-content-other">
-        {/* User Info Card */}
         <div className="user-info-card-other">
           <div className="profile-avatar-section">
             <div className="profile-avatar-wrapper-other">
@@ -213,7 +196,6 @@ const OtherUserProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Trust Score (Total Score) */}
           <div className="trust-score-card">
             <div className="trust-score-header">
               <Shield
@@ -233,14 +215,12 @@ const OtherUserProfilePage: React.FC = () => {
               >
                 {userProfile.trustScore}
               </span>
-              {/* Total Score는 상한선이 없을 수 있으므로 /100 제거하거나 상황에 맞게 수정 */}
               <span className="score-max">점</span>
             </div>
             <div className="trust-score-bar">
               <div
                 className="trust-score-fill"
                 style={{
-                  // 100점을 100%로 가정 (필요시 분모 조정)
                   width: `${Math.min(userProfile.trustScore, 100)}%`,
                   backgroundColor: getTrustScoreColor(userProfile.trustScore),
                 }}
@@ -248,19 +228,26 @@ const OtherUserProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="profile-actions-other">
             <button
               className="chat-btn-other primary"
               onClick={handleStartChat}
             >
               <MessageCircle size={20} />
-              메시지 보내기
+              메시지
+            </button>
+            {/* [수정] 후기 작성 버튼 연결 */}
+            <button
+              className="chat-btn-other secondary" // 스타일 조정 필요시 chat-btn-other 재사용
+              style={{ backgroundColor: '#f3f4f6', color: '#374151', boxShadow: 'none', border: '1px solid #e5e7eb' }}
+              onClick={handleWriteReview}
+            >
+              <Edit3 size={20} />
+              후기 작성
             </button>
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="stats-section-other">
           <h3 className="section-title-other">활동 통계</h3>
           <div className="stats-grid-other">
@@ -316,7 +303,6 @@ const OtherUserProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Badges Section */}
         {userProfile.badges.length > 0 && (
           <div className="badges-section-other">
             <h3 className="section-title-other">획득한 배지</h3>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Star,
@@ -10,9 +10,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTheme } from "../utils/theme";
-import { getValidAuthToken, getUserInfo } from "../utils/auth";
-import { fetchChatRoomDetail } from "../utils/chat"; // 채팅방 정보 조회 함수
-import { uploadImage } from "../utils/file"; // 이미지 업로드 함수
+import { getValidAuthToken, getUserInfo, getUserProfile } from "../utils/auth";
+import { fetchChatRoomDetail } from "../utils/chat";
+import { uploadImage } from "../utils/file";
 import "../styles/review-page.css";
 
 interface ReviewData {
@@ -22,19 +22,16 @@ interface ReviewData {
   images: File[];
 }
 
-// API 기본 URL
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
 const ReviewPage: React.FC = () => {
   const navigate = useNavigate();
-  // URL의 :id는 roomId(채팅방 ID)입니다.
-  const { id: roomId } = useParams<{ id: string }>();
+  const location = useLocation();
+  const { id: paramId } = useParams<{ id: string }>();
   const { theme } = useTheme();
   const currentUser = getUserInfo();
 
-  // 상대방 정보 저장 (targetUserId로 사용)
   const [partner, setPartner] = useState<{ id: number; nickname: string; profileImage: string } | null>(null);
-  // [수정] postId는 선택 사항이거나 제거될 수 있음 (API 명세에 따라 유지하거나 제거)
   const [postId, setPostId] = useState<number | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -54,22 +51,31 @@ const ReviewPage: React.FC = () => {
     score?: string;
   }>({});
 
-  // 1. 채팅방 정보 로드하여 상대방 및 게시글 정보 찾기
   useEffect(() => {
-    if (roomId && currentUser) {
-      loadChatRoomInfo(roomId);
+    if (paramId && currentUser) {
+      if (location.pathname.includes('/chat/')) {
+        loadChatRoomInfo(paramId);
+      } else {
+        loadDirectUserInfo(paramId);
+      }
     }
-  }, [roomId]);
+  }, [paramId, location.pathname]);
 
+  // Case 1: 채팅방 ID로 정보 로드
   const loadChatRoomInfo = async (chatRoomId: string) => {
     setIsLoading(true);
     try {
       const roomData = await fetchChatRoomDetail(chatRoomId);
-      
-      // 상대방 찾기 (나를 제외한 참여자)
       const partnerInfo = roomData.participants.find(p => p.id !== Number(currentUser?.id));
       
       if (partnerInfo) {
+        // [추가] 자기 자신 체크
+        if (partnerInfo.id === Number(currentUser?.id)) {
+            alert("자기 자신에게는 후기를 작성할 수 없습니다.");
+            navigate(-1);
+            return;
+        }
+
         setPartner({
           id: partnerInfo.id,
           nickname: partnerInfo.nickname || "알 수 없음",
@@ -79,7 +85,6 @@ const ReviewPage: React.FC = () => {
         throw new Error("대화 상대방을 찾을 수 없습니다.");
       }
 
-      // 게시글 ID 저장 (필요하다면 유지)
       if (roomData.post?.id) {
         setPostId(roomData.post.id);
       }
@@ -93,6 +98,37 @@ const ReviewPage: React.FC = () => {
     }
   };
 
+  // Case 2: 유저 ID로 정보 로드
+  const loadDirectUserInfo = async (targetUserId: string) => {
+    // [추가] 자기 자신 체크
+    if (Number(targetUserId) === Number(currentUser?.id)) {
+        alert("자기 자신에게는 후기를 작성할 수 없습니다.");
+        navigate(-1);
+        return;
+    }
+
+    setIsLoading(true);
+    try {
+      const userData = await getUserProfile(targetUserId);
+      if (userData) {
+         setPartner({
+            id: userData.id,
+            nickname: userData.nickname,
+            profileImage: userData.profileImage || "https://via.placeholder.com/150?text=User"
+         });
+         setPostId(null); 
+      } else {
+          throw new Error("사용자 정보를 찾을 수 없습니다.");
+      }
+    } catch (error) {
+      console.error("사용자 정보 로드 실패:", error);
+      alert("사용자 정보를 불러올 수 없습니다.");
+      navigate(-1);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleScoreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     setReviewData({ ...reviewData, score: value });
@@ -100,45 +136,34 @@ const ReviewPage: React.FC = () => {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
     if (reviewData.images.length + files.length > 5) {
       alert("최대 5장까지만 업로드할 수 있습니다.");
       return;
     }
-
     const newImages = [...reviewData.images, ...files];
     setReviewData({ ...reviewData, images: newImages });
 
-    // 미리보기 URL 생성
     const newPreviews = files.map(file => URL.createObjectURL(file));
     setImagePreviews([...imagePreviews, ...newPreviews]);
-    
     e.target.value = '';
   };
 
   const removeImage = (index: number) => {
     const newImages = reviewData.images.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    
     URL.revokeObjectURL(imagePreviews[index]);
-    
     setReviewData({ ...reviewData, images: newImages });
     setImagePreviews(newPreviews);
   };
 
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
-
-    if (!reviewData.title.trim()) {
-      newErrors.title = "제목을 입력해주세요.";
-    }
-
+    if (!reviewData.title.trim()) newErrors.title = "제목을 입력해주세요.";
     if (!reviewData.content.trim()) {
       newErrors.content = "후기 내용을 입력해주세요.";
     } else if (reviewData.content.length < 10) {
       newErrors.content = "최소 10자 이상 입력해주세요.";
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -146,7 +171,12 @@ const ReviewPage: React.FC = () => {
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
-    // [수정] targetUserId(상대방 ID) 확인
+    // [추가] 제출 전 다시 한번 자기 자신 체크
+    if (partner?.id === Number(currentUser?.id)) {
+        alert("자기 자신에게는 후기를 작성할 수 없습니다.");
+        return;
+    }
+
     if (!partner?.id) {
       alert("후기 대상 정보가 없어 작성할 수 없습니다.");
       return;
@@ -157,7 +187,6 @@ const ReviewPage: React.FC = () => {
       const token = await getValidAuthToken();
       if (!token) throw new Error("로그인이 필요합니다.");
 
-      // 1. 이미지 먼저 업로드하여 URL 리스트 확보
       const imageUrls: string[] = [];
       if (reviewData.images.length > 0) {
         const uploadPromises = reviewData.images.map(file => uploadImage(file));
@@ -165,18 +194,14 @@ const ReviewPage: React.FC = () => {
         imageUrls.push(...results);
       }
 
-      // 2. API 요청 데이터 구성
-      // [핵심 수정] postId 대신 targetUserId 사용
       const payload = {
         title: reviewData.title,
         content: reviewData.content,
         score: reviewData.score,
-        targetUserId: partner.id, // [수정됨] 리뷰 대상 유저 ID
-        // postId: postId, // 필요 시 주석 해제하여 함께 전송 가능
+        targetUserId: partner.id,
         images: imageUrls 
       };
 
-      // 3. 후기 등록 API 호출
       const response = await fetch(`${API_BASE_URL}/review`, {
         method: 'POST',
         headers: {
@@ -191,7 +216,6 @@ const ReviewPage: React.FC = () => {
         throw new Error(errData.message || "후기 등록에 실패했습니다.");
       }
 
-      // 4. 게시글 완료 처리 (선택 사항: 후기 작성 시 완료 처리도 함께 한다면 유지)
       if (postId) {
         try {
           await fetch(`${API_BASE_URL}/post/${postId}/complete`, {
@@ -204,7 +228,8 @@ const ReviewPage: React.FC = () => {
       }
 
       alert("후기가 소중하게 전달되었습니다!");
-      navigate('/home'); 
+      navigate(-1); 
+
     } catch (error) {
       console.error("후기 등록 오류:", error);
       alert(`후기 등록 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
@@ -213,7 +238,7 @@ const ReviewPage: React.FC = () => {
     }
   };
 
-  // UI 헬퍼 함수들
+  // UI Helpers
   const getScoreColor = (score: number) => {
     if (score >= 80) return "#10b981";
     if (score >= 60) return "#f59e0b";
@@ -237,7 +262,7 @@ const ReviewPage: React.FC = () => {
       <div className={`review-page ${theme} flex items-center justify-center min-h-screen`}>
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="animate-spin text-primary" size={32} />
-          <p className="text-gray-500">거래 정보를 불러오는 중...</p>
+          <p className="text-gray-500">정보를 불러오는 중...</p>
         </div>
       </div>
     );
