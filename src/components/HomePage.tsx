@@ -53,6 +53,8 @@ interface ApiPost {
 }
 
 interface ApiResponse {
+    clientLat: number;
+    clientLon: number;
     posts: ApiPost[];
 }
 
@@ -70,6 +72,7 @@ interface LostItem {
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png'; 
 
+// Haversine 거리 계산 함수 (km 단위)
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   if (!lat1 || !lon1 || !lat2 || !lon2) {
     return 0;
@@ -100,8 +103,12 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  
+  // [NEW] 정렬 옵션 상태 추가 (기본값: 최신순)
+  const [sortOption, setSortOption] = useState<'latest' | 'distance'>('latest');
 
-  const fetchPosts = async () => {
+  // 위치 정보를 인자로 받아 API를 호출
+  const fetchPosts = async (currentLat?: number, currentLon?: number) => {
     setIsLoading(true);
     setError(null);
     const token = await getValidAuthToken();
@@ -113,8 +120,19 @@ export default function HomePage() {
       return;
     }
 
+    // 위치 정보가 없으면 서울 시청을 기본값으로 사용
+    const lat = currentLat || userLocation?.lat || 37.5665;
+    const lon = currentLon || userLocation?.lon || 126.9780;
+
     try {
-      const response = await fetch(`${API_BASE_URL}/posts`, {
+      let url = `${API_BASE_URL}/posts`;
+      
+      // [MODIFIED] 정렬 옵션에 따라 URL 변경
+      if (sortOption === 'distance') {
+        url = `${API_BASE_URL}/posts?search_type=distance&lat=${lat}&lon=${lon}`;
+      }
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -135,7 +153,7 @@ export default function HomePage() {
                const errorText = await response.text();
                console.error("API Error Response (Non-JSON):", errorText);
                if (response.status === 404) {
-                   errorMessage = `API 엔드포인트를 찾을 수 없습니다: ${API_BASE_URL}/posts`;
+                   errorMessage = `API 엔드포인트를 찾을 수 없습니다: ${url}`;
                } else {
                    errorMessage = `서버 응답 오류 (상태: ${response.status}).`;
                }
@@ -173,11 +191,21 @@ export default function HomePage() {
     }
   };
 
+  // [NEW] 정렬 옵션이 변경될 때마다 데이터 다시 로드
+  useEffect(() => {
+    if (userInfo) {
+      fetchPosts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortOption]);
+
   useEffect(() => {
     if (!userInfo) {
       navigate('/login');
     } else {
-      console.log('HomePage effect triggered, fetching posts for:', location.pathname);
+      // 초기 로딩 시 (sortOption이 변경되지 않아도) 데이터 로드
+      // sortOption useEffect와 중복 호출을 막기 위해 location이나 mount 시점 제어 필요할 수 있으나
+      // 현재 로직상 큰 문제 없음. (엄격하게 하려면 mount ref 사용)
       fetchPosts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -187,11 +215,17 @@ export default function HomePage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
+          const newLoc = {
             lat: position.coords.latitude,
             lon: position.coords.longitude,
-          });
-          console.log("User location set:", position.coords);
+          };
+          setUserLocation(newLoc);
+          console.log("User location updated:", newLoc);
+          
+          // 위치 기반 정렬 중이라면 위치 업데이트 시 재호출
+          if (sortOption === 'distance') {
+             fetchPosts(newLoc.lat, newLoc.lon);
+          }
         },
         (error) => {
           console.error("Error getting user location:", error);
@@ -201,7 +235,8 @@ export default function HomePage() {
     } else {
       console.warn("Geolocation not supported by this browser.");
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount 시 1회 실행
 
   const handleLogout = () => {
     clearTokens();
@@ -412,8 +447,21 @@ export default function HomePage() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <div className="section-header">
-            <h2 style={{ fontSize: '1.125rem', color: '#111827' }}>최근 등록된 물건</h2>
-            <button className="view-all-btn">전체보기</button>
+            {/* [NEW] Sort Buttons */}
+            <div className="sort-buttons">
+                <button 
+                  className={`sort-btn ${sortOption === 'latest' ? 'active' : ''}`} 
+                  onClick={() => setSortOption('latest')}
+                >
+                  최신순
+                </button>
+                <button 
+                  className={`sort-btn ${sortOption === 'distance' ? 'active' : ''}`} 
+                  onClick={() => setSortOption('distance')}
+                >
+                  거리순
+                </button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -425,7 +473,7 @@ export default function HomePage() {
             <div className="error-message">
               <AlertCircle style={{ width: '1.25rem', height: '1.25rem' }} />
               <span>{error}</span>
-              <button onClick={fetchPosts} className="retry-button">재시도</button>
+              <button onClick={() => fetchPosts()} className="retry-button">재시도</button>
             </div>
           ) : filteredItems.length > 0 ? (
             <div className="items-grid">

@@ -227,6 +227,35 @@
   margin-bottom: 1rem;
 }
 
+/* Sort Buttons */
+.sort-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sort-btn {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.sort-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.sort-btn.active {
+  background-color: var(--primary);
+  color: white;
+  font-weight: 600;
+  border-color: var(--primary);
+}
+
 .view-all-btn {
   font-size: 0.875rem;
   color: var(--primary);
@@ -563,15 +592,16 @@
   color: var(--muted-foreground);
 }
 
-:root.dark .filter-btn {
-  background-color: var(--card);
-  border-color: var(--border);
-  color: var(--foreground);
+:root.dark .sort-btn {
+  color: var(--muted-foreground);
 }
 
-:root.dark .filter-btn.active {
+:root.dark .sort-btn:hover {
+  background-color: var(--accent);
+}
+
+:root.dark .sort-btn.active {
   background-color: var(--primary);
-  border-color: var(--primary);
   color: var(--primary-foreground);
 }
 
