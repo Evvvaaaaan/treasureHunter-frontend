@@ -309,7 +309,7 @@ export default function HomePage() {
                 <MapPin style={{ width: '1.5rem', height: '1.5rem', color: 'white' }} />
               </div>
               <div>
-                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>보물찾기</h1>
+                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>Treasure Hunter</h1>
                 <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>분실물 찾기</p>
               </div>
             </div>
@@ -575,6 +575,7 @@ export default function HomePage() {
         whileTap={{ scale: 0.95 }}
         onClick={() => navigate('/create')}
         className="fab"
+        style={{bottom: '5.5rem', right: '0.5rem'}}
         aria-label="게시물 등록"
       >
         <Plus style={{ width: '2rem', height: '2rem', color: 'white' }} />
