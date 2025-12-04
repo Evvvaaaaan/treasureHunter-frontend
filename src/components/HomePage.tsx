@@ -430,39 +430,13 @@ export default function HomePage() {
         )}
 
         <div className="quick-actions">
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/map')}
-            className="action-card"
-          >
-            <div className="action-content">
-              <div className="action-icon" style={{ backgroundColor: '#dbeafe' }}>
-                <Map style={{ width: '1.5rem', height: '1.5rem', color: '#2563eb' }} />
-              </div>
-              <div className="action-text">
-                <p style={{ fontSize: '0.875rem', color: '#111827' }}>지도 보기</p>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>주변 분실물</p>
-              </div>
+          {/* 광고 및 프로모션 배너 */}
+          <div className="promo-banner">
+            <div className="promo-content">
+              <h3>광고 및 프로모션</h3>
+              <p>여기에 배너 광고를 추가할 수 있습니다</p>
             </div>
-            <ChevronRight style={{ width: '1.25rem', height: '1.25rem', color: '#9ca3af' }} />
-          </motion.button>
-
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/my-items')}
-            className="action-card"
-          >
-            <div className="action-content">
-              <div className="action-icon" style={{ backgroundColor: '#f3e8ff' }}>
-                <Tag style={{ width: '1.5rem', height: '1.5rem', color: '#9333ea' }} />
-              </div>
-              <div className="action-text">
-                <p style={{ fontSize: '0.875rem', color: '#111827' }}>내 게시물</p>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>등록 내역</p>
-              </div>
-            </div>
-            <ChevronRight style={{ width: '1.25rem', height: '1.25rem', color: '#9ca3af' }} />
-          </motion.button>
+          </div>
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
