@@ -20,6 +20,7 @@ import NotificationsPage from './components/NotificationsPage';
 import ReviewPage from './components/ReviewPage';
 import FavoritesPage from './components/FavoritesPage';
 import ReviewsPage from './components/ReviewsPage';
+import ChangePasswordPage from './components/ChangePasswordPage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 import { ChatProvider } from './components/ChatContext';
@@ -345,7 +346,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute>
+              <ChangePasswordPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/chat/:id/review" element={<ReviewPage />} />
         {/* Redirect Logic */}
