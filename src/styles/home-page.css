@@ -820,3 +820,52 @@
     font-size: 1rem;
   }
 }
+.notification-btn {
+  position: relative;
+  padding: 0.625rem;
+  background: var(--accent);
+  border: none;
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--foreground);
+}
+
+.notification-btn:hover {
+  background-color: var(--muted);
+  transform: scale(1.05);
+}
+
+.search-toggle-btn {
+  position: relative;
+  padding: 0.625rem;
+  background: var(--accent);
+  border: none;
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--foreground);
+}
+
+.search-toggle-btn:hover {
+  background-color: var(--muted);
+  transform: scale(1.05);
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.25rem;
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+}

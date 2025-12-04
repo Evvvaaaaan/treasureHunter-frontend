@@ -118,6 +118,7 @@ export default function HomePage() {
   const [rawPosts, setRawPosts] = useState<ApiPost[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -352,6 +353,18 @@ export default function HomePage() {
                   </span>
                 )}
               </button>
+               <button
+                className="search-toggle-btn"
+                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+              >
+                <Search
+                  style={{
+                    width: "1.25rem",
+                    height: "1.25rem",
+                    color: "#4b5563",
+                  }}
+                />
+              </button>
 
               <div className="profile-menu-wrapper">
                 <button
@@ -393,25 +406,46 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
-          <form onSubmit={handleSearch} style={{ marginTop: '1rem' }}>
-            <div className="search-wrapper">
-              <Search className="search-icon" style={{ width: '1.25rem', height: '1.25rem', color: '#9ca3af' }} />
-              <Input
-                type="text"
-                placeholder="분실물 검색 (예: 지갑, 휴대폰, 강남역...)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  paddingLeft: '3rem',
-                  height: '3rem',
-                  backgroundColor: '#f9fafb',
-                  borderColor: '#e5e7eb',
-                  borderRadius: '1rem',
-                }}
-              />
-            </div>
-          </form>
+                    {isSearchExpanded && (
+            <motion.form
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              onSubmit={handleSearch}
+              style={{ marginTop: "1rem", overflow: "hidden" }}
+            >
+              <div className="search-wrapper">
+                <Search
+                  className="search-icon"
+                  style={{
+                    width: "1.25rem",
+                    height: "1.25rem",
+                    color: "#9ca3af",
+                  }}
+                />
+                <Input
+                  type="text"
+                  placeholder="분실물 검색 (예: 지갑, 휴대폰, 강남역...)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={() => {
+                    if (!searchQuery) {
+                      setTimeout(() => setIsSearchExpanded(false), 200);
+                    }
+                  }}
+                  autoFocus
+                  style={{
+                    paddingLeft: "3rem",
+                    height: "3rem",
+                    backgroundColor: "#f9fafb",
+                    borderColor: "#e5e7eb",
+                    borderRadius: "1rem",
+                  }}
+                />
+              </div>
+            </motion.form>
+          )}
         </div>
       </header>
 
