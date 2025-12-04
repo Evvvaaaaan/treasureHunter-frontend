@@ -16,6 +16,7 @@ import {
   Loader2,
   Coins,
   Navigation,
+  Calendar,
 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -67,6 +68,7 @@ interface LostItem {
   image: string;
   status: 'lost' | 'found';
   isCompleted: boolean;
+  createdAt: string;
 }
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
@@ -89,6 +91,23 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): nu
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
   return distance;
+};
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  
+  // 24시간 이내면 시간 전 표시
+  if (diff < 1000 * 60 * 60 * 24) {
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      if (hours < 1) return '방금 전';
+      return `${hours}시간 전`;
+  }
+  
+  // 그 외에는 날짜 표시
+  return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 };
 
 export default function HomePage() {
@@ -284,6 +303,7 @@ export default function HomePage() {
           : DEFAULT_IMAGE,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
         isCompleted: post.isCompleted,
+        createdAt: post.createdAt,
       };
     });
   }, [rawPosts, userLocation]);
@@ -309,7 +329,7 @@ export default function HomePage() {
                 <MapPin style={{ width: '1.5rem', height: '1.5rem', color: 'white' }} />
               </div>
               <div>
-                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>Treasure Hunter</h1>
+                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>보물찾기</h1>
                 <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>분실물 찾기</p>
               </div>
             </div>
@@ -532,20 +552,37 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="item-info">
-                    <h3 className="item-title">{item.title}</h3>
-                    <p className="item-content-snippet">{item.content}</p> 
-                    <div className="item-meta">
-                      <div className="meta-item" title={`리워드: ${item.points}P`}>
-                        <Coins style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0, color: '#f59e0b' }} />
-                        <span className="meta-text" style={{ color: item.points > 0 ? '#b45309' : 'inherit' }}>
-                          {item.points.toLocaleString()}P
-                        </span>
-                      </div>
-                      <div className="meta-item" title="내 위치로부터의 거리">
-                        <Navigation style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0 }} />
-                        <span className="meta-text">
-                          {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 계산 중...'}
-                        </span>
+                    <h3 className="item-title" style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>{item.title}</h3>
+                    
+                    {/* 상세 정보(content) 제거하고 포인트, 위치, 날짜만 표시 */}
+                    <div className="item-meta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                      
+                      {/* 1. 포인트 (있을 경우만) */}
+                      {item.points > 0 && (
+                        <div className="meta-item" title={`리워드: ${item.points}P`}>
+                          <Coins style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#f59e0b' }} />
+                          <span className="meta-text" style={{ color: '#b45309', fontWeight: 600 }}>
+                            {item.points.toLocaleString()}P
+                          </span>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '0.25rem' }}>
+                          {/* 2. 위치 (거리) */}
+                          <div className="meta-item" title="내 위치로부터의 거리">
+                            <Navigation style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
+                            <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                              {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 미상'}
+                            </span>
+                          </div>
+
+                          {/* 3. 게시 날짜 */}
+                          <div className="meta-item" title="게시일">
+                            <Calendar style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
+                            <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                              {formatDate(item.createdAt)}
+                            </span>
+                          </div>
                       </div>
                     </div>
                   </div>
@@ -575,7 +612,7 @@ export default function HomePage() {
         whileTap={{ scale: 0.95 }}
         onClick={() => navigate('/create')}
         className="fab"
-        style={{bottom: '5.5rem', right: '0.5rem'}}
+        style={{ bottom: '5.5rem', right: '0.5rem' }}
         aria-label="게시물 등록"
       >
         <Plus style={{ width: '2rem', height: '2rem', color: 'white' }} />
