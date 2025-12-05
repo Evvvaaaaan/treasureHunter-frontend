@@ -350,7 +350,7 @@ export default function HomePage() {
                 <MapPin style={{ width: '1.5rem', height: '1.5rem', color: 'white' }} />
               </div>
               <div>
-                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>보물찾기</h1>
+                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>Treasure Hunter</h1>
                 <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>분실물 찾기</p>
               </div>
             </div>
