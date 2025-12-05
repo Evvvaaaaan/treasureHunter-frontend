@@ -44,11 +44,11 @@
   const CATEGORIES = [
     { value: '휴대폰', icon: '📱', color: '#3b82f6' },
     { value: '지갑', icon: '💳', color: '#8b5cf6' },
-    { value: '열쇠', icon: '🔑', color: '#f59e0b' },
+    { value: '의류', icon: '👖', color: '#f59e0b' },
     { value: '가방', icon: '🎒', color: '#10b981' },
     { value: '전자기기', icon: '💻', color: '#06b6d4' },
     { value: '액세서리', icon: '💍', color: '#ec4899' },
-    { value: '문서', icon: '📄', color: '#6366f1' },
+    { value: '문구류', icon: '📄', color: '#6366f1' },
     { value: '기타', icon: '📦', color: '#64748b' },
   ];
 
@@ -56,11 +56,11 @@
   const categoryMapping: { [key: string]: string } = {
       '휴대폰': 'PHONE',
       '지갑': 'WALLET',
-      '열쇠': 'KEY',
+      '의류': 'CLOTHES',
       '가방': 'BAG',
       '전자기기': 'ELECTRONICS',
       '액세서리': 'ACCESSORY',
-      '문서': 'DOCUMENT',
+      '문구류': 'STATIONERY',
       '기타': 'ETC', // API에서 '기타'를 어떻게 받는지 확인 필요 (ETC 또는 OTHER 등)
   };
 
@@ -611,8 +611,11 @@
       if (!formData.itemName.trim()) return '분실물 이름을 입력해주세요.';
       if (!formData.category) return '카테고리를 선택해주세요.';
       if (formData.description.trim().length < 100) return '상세 설명을 100자 이상 입력해주세요. (공백 제외)';
+<<<<<<< HEAD
       // 이메일 또는 전화번호 형식 검사 추가 (선택적)
 
+=======
+>>>>>>> bddde0b74219f0af76cc97e1eaef987baec6f3fd
       if (!formData.lostDate) return '분실 날짜를 선택해주세요.';
 
       // 날짜 유효성 검사 (미래 날짜 선택 불가 등)
@@ -971,7 +974,7 @@
             </div>
             <Textarea
               id="description"
-              placeholder="분실물의 특징, 브랜드, 색상, 크기 등을 자세히 설명해주세요. (최소 100자 이상)"
+              placeholder="물건의 발견 or 습득 지역, 특징, 브랜드, 색상, 크기 등을 자세히 설명해주세요. (최소 100자 이상)"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="form-textarea"
@@ -981,7 +984,6 @@
               minLength={100} // HTML5 유효성 검사
               aria-describedby="description-hint"
             />
-            <p id="description-hint" className="input-hint">공백을 제외하고 100자 이상 입력해야 합니다.</p>
           </div>
 
           {/* Photo Upload */}
@@ -1081,9 +1083,12 @@
               <span>{formData.location.address || '지도에서 위치를 선택해주세요.'}</span>
             </div>
           </div>
+<<<<<<< HEAD
 
           {/* Contact Info */}
           
+=======
+>>>>>>> bddde0b74219f0af76cc97e1eaef987baec6f3fd
           {/* Reward Points */}
           <div className="form-section">
             {/* ... (이전과 동일) ... */}
@@ -1210,9 +1215,6 @@
                   <li style={{ color: formData.description.trim().length >= 100 ? '#10b981' : '#ef4444' }}>{formData.description.trim().length >= 100 ? '✓' : '✗'} 설명 ({formData.description.trim().length}/100)</li>
                   <li style={{ color: formData.lostDate ? '#10b981' : '#ef4444' }}>{formData.lostDate ? '✓' : '✗'} 날짜</li>
                 </ul>
-                <p style={{ color: isFormValid() ? '#10b981' : '#ef4444' }}>
-                  버튼 상태: {isFormValid() ? '활성화 ✓' : '비활성화 ✗'}
-                </p>
                 <p>익명: {isAnonymous ? '✓' : '✗'}</p>
               </div>
           )}
