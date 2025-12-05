@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Settings, Edit2, Star, Award, TrendingUp, 
-  MessageCircle, Package, ChevronRight, Camera, LogOut
+  MessageCircle, Package, ChevronRight, Camera, LogOut,
+  Activity as ActivityIcon, Bell, Mail, Shield, Trophy
 } from 'lucide-react';
-// [변경] API 관련 유틸 함수 import
 import { getUserInfo, checkToken, getValidAuthToken, type UserInfo } from '../utils/auth';
 import BottomNavigation from './BottomNavigation';
+import { uploadImage } from '../utils/file';
 import '../styles/profile-page.css';
 
-// API URL (환경변수 또는 하드코딩)
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
 interface UserStats {
@@ -31,7 +31,7 @@ interface Badge {
 
 interface Activity {
   id: string;
-  type: 'item_posted' | 'review_received' | 'badge_earned'; // 타입 매핑 변경
+  type: 'item_posted' | 'review_received' | 'badge_earned';
   description: string;
   timestamp: string;
   points?: number;
@@ -40,14 +40,13 @@ interface Activity {
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   
-  // [변경] 로컬 스토리지 정보와 실제 API 정보를 동기화하기 위한 상태 관리
   const [user, setUser] = useState<UserInfo | null>(getUserInfo());
   
   const [isEditing, setIsEditing] = useState(false);
-  const [nickname, setNickname] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editNickname, setEditNickname] = useState('');
+  // API에 bio 필드가 없으므로 로컬 상태로만 관리하거나 제외 (여기서는 제외하고 닉네임/이름 수정에 집중)
   
-  // [질문] UserInfo에 bio 필드가 없어 임시 상태로 관리합니다.
-
   const [profileImage, setProfileImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
@@ -62,13 +61,9 @@ const ProfilePage: React.FC = () => {
 
   const [activities, setActivities] = useState<Activity[]>([]);
   
-  // [질문] 뱃지 상세 리스트 API가 확인되지 않아 우선 Mock 데이터 유지
-  const [badges] = useState<Badge[]>([
-    { id: '1', name: '신뢰왕', description: '신뢰도 95% 이상', icon: '🏆', earnedDate: '2025-09-15', rarity: 'legendary' },
-    { id: '2', name: '활동왕', description: '게ç시글 10개 작성', icon: '🔥', earnedDate: '2025-10-01', rarity: 'common' }
-  ]);
+  // 뱃지 데이터는 API에서 상세 정보를 주지 않으므로 더미 또는 badgeCount 기반 생성
+  const [badges, setBadges] = useState<Badge[]>([]);
 
-  // 1. 데이터 로드 및 동기화
   useEffect(() => {
     const loadProfile = async () => {
       const currentUser = getUserInfo();
@@ -77,27 +72,27 @@ const ProfilePage: React.FC = () => {
         return;
       }
 
-      // 최신 정보 받아오기
+      // 최신 정보 로드
       const freshData = await checkToken(currentUser.id.toString());
       
       if (freshData) {
         setUser(freshData);
-        setNickname(freshData.nickname);
+        setEditNickname(freshData.nickname);
+        setEditName(freshData.name);
         setProfileImage(freshData.profileImage);
         
-        // [연결] API 데이터 -> Stats 매핑
+        // 통계 계산
         setStats({
-          totalItems: freshData.posts?.length || 0, // 작성한 게시글 수
-          successfulMatches: freshData.returnedItemsCount || 0, // 반환(성공) 횟수
-          currentPoints: freshData.point || 0, // 현재 포인트
+          totalItems: freshData.posts?.length || 0,
+          successfulMatches: freshData.returnedItemsCount || 0,
+          currentPoints: freshData.point || 0,
           averageRating: freshData.totalReviews > 0 
             ? parseFloat((freshData.totalScore / freshData.totalReviews).toFixed(1)) 
-            : 0, // 평점 계산 (총점 / 리뷰수)
-          trustScore: freshData.totalScore // 신뢰도 (총점 사용 or 별도 로직)
+            : 0,
+          trustScore: freshData.totalScore
         });
 
-        // [연결] API 데이터 -> Activities 매핑
-        // 게시글(posts)과 받은 리뷰(receivedReviews)를 합쳐서 활동 내역 생성
+        // 활동 내역 생성 (게시글 등록 + 리뷰 받음)
         const postActivities: Activity[] = (freshData.posts || []).map(post => ({
           id: `post-${post.id}`,
           type: 'item_posted',
@@ -109,40 +104,43 @@ const ProfilePage: React.FC = () => {
           id: `review-${review.id}`,
           type: 'review_received',
           description: `후기 도착: "${review.content.substring(0, 10)}..."`,
-          timestamp: new Date().toISOString() // 리뷰 날짜 필드가 없다면 현재 시간 혹은 추가 필요
+          timestamp: new Date().toISOString() // 리뷰 생성일이 없다면 현재 시간 임시 사용
         }));
 
-        // 날짜순 정렬
         const combinedActivities = [...postActivities, ...reviewActivities]
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 10); // 최근 10개만
+          .slice(0, 10);
 
         setActivities(combinedActivities);
+
+        // 뱃지 생성 (badgeCount 기반 더미)
+        const earnedBadges: Badge[] = Array.from({ length: freshData.badgeCount || 0 }).map((_, idx) => ({
+            id: `badge-${idx}`,
+            name: `뱃지 ${idx + 1}`,
+            description: '활동을 통해 획득했습니다.',
+            icon: '🏅',
+            earnedDate: new Date().toISOString(),
+            rarity: 'common'
+        }));
+        setBadges(earnedBadges);
       }
     };
 
     loadProfile();
   }, [navigate]);
 
-  // 2. 프로필 이미지 업로드 (기존 로직 + API 연결 준비)
   const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // 미리보기 설정
+      setEditImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImage(reader.result as string);
       };
       reader.readAsDataURL(file);
-
-      // [추가] 여기서 실제 이미지 업로드 API를 호출해야 합니다.
-      // const uploadedUrl = await uploadImage(file);
-      // setProfileImage(uploadedUrl);
     }
   };
 
-  // 3. 프로필 수정 저장
-  // [수정됨] 프로필 저장 함수
   const handleSaveProfile = async () => {
     if (!user) return;
     setIsSaving(true);
@@ -153,10 +151,8 @@ const ProfilePage: React.FC = () => {
 
       let finalImageUrl = user.profileImage; 
 
-      // 1. 이미지 변경 시 업로드 수행
       if (editImageFile) {
         try {
-          console.log("프로필 이미지 업로드 중...");
           finalImageUrl = await uploadImage(editImageFile);
         } catch (uploadError) {
           console.error("이미지 업로드 실패:", uploadError);
@@ -166,33 +162,26 @@ const ProfilePage: React.FC = () => {
         }
       }
 
-      // 2. 회원 정보 수정 API 호출
-      // [수정 포인트 1] URL에서 '/api/v1' 제거 (API_BASE_URL에 이미 포함됨)
+      // 프로필 수정 API 호출 (PATCH)
       const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        // [수정 포인트 2] 올바른 상태 변수(editNickname, editName) 사용
-        // 사용자가 입력한 값이 없으면 기존 값(user.nickname, user.name)을 유지
         body: JSON.stringify({
-          nickname: editNickname || user.nickname,
+          nickname: editNickname,
           profileImage: finalImageUrl,
-          name: editName || user.name
+          name: editName
         }),
       });
 
       if (response.ok) {
         const updatedUser = await response.json();
         setUser(updatedUser);
-        
-        // [수정 포인트 3] 올바른 상태 업데이트 함수 사용
-        setIsEditOpen(false); 
+        // 로컬 스토리지 정보도 갱신해주면 좋음 (checkToken이 해주긴 함)
+        setIsEditing(false);
         alert('프로필이 저장되었습니다!');
-        
-        // 필요한 경우 로컬 스토리지 정보도 갱신하거나 재조회
-        // fetchMyProfile(); 
       } else {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.message || '프로필 수정 실패');
@@ -208,7 +197,6 @@ const ProfilePage: React.FC = () => {
 
   const handleLogout = () => {
     if (confirm('로그아웃 하시겠습니까?')) {
-      // [변경] auth.ts의 clearTokens 사용 권장
       localStorage.clear(); 
       navigate('/login');
     }
@@ -234,194 +222,238 @@ const ProfilePage: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    
-    if (hours < 24) {
-      return `${hours}시간 전`;
+    try {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        
+        if (hours < 24) {
+        return `${hours}시간 전`;
+        }
+        const days = Math.floor(hours / 24);
+        if (days < 7) {
+        return `${days}일 전`;
+        }
+        return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    } catch {
+        return dateString;
     }
-    const days = Math.floor(hours / 24);
-    if (days < 7) {
-      return `${days}일 전`;
-    }
-    return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
   };
 
   if (!user) return null;
 
   return (
     <div className="profile-page">
-      {/* Header */}
       <div className="profile-header">
+        <button className="back-button" onClick={() => navigate('/home')}>
+          <ChevronRight className="rotate-180" size={20} />
+        </button>
         <h1>프로필</h1>
-        <button className="settings-button" onClick={() => navigate('/settings')}>
+        <button className="menu-button" onClick={() => navigate('/settings')}>
           <Settings size={20} />
         </button>
       </div>
 
-      {/* Profile Card */}
-      <div className="profile-card">
-        <div className="profile-image-wrapper">
-          <img src={profileImage || user.profileImage} alt="Profile" className="profile-image" />
-          {isEditing && (
-            <label className="edit-image-btn">
-              <Camera size={20} />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleProfileImageChange}
-                style={{ display: 'none' }}
-              />
-            </label>
-          )}
-        </div>
-
-        {isEditing ? (
-          <div className="profile-edit-form">
-            <input
-              type="text"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              className="edit-input"
-              placeholder="닉네임"
-            />
-            <div className="edit-actions">
-              <button className="cancel-btn" onClick={() => setIsEditing(false)}>
-                취소
-              </button>
-              <button className="save-btn" onClick={handleSaveProfile}>
-                저장
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="profile-info">
-            <div className="profile-name">
-              <h2>{user.nickname}</h2>
-              <button className="edit-btn" onClick={() => setIsEditing(true)}>
-                <Edit2 size={16} />
-              </button>
-            </div>
-            {/* <p className="profile-bio">{bio}</p> */}
-            
-            <div className="trust-badge">
-              <Star size={16} fill="#10b981" stroke="#10b981" />
-              <span>신뢰도 {stats.trustScore}점</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <Package size={24} className="stat-icon" />
-          <p className="stat-value">{stats.totalItems}</p>
-          <p className="stat-label">등록 아이템</p>
-        </div>
-        <div className="stat-card">
-          <MessageCircle size={24} className="stat-icon" />
-          <p className="stat-value">{stats.successfulMatches}</p>
-          <p className="stat-label">성공 매칭</p>
-        </div>
-        <div className="stat-card">
-          <TrendingUp size={24} className="stat-icon" />
-          <p className="stat-value">{stats.currentPoints.toLocaleString()}</p>
-          <p className="stat-label">보유 포인트</p>
-        </div>
-        <div className="stat-card">
-          <Award size={24} className="stat-icon" />
-          <p className="stat-value">{stats.averageRating}</p>
-          <p className="stat-label">평균 평점</p>
-        </div>
-      </div>
-
-      {/* Badges Section */}
-      <div className="section">
-        <div className="section-header">
-          <h3>획득한 뱃지</h3>
-          <span className="badge-count">{user.badgeCount}개</span>
-        </div>
-        <div className="badges-grid">
-          {/* [질문] UserInfo에는 badgeCount 숫자만 있고 실제 뱃지 리스트 데이터가 없습니다.
-             API에서 뱃지 리스트를 주는 엔드포인트가 따로 있나요? 
-             일단 Mock 데이터(badges)를 표시합니다.
-          */}
-          {badges.map((badge) => (
-            <div 
-              key={badge.id} 
-              className="badge-card"
-              style={{ borderColor: getRarityColor(badge.rarity) }}
-            >
-              <div className="badge-icon">{badge.icon}</div>
-              <p className="badge-name">{badge.name}</p>
-              <p className="badge-description">{badge.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Activity Timeline */}
-      <div className="section">
-        <div className="section-header">
-          <h3>최근 활동</h3>
-        </div>
-        <div className="activity-timeline">
-          {activities.length > 0 ? activities.map((activity) => (
-            <div key={activity.id} className="activity-item">
-              <div className="activity-icon">{getActivityIcon(activity.type)}</div>
-              <div className="activity-content">
-                <p className="activity-description">{activity.description}</p>
-                <p className="activity-time">{formatDate(activity.timestamp)}</p>
-              </div>
-              {activity.points && (
-                <div className="activity-points">+{activity.points.toLocaleString()}P</div>
+      <div className="profile-content">
+        <div className="profile-card">
+          <div className="profile-top">
+            <div className="profile-image-wrapper">
+              <img src={profileImage || user.profileImage} alt="Profile" className="profile-image" />
+              {isEditing && (
+                <label className="edit-image-btn">
+                  <Camera size={18} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfileImageChange}
+                    style={{ display: 'none' }}
+                  />
+                </label>
               )}
             </div>
-          )) : (
-            <p className="no-data-message">최근 활동 내역이 없습니다.</p>
-          )}
-        </div>
-      </div>
 
-      {/* Menu Items */}
-      <div className="menu-section">
-        <button className="menu-item" onClick={() => navigate('/reviews')}>
-          <div className="menu-left">
-            <div className="menu-icon">⭐</div>
-            <span>받은 후기</span>
+            <div className="profile-info-wrapper">
+              {isEditing ? (
+                <div className="profile-edit-form">
+                  <input
+                    type="text"
+                    value={editNickname}
+                    onChange={(e) => setEditNickname(e.target.value)}
+                    className="edit-input"
+                    placeholder="닉네임"
+                  />
+                </div>
+              ) : (
+                <div className="profile-info">
+                  <h2>{user.nickname}</h2>
+                  {/* Bio가 없으므로 이메일이나 이름 표시 */}
+                  <p className="profile-bio">{user.email}</p> 
+                </div>
+              )}
+            </div>
+
+            {!isEditing ? (
+              <button className="edit-profile-btn" onClick={() => setIsEditing(true)}>
+                편집
+              </button>
+            ) : (
+              <div className="edit-actions">
+                <button className="cancel-btn" onClick={() => setIsEditing(false)}>
+                  취소
+                </button>
+                <button className="save-btn" onClick={handleSaveProfile} disabled={isSaving}>
+                  {isSaving ? '저장...' : '저장'}
+                </button>
+              </div>
+            )}
           </div>
-          <ChevronRight size={20} />
-        </button>
-        <button className="menu-item" onClick={() => navigate('/store')}>
-          <div className="menu-left">
-            <div className="menu-icon">💰</div>
-            <span>포인트 스토어</span>
+
+          {/* Stats Row */}
+          <div className="stats-row">
+            <div className="stat-item" style={{display: 'block'}}>
+              <p className="stat-value">{stats.totalItems}</p>
+              <p className="stat-label text-[10px]">등록 아이템</p>
+            </div>
+            <div className="stat-divider"></div>
+            <div className="stat-item" style={{display: 'block'}}>
+              <p className="stat-value">{stats.successfulMatches}</p>
+              <p className="stat-label">성공 매칭</p>
+            </div>
+            <div className="stat-divider"></div>
+            <div className="stat-item" style={{display: 'block'}}>
+              <p className="stat-value">{stats.averageRating.toFixed(1)}</p>
+              <p className="stat-label">평균 평점</p>
+            </div>
           </div>
-          <ChevronRight size={20} />
-        </button>
-        <button className="menu-item" onClick={() => navigate('/my-items')}>
-          <div className="menu-left">
-            <div className="menu-icon">📦</div>
-            <span>내 등록 아이템</span>
+        </div>
+
+        {/* 획득한 뱃지 섹션 (있는 경우만 표시) */}
+        {badges.length > 0 && (
+            <div className="menu-section">
+                <h3 className="section-title">획득한 뱃지</h3>
+                <div className="badges-grid" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+                {badges.map((badge) => (
+                    <div 
+                    key={badge.id} 
+                    className="badge-card"
+                    style={{ 
+                        border: `1px solid ${getRarityColor(badge.rarity)}`, 
+                        borderRadius: '8px', 
+                        padding: '8px', 
+                        minWidth: '80px', 
+                        textAlign: 'center',
+                        backgroundColor: '#fff'
+                    }}
+                    >
+                    <div className="badge-icon" style={{ fontSize: '24px' }}>{badge.icon}</div>
+                    <p className="badge-name" style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '4px' }}>{badge.name}</p>
+                    </div>
+                ))}
+                </div>
+            </div>
+        )}
+
+        {/* Account Section */}
+        <div className="menu-section">
+          <h3 className="section-title">계정</h3>
+          <div className="menu-card">
+            <button className="menu-item" onClick={() => navigate('/my-items')}>
+              <div className="menu-left">
+                <div className="menu-icon primary">
+                  <Package size={20} />
+                </div>
+                <span>내 등록 아이템</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
+            <button className="menu-item" onClick={() => navigate('/reviews')}>
+              <div className="menu-left">
+                <div className="menu-icon success">
+                  <Trophy size={20} />
+                </div>
+                <span>받은 후기</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
+            <button className="menu-item" onClick={() => navigate('/favorites')}>
+              <div className="menu-left">
+                <div className="menu-icon warning">
+                  <ActivityIcon size={20} />
+                </div>
+                <span>관심 목록 ({user.likedPosts?.length || 0})</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
+            <button className="menu-item" onClick={() => navigate('/store')}>
+              <div className="menu-left">
+                <div className="menu-icon info">
+                  <TrendingUp size={20} />
+                </div>
+                <span>포인트 스토어</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
           </div>
-          <ChevronRight size={20} />
-        </button>
-        <button className="menu-item" onClick={() => navigate('/favorites')}>
-          <div className="menu-left">
-            <div className="menu-icon">💖</div>
-            <span>즐겨찾기</span>
+        </div>
+
+        {/* Notification Section */}
+        <div className="menu-section">
+          <h3 className="section-title">알림</h3>
+          <div className="menu-card">
+            <button className="menu-item" onClick={() => navigate('/notifications')}>
+              <div className="menu-left">
+                <div className="menu-icon primary">
+                  <Bell size={20} />
+                </div>
+                <span>알림 설정</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
           </div>
-          <ChevronRight size={20} />
-        </button>
-        <button className="menu-item logout" onClick={handleLogout}>
-          <div className="menu-left">
+        </div>
+
+        {/* Other Section */}
+        <div className="menu-section">
+          <h3 className="section-title">기타</h3>
+          <div className="menu-card">
+            <button className="menu-item">
+              <div className="menu-left">
+                <div className="menu-icon success">
+                  <Mail size={20} />
+                </div>
+                <span>문의하기</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
+            <button className="menu-item">
+              <div className="menu-left">
+                <div className="menu-icon warning">
+                  <Shield size={20} />
+                </div>
+                <span>개인정보 처리방침</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
+            <button className="menu-item" onClick={() => navigate('/settings')}>
+              <div className="menu-left">
+                <div className="menu-icon info">
+                  <Settings size={20} />
+                </div>
+                <span>설정</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
+          </div>
+        </div>
+
+        {/* Logout Button */}
+        <div className="logout-section">
+          <button className="logout-btn" onClick={handleLogout}>
             <LogOut size={20} />
             <span>로그아웃</span>
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
 
       <BottomNavigation />
