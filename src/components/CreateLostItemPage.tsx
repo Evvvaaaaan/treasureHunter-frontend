@@ -13,6 +13,7 @@
     Coins,
     AlertCircle,
     ShieldQuestion, // 익명 아이콘 추가
+    Sparkles, // AI 자동 작성 아이콘 추가
   } from 'lucide-react';
   import { Button } from './ui/button';
   import { Input } from './ui/input';
@@ -611,11 +612,8 @@
       if (!formData.itemName.trim()) return '분실물 이름을 입력해주세요.';
       if (!formData.category) return '카테고리를 선택해주세요.';
       if (formData.description.trim().length < 100) return '상세 설명을 100자 이상 입력해주세요. (공백 제외)';
-<<<<<<< HEAD
-      // 이메일 또는 전화번호 형식 검사 추가 (선택적)
 
-=======
->>>>>>> bddde0b74219f0af76cc97e1eaef987baec6f3fd
+
       if (!formData.lostDate) return '분실 날짜를 선택해주세요.';
 
       // 날짜 유효성 검사 (미래 날짜 선택 불가 등)
@@ -864,6 +862,16 @@
           <h1>분실물 등록</h1>
           <div style={{ width: '2.5rem' }} /> {/* 간격 유지용 빈 div */}
         </header>
+        <button
+        type="button"
+        className="ai-floating-btn"
+        onClick={() => {
+          alert('AI 자동 입력 기능이 곧 제공될 예정입니다!');
+        }}
+        title="AI로 자동 작성"
+      >
+        <Sparkles style={{ width: '1.25rem', height: '1.25rem' }} />
+      </button>
 
         {/* Progress Bar */}
         <div className="progress-container">
@@ -1083,12 +1091,9 @@
               <span>{formData.location.address || '지도에서 위치를 선택해주세요.'}</span>
             </div>
           </div>
-<<<<<<< HEAD
 
           {/* Contact Info */}
           
-=======
->>>>>>> bddde0b74219f0af76cc97e1eaef987baec6f3fd
           {/* Reward Points */}
           <div className="form-section">
             {/* ... (이전과 동일) ... */}
