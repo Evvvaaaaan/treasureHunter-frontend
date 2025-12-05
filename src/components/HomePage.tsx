@@ -16,6 +16,7 @@ import {
   Loader2,
   Coins,
   Navigation,
+  Calendar,
 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -67,6 +68,7 @@ interface LostItem {
   image: string;
   status: 'lost' | 'found';
   isCompleted: boolean;
+  createdAt: string;
 }
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
@@ -91,6 +93,43 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): nu
   return distance;
 };
 
+const formatDate = (dateString: string) => {
+  if (!dateString) return '';
+  
+  // UTC 시간으로 인식하도록 'Z' 처리 (이미 있으면 무시)
+  let safeTimestamp = dateString;
+  if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
+      safeTimestamp += 'Z';
+  }
+
+  const date = new Date(safeTimestamp);
+  const now = new Date();
+  
+  // 초 단위 차이 계산
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  // 미래 시간인 경우 방금 전 처리
+  if (diffInSeconds < 0) return '방금 전';
+
+  // 1분 미만
+  if (diffInSeconds < 60) return '방금 전';
+  
+  // 1시간 미만
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
+  
+  // 24시간 미만
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}시간 전`;
+  
+  // 그 외: 날짜 표시 (KST)
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'Asia/Seoul', // KST 강제
+  }).format(date);
+};
+
 export default function HomePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,6 +138,7 @@ export default function HomePage() {
   const [rawPosts, setRawPosts] = useState<ApiPost[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -284,6 +324,7 @@ export default function HomePage() {
           : DEFAULT_IMAGE,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
         isCompleted: post.isCompleted,
+        createdAt: post.createdAt,
       };
     });
   }, [rawPosts, userLocation]);
@@ -332,6 +373,18 @@ export default function HomePage() {
                   </span>
                 )}
               </button>
+               <button
+                className="search-toggle-btn"
+                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+              >
+                <Search
+                  style={{
+                    width: "1.25rem",
+                    height: "1.25rem",
+                    color: "#4b5563",
+                  }}
+                />
+              </button>
 
               <div className="profile-menu-wrapper">
                 <button
@@ -373,25 +426,46 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
-          <form onSubmit={handleSearch} style={{ marginTop: '1rem' }}>
-            <div className="search-wrapper">
-              <Search className="search-icon" style={{ width: '1.25rem', height: '1.25rem', color: '#9ca3af' }} />
-              <Input
-                type="text"
-                placeholder="분실물 검색 (예: 지갑, 휴대폰, 강남역...)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  paddingLeft: '3rem',
-                  height: '3rem',
-                  backgroundColor: '#f9fafb',
-                  borderColor: '#e5e7eb',
-                  borderRadius: '1rem',
-                }}
-              />
-            </div>
-          </form>
+                    {isSearchExpanded && (
+            <motion.form
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              onSubmit={handleSearch}
+              style={{ marginTop: "1rem", overflow: "hidden" }}
+            >
+              <div className="search-wrapper">
+                <Search
+                  className="search-icon"
+                  style={{
+                    width: "1.25rem",
+                    height: "1.25rem",
+                    color: "#9ca3af",
+                  }}
+                />
+                <Input
+                  type="text"
+                  placeholder="분실물 검색 (예: 지갑, 휴대폰, 강남역...)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={() => {
+                    if (!searchQuery) {
+                      setTimeout(() => setIsSearchExpanded(false), 200);
+                    }
+                  }}
+                  autoFocus
+                  style={{
+                    paddingLeft: "3rem",
+                    height: "3rem",
+                    backgroundColor: "#f9fafb",
+                    borderColor: "#e5e7eb",
+                    borderRadius: "1rem",
+                  }}
+                />
+              </div>
+            </motion.form>
+          )}
         </div>
       </header>
 
@@ -410,39 +484,13 @@ export default function HomePage() {
         )}
 
         <div className="quick-actions">
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/map')}
-            className="action-card"
-          >
-            <div className="action-content">
-              <div className="action-icon" style={{ backgroundColor: '#dbeafe' }}>
-                <Map style={{ width: '1.5rem', height: '1.5rem', color: '#2563eb' }} />
-              </div>
-              <div className="action-text">
-                <p style={{ fontSize: '0.875rem', color: '#111827' }}>지도 보기</p>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>주변 분실물</p>
-              </div>
+          {/* 광고 및 프로모션 배너 */}
+          <div className="promo-banner">
+            <div className="promo-content">
+              <h3>광고 및 프로모션</h3>
+              <p>여기에 배너 광고를 추가할 수 있습니다</p>
             </div>
-            <ChevronRight style={{ width: '1.25rem', height: '1.25rem', color: '#9ca3af' }} />
-          </motion.button>
-
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/my-items')}
-            className="action-card"
-          >
-            <div className="action-content">
-              <div className="action-icon" style={{ backgroundColor: '#f3e8ff' }}>
-                <Tag style={{ width: '1.5rem', height: '1.5rem', color: '#9333ea' }} />
-              </div>
-              <div className="action-text">
-                <p style={{ fontSize: '0.875rem', color: '#111827' }}>내 게시물</p>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>등록 내역</p>
-              </div>
-            </div>
-            <ChevronRight style={{ width: '1.25rem', height: '1.25rem', color: '#9ca3af' }} />
-          </motion.button>
+          </div>
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
@@ -532,20 +580,37 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="item-info">
-                    <h3 className="item-title">{item.title}</h3>
-                    <p className="item-content-snippet">{item.content}</p> 
-                    <div className="item-meta">
-                      <div className="meta-item" title={`리워드: ${item.points}P`}>
-                        <Coins style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0, color: '#f59e0b' }} />
-                        <span className="meta-text" style={{ color: item.points > 0 ? '#b45309' : 'inherit' }}>
-                          {item.points.toLocaleString()}P
-                        </span>
-                      </div>
-                      <div className="meta-item" title="내 위치로부터의 거리">
-                        <Navigation style={{ width: '0.75rem', height: '0.75rem', flexShrink: 0 }} />
-                        <span className="meta-text">
-                          {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 계산 중...'}
-                        </span>
+                    <h3 className="item-title" style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>{item.title}</h3>
+                    
+                    {/* 상세 정보(content) 제거하고 포인트, 위치, 날짜만 표시 */}
+                    <div className="item-meta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                      
+                      {/* 1. 포인트 (있을 경우만) */}
+                      {item.points > 0 && (
+                        <div className="meta-item" title={`리워드: ${item.points}P`}>
+                          <Coins style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#f59e0b' }} />
+                          <span className="meta-text" style={{ color: '#b45309', fontWeight: 600 }}>
+                            {item.points.toLocaleString()}P
+                          </span>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '0.25rem' }}>
+                          {/* 2. 위치 (거리) */}
+                          <div className="meta-item" title="내 위치로부터의 거리">
+                            <Navigation style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
+                            <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                              {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 미상'}
+                            </span>
+                          </div>
+
+                          {/* 3. 게시 날짜 */}
+                          <div className="meta-item" title="게시일">
+                            <Calendar style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
+                            <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                              {formatDate(item.createdAt)}
+                            </span>
+                          </div>
                       </div>
                     </div>
                   </div>
@@ -575,7 +640,7 @@ export default function HomePage() {
         whileTap={{ scale: 0.95 }}
         onClick={() => navigate('/create')}
         className="fab"
-        style={{bottom: '5.5rem', right: '0.5rem'}}
+        style={{ bottom: '5.5rem', right: '0.5rem' }}
         aria-label="게시물 등록"
       >
         <Plus style={{ width: '2rem', height: '2rem', color: 'white' }} />
