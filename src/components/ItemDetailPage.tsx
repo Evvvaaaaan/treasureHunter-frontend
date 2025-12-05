@@ -20,6 +20,7 @@ interface ApiPost {
     totalScore: number;
     totalReviews: number;
   };
+  viewCount: number;
   // [수정] 백엔드 필드명에 맞춰 'imageUrls' -> 'images'로 변경
   images: string[]; 
   setPoint: number;
@@ -113,6 +114,7 @@ const ItemDetailPage: React.FC = () => {
   // [API 연결] 게시글 상세 조회
   const loadItemDetail = async (itemId: string) => {
     setIsLoading(true);
+    
     try {
       const token = await getValidAuthToken();
       const headers: HeadersInit = { 'Accept': 'application/json' };
@@ -145,7 +147,7 @@ const ItemDetailPage: React.FC = () => {
           address = `위도: ${data.lat}, 경도: ${data.lon}`;
         }
       }
-
+      
       // [수정] 데이터 매핑: data.images 사용
       const images = data.images && data.images.length > 0 
           ? data.images 
@@ -171,7 +173,7 @@ const ItemDetailPage: React.FC = () => {
           description: data.setPoint > 0 ? `${data.setPoint.toLocaleString()} 포인트` : '사례금 없음'
         },
         status: data.isCompleted ? 'completed' : 'active',
-        viewCount: 0, 
+        viewCount: data.viewCount, 
         bookmarkCount: 0,
         isBookmarked: false,
         likes: data.likeCount || 0,
@@ -179,14 +181,19 @@ const ItemDetailPage: React.FC = () => {
       };
 
       setItem(mappedItem);
-
+      if (data.author && !data.isAnonymous) {
+        // [수정] 신뢰도 계산
+        const avgScore = data.author.totalReviews > 0 
+            ? data.author.totalScore / data.author.totalReviews 
+            : 0;
+        const trustScore = Math.round(avgScore); // 100점 만점 환산
       // 작성자 정보 매핑
       if (data.author && !data.isAnonymous) {
         setPostAuthor({
           id: data.author.id.toString(),
           nickname: data.author.nickname,
           profileImage: data.author.profileImage || 'https://via.placeholder.com/150?text=User',
-          trustScore: data.author.totalScore || 0,
+          trustScore: trustScore,
           successCount: 0,
           badges: [],
           isOnline: false
@@ -203,9 +210,7 @@ const ItemDetailPage: React.FC = () => {
         });
       }
 
-    } catch (error) {
-      console.error("Error loading item details:", error);
-      setItem(null);
+    } 
     } finally {
       setIsLoading(false);
     }
@@ -493,6 +498,7 @@ const ItemDetailPage: React.FC = () => {
           <h1>{item.title}</h1>
           <div className="item-meta">
             <span className="category">{item.category}</span>
+            <span className="views">조회수 {item.viewCount}</span>
           </div>
         </div>
 
