@@ -95,19 +95,39 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
-  const date = new Date(dateString);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
   
-  // 24시간 이내면 시간 전 표시
-  if (diff < 1000 * 60 * 60 * 24) {
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      if (hours < 1) return '방금 전';
-      return `${hours}시간 전`;
+  // UTC 시간으로 인식하도록 'Z' 처리 (이미 있으면 무시)
+  let safeTimestamp = dateString;
+  if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
+      safeTimestamp += 'Z';
   }
+
+  const date = new Date(safeTimestamp);
+  const now = new Date();
   
-  // 그 외에는 날짜 표시
-  return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  // 초 단위 차이 계산
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  // 미래 시간인 경우 방금 전 처리
+  if (diffInSeconds < 0) return '방금 전';
+
+  // 1분 미만
+  if (diffInSeconds < 60) return '방금 전';
+  
+  // 1시간 미만
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
+  
+  // 24시간 미만
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}시간 전`;
+  
+  // 그 외: 날짜 표시 (KST)
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'Asia/Seoul', // KST 강제
+  }).format(date);
 };
 
 export default function HomePage() {

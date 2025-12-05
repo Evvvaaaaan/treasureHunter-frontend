@@ -839,7 +839,8 @@
 .search-toggle-btn {
   position: relative;
   padding: 0.625rem;
-  background: var(--accent);
+  /* background: var(#8e95a500); */
+  background-color: transparent;
   border: none;
   border-radius: 1rem;
   cursor: pointer;
