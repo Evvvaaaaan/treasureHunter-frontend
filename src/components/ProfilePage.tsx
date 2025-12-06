@@ -394,6 +394,15 @@ const ProfilePage: React.FC = () => {
               </div>
               <ChevronRight size={20} className="chevron" />
             </button>
+            <button className="menu-item" onClick={() => navigate('/leaderboard')}>
+              <div className="menu-left">
+                <div className="menu-icon success">
+                  <Trophy size={20} />
+                </div>
+                <span>리더보드</span>
+              </div>
+              <ChevronRight size={20} className="chevron" />
+            </button>
           </div>
         </div>
 
