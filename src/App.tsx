@@ -21,6 +21,7 @@ import ReviewPage from './components/ReviewPage';
 import FavoritesPage from './components/FavoritesPage';
 import ReviewsPage from './components/ReviewsPage';
 import ChangePasswordPage from './components/ChangePasswordPage';
+import OnboardingPage from './components/OnboardingPage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 import { ChatProvider } from './components/ChatContext';
@@ -199,6 +200,14 @@ export default function App() {
     <Router>
       <Routes>
         {/* Public Routes */}
+        <Route 
+          path="/onboarding" 
+          element={
+            <PublicRoute>
+              <OnboardingPage />
+            </PublicRoute>
+          } 
+        />
         <Route
           path="/login"
           element={
