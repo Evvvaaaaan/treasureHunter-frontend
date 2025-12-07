@@ -31,9 +31,9 @@ const LeaderboardPage: React.FC = () => {
         // 타입에 따라 정렬 기준 및 표시 점수 결정
         const processedData = data.map((user) => {
             let score = 0;
-            if (activeTab === 'points') score = user.totalScore;
+            if (activeTab === 'points') score = user.point;
             else if (activeTab === 'returns') score = user.returnedItemsCount;
-            else if (activeTab === 'finds') score = user.returnedItemsCount; // 'finds'에 대한 정확한 필드가 없다면 임시로 대체하거나 API 확인 필요
+            else if (activeTab === 'finds') score = user.foundCount; // 'finds'에 대한 정확한 필드가 없다면 임시로 대체하거나 API 확인 필요
 
             return {
                 ...user,
