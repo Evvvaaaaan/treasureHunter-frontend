@@ -87,9 +87,10 @@ const ProfilePage: React.FC = () => {
           successfulMatches: freshData.returnedItemsCount || 0,
           currentPoints: freshData.point || 0,
           averageRating: freshData.totalReviews > 0 
-            ? parseFloat((freshData.totalScore / freshData.totalReviews).toFixed(1)) 
+            ? Math.round(parseFloat((freshData.totalScore / freshData.totalReviews).toFixed(1)) )
             : 0,
-          trustScore: freshData.totalScore
+          trustScore: freshData.totalScore,
+          
         });
 
         // 활동 내역 생성 (게시글 등록 + 리뷰 받음)
@@ -322,7 +323,7 @@ const ProfilePage: React.FC = () => {
             </div>
             <div className="stat-divider"></div>
             <div className="stat-item" style={{display: 'block'}}>
-              <p className="stat-value">{stats.averageRating.toFixed(1)}</p>
+              <p className="stat-value">{stats.averageRating.toFixed(0)}</p>
               <p className="stat-label">평균 평점</p>
             </div>
           </div>
