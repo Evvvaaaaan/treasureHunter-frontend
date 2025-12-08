@@ -331,7 +331,13 @@ export default function HomePage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Search:', searchQuery);
+    if (searchQuery.trim()) {
+      // 콘솔 로그 대신 검색 페이지로 이동
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+      // 선택 사항: 검색창 닫기 및 초기화
+      // setIsSearchExpanded(false); 
+      // setSearchQuery('');
+    }
   };
 
   const filteredItems = lostItems.filter(
@@ -622,7 +628,7 @@ export default function HomePage() {
               <div className="no-results-icon">
                 <Search style={{ width: '2rem', height: '2rem', color: '#9ca3af' }} />
               </div>
-              <p style={{ color: '#4b5563' }}>
+              <p style={{ color: '#4b5563' }}>  
                 {searchQuery ? '검색 결과가 없습니다' : '등록된 게시물이 없습니다.'}
               </p>
                {!searchQuery && lostItems.length === 0 && (

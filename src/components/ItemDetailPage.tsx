@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-// MoreVertical 추가 확인
 import { MapPin, Calendar, Share2, Flag, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart, Edit, Trash, Check, MoreVertical } from 'lucide-react';
 import { useTheme } from '../utils/theme';
 import { getValidAuthToken, getUserInfo } from '../utils/auth';
 import { createChatRoom } from '../utils/chat';
 import '../styles/item-detail.css';
 
-// API 응답 데이터 타입 (백엔드 PostResponseDto 참조)
 interface ApiPost {
   id: number;
   title: string;
@@ -20,7 +18,7 @@ interface ApiPost {
     totalScore: number;
     totalReviews: number;
   };
-  // [수정] 백엔드 필드명에 맞춰 'imageUrls' -> 'images'로 변경
+  viewCount: number;
   images: string[]; 
   setPoint: number;
   itemCategory: string;
@@ -100,8 +98,56 @@ const ItemDetailPage: React.FC = () => {
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // 내가 작성한 글인지 확인
   const isMyPost = item && currentUser && postAuthor?.id === currentUser.id.toString();
+
+  // 좌표 -> 주소 변환 함수 (Google Maps Geocoder 사용)
+  const convertCoordsToAddress = async (lat: number, lng: number) => {
+    if (window.google && window.google.maps && window.google.maps.Geocoder) {
+      try {
+        const geocoder = new google.maps.Geocoder();
+        const response = await geocoder.geocode({ location: { lat, lng } });
+        if (response.results && response.results[0]) {
+          // "대한민국" 접두어 제거 후 반환
+          return response.results[0].formatted_address.replace(/^대한민국\s*/, '');
+        }
+      } catch (e) {
+        console.error("Geocoding failed:", e);
+      }
+    }
+    return null;
+  };
+
+  // Google Maps API 로드 대기 및 주소 재업데이트 (데이터 로드 시점에 API가 준비 안 된 경우 대비)
+  useEffect(() => {
+    if (!item) return;
+    // 이미 주소 형식이면(숫자가 아니면) 스킵
+    if (item.location.address && !item.location.address.startsWith('위도:')) return;
+
+    const updateAddress = async () => {
+        const addr = await convertCoordsToAddress(item.location.coordinates.lat, item.location.coordinates.lng);
+        if (addr) {
+            setItem(prev => prev ? ({
+                ...prev,
+                location: {
+                    ...prev.location,
+                    address: addr
+                }
+            }) : null);
+        }
+    };
+
+    if (window.google && window.google.maps) {
+        updateAddress();
+    } else {
+        const interval = setInterval(() => {
+            if (window.google && window.google.maps) {
+                clearInterval(interval);
+                updateAddress();
+            }
+        }, 500);
+        return () => clearInterval(interval);
+    }
+  }, [item]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -110,9 +156,9 @@ const ItemDetailPage: React.FC = () => {
     }
   }, [id]);
 
-  // [API 연결] 게시글 상세 조회
   const loadItemDetail = async (itemId: string) => {
     setIsLoading(true);
+    
     try {
       const token = await getValidAuthToken();
       const headers: HeadersInit = { 'Accept': 'application/json' };
@@ -129,24 +175,21 @@ const ItemDetailPage: React.FC = () => {
 
       const data: ApiPost = await response.json();
 
-      // 주소 변환
-      let address = '위치 정보 없음';
+      // [수정] 초기 주소 설정: API 로드 상태 확인 후 바로 주소 변환 시도
+      let address = `위도: ${data.lat}, 경도: ${data.lon}`; // 기본값 (API 로드 전)
+      
       if (window.google && window.google.maps && window.google.maps.Geocoder) {
         try {
           const geocoder = new google.maps.Geocoder();
-          const geocodeResult = await geocoder.geocode({
-            location: { lat: data.lat, lng: data.lon }
-          });
-          if (geocodeResult.results && geocodeResult.results[0]) {
-            address = geocodeResult.results[0].formatted_address;
+          const geoResponse = await geocoder.geocode({ location: { lat: data.lat, lng: data.lon } });
+          if (geoResponse.results && geoResponse.results[0]) {
+            address = geoResponse.results[0].formatted_address.replace(/^대한민국\s*/, '');
           }
         } catch (e) {
-          console.error("Geocoding failed:", e);
-          address = `위도: ${data.lat}, 경도: ${data.lon}`;
+          console.error("Initial geocoding failed, will retry in useEffect", e);
         }
       }
-
-      // [수정] 데이터 매핑: data.images 사용
+      
       const images = data.images && data.images.length > 0 
           ? data.images 
           : [DEFAULT_IMAGE];
@@ -159,7 +202,7 @@ const ItemDetailPage: React.FC = () => {
         category: CATEGORY_MAP[data.itemCategory] || data.itemCategory,
         images: images,
         location: {
-          address: address,
+          address: address, // 변환된 주소 또는 기본값
           coordinates: { lat: data.lat, lng: data.lon }
         },
         dateInfo: {
@@ -171,7 +214,7 @@ const ItemDetailPage: React.FC = () => {
           description: data.setPoint > 0 ? `${data.setPoint.toLocaleString()} 포인트` : '사례금 없음'
         },
         status: data.isCompleted ? 'completed' : 'active',
-        viewCount: 0, 
+        viewCount: data.viewCount, 
         bookmarkCount: 0,
         isBookmarked: false,
         likes: data.likeCount || 0,
@@ -180,13 +223,17 @@ const ItemDetailPage: React.FC = () => {
 
       setItem(mappedItem);
 
-      // 작성자 정보 매핑
       if (data.author && !data.isAnonymous) {
+        const avgScore = data.author.totalReviews > 0 
+            ? data.author.totalScore / data.author.totalReviews 
+            : 0;
+        const trustScore = Math.round(avgScore); 
+
         setPostAuthor({
           id: data.author.id.toString(),
           nickname: data.author.nickname,
           profileImage: data.author.profileImage || 'https://via.placeholder.com/150?text=User',
-          trustScore: data.author.totalScore || 0,
+          trustScore: trustScore,
           successCount: 0,
           badges: [],
           isOnline: false
@@ -204,63 +251,48 @@ const ItemDetailPage: React.FC = () => {
       }
 
     } catch (error) {
-      console.error("Error loading item details:", error);
-      setItem(null);
+        console.error("Load detail error", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // [API 연결] 게시글 완료 처리
   const handleComplete = async () => {
     if (!confirm('이 게시물을 완료(찾음/돌려줌) 처리하시겠습니까?\n완료 시 포인트가 지급됩니다.')) return;
-
     try {
       const token = await getValidAuthToken();
       if (!token) {
         alert("로그인이 필요합니다.");
         return;
       }
-
       const response = await fetch(`${API_BASE_URL}/post/${id}/complete`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (response.ok) {
         alert('게시물이 완료 처리되었습니다.');
         navigate('/home');
       } else {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || '완료 처리에 실패했습니다.');
+        throw new Error('완료 처리에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Complete failed:', error);
       alert(`오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     }
     setIsMenuOpen(false);
   };
 
-  // [API 연결] 게시글 삭제
   const handleDelete = async () => {
     if (!confirm('정말 이 게시물을 삭제하시겠습니까?')) return;
-
     try {
       const token = await getValidAuthToken();
       if (!token) {
         alert("로그인이 필요합니다.");
         return;
       }
-
       const response = await fetch(`${API_BASE_URL}/post/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (response.ok) {
         alert('게시물이 삭제되었습니다.');
         navigate('/home');
@@ -268,41 +300,32 @@ const ItemDetailPage: React.FC = () => {
         throw new Error('삭제 실패');
       }
     } catch (error) {
-      console.error('Delete failed:', error);
       alert('삭제에 실패했습니다.');
     }
     setIsMenuOpen(false);
   };
 
-  // [API 연결] 좋아요 토글
   const handleLike = async () => {
     if (!item || !id) return;
-    
     const token = await getValidAuthToken();
     if (!token) {
       if(confirm("로그인이 필요한 기능입니다. 로그인하시겠습니까?")) navigate('/login');
       return;
     }
-
     const prevItem = { ...item };
     setItem({
       ...item,
       likes: item.isLiked ? item.likes - 1 : item.likes + 1,
       isLiked: !item.isLiked
     });
-
     try {
       const action = prevItem.isLiked ? 'unlike' : 'like';
       const response = await fetch(`${API_BASE_URL}/post/${id}/${action}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (!response.ok) throw new Error('Like action failed');
     } catch (error) {
-      console.error("Like failed:", error);
       setItem(prevItem);
     }
   };
@@ -320,9 +343,7 @@ const ItemDetailPage: React.FC = () => {
           text: item?.description,
           url: window.location.href
         });
-      } catch (error) {
-        console.log('Share cancelled');
-      }
+      } catch (error) { console.log('Share cancelled'); }
     } else {
       navigator.clipboard.writeText(window.location.href);
       alert('링크가 복사되었습니다!');
@@ -343,40 +364,30 @@ const ItemDetailPage: React.FC = () => {
       }
       return;
     }
-
     if (isMyPost) {
       alert("자신의 게시물에는 채팅을 걸 수 없습니다.");
       return;
     }
-
     try {
       const roomName = `${item?.title}`; 
       const postId = parseInt(item?.id || '0', 10);
-
       if (!postId) {
         alert("잘못된 게시글 정보입니다.");
         return;
       }
-
       const roomId = await createChatRoom(roomName, postId, false);
       navigate(`/chat/${roomId}`);
-      
     } catch (error) {
-      console.error("채팅방 생성 실패:", error);
       alert("채팅방을 만들 수 없습니다. 잠시 후 다시 시도해주세요.");
     }
   };
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => 
-      prev === (item?.images.length || 0) - 1 ? 0 : prev + 1
-    );
+    setCurrentImageIndex((prev) => prev === (item?.images.length || 0) - 1 ? 0 : prev + 1);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => 
-      prev === 0 ? (item?.images.length || 0) - 1 : prev - 1
-    );
+    setCurrentImageIndex((prev) => prev === 0 ? (item?.images.length || 0) - 1 : prev - 1);
   };
 
   if (isLoading) {
@@ -417,22 +428,16 @@ const ItemDetailPage: React.FC = () => {
               </button>
               {isMenuOpen && (
                 <>
-                  <div 
-                    className="menu-backdrop" 
-                    onClick={() => setIsMenuOpen(false)}
-                  />
+                  <div className="menu-backdrop" onClick={() => setIsMenuOpen(false)} />
                   <div className="post-menu">
                     <button className="menu-item edit" onClick={handleEdit}>
-                      <Edit size={18} />
-                      <span>수정</span>
+                      <Edit size={18} /><span>수정</span>
                     </button>
                     <button className="menu-item complete" onClick={handleComplete}>
-                      <Check size={18} />
-                      <span>완료</span>
+                      <Check size={18} /><span>완료</span>
                     </button>
                     <button className="menu-item delete" onClick={handleDelete}>
-                      <Trash size={18} />
-                      <span>삭제</span>
+                      <Trash size={18} /><span>삭제</span>
                     </button>
                   </div>
                 </>
@@ -493,6 +498,7 @@ const ItemDetailPage: React.FC = () => {
           <h1>{item.title}</h1>
           <div className="item-meta">
             <span className="category">{item.category}</span>
+            <span className="views">조회수 {item.viewCount}</span>
           </div>
         </div>
 
@@ -561,7 +567,7 @@ const ItemDetailPage: React.FC = () => {
           <p className="location-address">{item.location.address}</p>
           <div className="map-container">
             <iframe
-              src={`https://maps.google.com/maps?q=${item.location.coordinates.lat},${item.location.coordinates.lng}&z=15&output=embed`}
+              src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBN5hX-FL_N57xUwRVVuY4ExZQuro5Ti2s&q=${item.location.coordinates.lat},${item.location.coordinates.lng}&zoom=15`}
               width="100%"
               height="250"
               style={{ border: 0, borderRadius: '12px' }}

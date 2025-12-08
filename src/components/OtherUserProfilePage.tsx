@@ -63,13 +63,17 @@ const OtherUserProfilePage: React.FC = () => {
       if (!userData) {
         throw new Error("사용자 정보를 찾을 수 없습니다.");
       }
+       const avgScore = userData.totalReviews > 0 
+        ? userData.totalScore / userData.totalReviews 
+        : 0;
+      const trustScore = Math.round(avgScore); // 5점 만점 기준 -> 100점 만점
 
       const mappedProfile: UserProfile = {
         id: userData.id.toString(),
         nickname: userData.nickname,
         profileImage: userData.profileImage || "https://via.placeholder.com/400x400?text=No+Image",
         bio: "안녕하세요! 보물찾기를 통해 잃어버린 물건을 찾고 있습니다.",
-        trustScore: userData.totalScore || 0,
+        trustScore: trustScore,
         isOnline: false, 
         location: "활동 지역 정보 없음", 
         joinedDate: new Date(userData.createdAt).toLocaleDateString('ko-KR', {
