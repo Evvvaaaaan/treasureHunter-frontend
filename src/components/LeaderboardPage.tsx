@@ -87,7 +87,7 @@ const LeaderboardPage: React.FC = () => {
 
   const calculateAverageRating = (score: number, reviews: number) => {
       if (reviews === 0) return 0;
-      return (score / reviews).toFixed(1);
+      return Math.round((score / reviews));
   };
 
   const topThree = leaderboardData.slice(0, 3);
