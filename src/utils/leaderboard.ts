@@ -1,6 +1,6 @@
 import { getValidAuthToken } from './auth';
+import { API_BASE_URL } from '../config'; 
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
 export interface LeaderboardEntry {
   id: number;
@@ -8,12 +8,16 @@ export interface LeaderboardEntry {
   profileImage: string;
   totalScore: number;
   totalReviews: number;
-  // 랭킹은 클라이언트에서 계산하거나, 백엔드에서 준다면 추가
+  // [추가] 누락된 속성 추가
+  point: number;
+  returnedItemsCount: number;
+  foundCount?: number; // 'finds' 탭에서 사용 (API 확인 필요, 임시 추가)
 }
 
 export type LeaderboardType = 'returns' | 'points' | 'finds';
 
 export const fetchLeaderboard = async (type: LeaderboardType): Promise<LeaderboardEntry[]> => {
+  // ... (기존 코드 유지)
   const token = await getValidAuthToken();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -34,13 +38,11 @@ export const fetchLeaderboard = async (type: LeaderboardType): Promise<Leaderboa
 
   const data = await response.json();
   
-  // 응답 데이터 구조에 맞게 처리
   if (data && Array.isArray(data.leaderboard)) {
       return data.leaderboard;
   } else if (Array.isArray(data)) {
       return data;
   }
   
-  console.warn("Unexpected leaderboard data format:", data);
   return [];
 };

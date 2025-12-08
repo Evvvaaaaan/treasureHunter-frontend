@@ -8,9 +8,9 @@ import BottomNavigation from './BottomNavigation';
 // auth 유틸리티 import
 import { getUserInfo, checkToken, getValidAuthToken, type UserInfo } from '../utils/auth';
 import '../styles/my-items-page.css'; // 기존 스타일 재사용 (또는 favorites-page.css)
-
+import { API_BASE_URL } from '../config'; 
 // API 기본 URL
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
 interface FavoriteItem {

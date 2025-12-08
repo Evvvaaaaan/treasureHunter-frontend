@@ -6,9 +6,6 @@ import {
   MapPin,
   Plus,
   Bell,
-  Tag,
-  ChevronRight,
-  Map,
   User,
   LogOut,
   Trash2,
@@ -26,6 +23,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
 import { Button } from './ui/button';
 import BottomNavigation from './BottomNavigation';
+import { API_BASE_URL } from '../config'; 
 
 interface AuthorInfo {
   id: number;
@@ -71,7 +69,6 @@ interface LostItem {
   createdAt: string;
 }
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png'; 
 
 // Haversine 거리 계산 함수 (km 단위)
@@ -197,7 +194,9 @@ export default function HomePage() {
                } else {
                    errorMessage = `서버 응답 오류 (상태: ${response.status}).`;
                }
-           } catch {}
+           } catch {
+            console.log('error reading response text');
+           }
         }
         throw new Error(errorMessage);
       }

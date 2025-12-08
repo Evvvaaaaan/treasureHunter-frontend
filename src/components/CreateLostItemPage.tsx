@@ -2,7 +2,6 @@
   import { useNavigate } from 'react-router-dom';
   import { motion, AnimatePresence } from 'motion/react';
   import {
-    Camera,
     X,
     MapPin,
     Calendar as CalendarIcon,
@@ -22,7 +21,7 @@
   // [MODIFIED] createPost, PostData, getValidAuthToken 추가
   import { getUserInfo, type UserInfo, createPost, type PostData, getValidAuthToken } from '../utils/auth';
   import '../styles/create-lost-item.css';
-
+  import { API_BASE_URL } from '../config'; 
   // FormData 인터페이스는 그대로 사용
   interface FormData {
     itemType: 'lost' | 'found';
@@ -66,7 +65,7 @@
   };
 
   // [MODIFIED] API 베이스 URL (필요시 환경 변수 사용)
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+
 
 
   // [MODIFIED] 이미지 업로드 함수 (실제 API 호출로 교체)
@@ -198,10 +197,6 @@
 
       // 최종 진행률: (필수 완료 개수 + 선택 완료 개수) / (필수 총 개수 + 선택 총 개수)
       // 단, 필수가 모두 완료되지 않으면 100% 미만으로 표시되도록 조정
-      const requiredProgress = (completed / total) * 100;
-      // Handle division by zero if optionalTotal is 0
-      const optionalProgress = optionalTotal > 0 ? (optionalCompleted / optionalTotal) * 100 : 0;
-      // Weighted average or simple average - using simple average here
       const overallProgress = (total + optionalTotal) > 0 ? ((completed + optionalCompleted) / (total + optionalTotal)) * 100 : 0;
 
 

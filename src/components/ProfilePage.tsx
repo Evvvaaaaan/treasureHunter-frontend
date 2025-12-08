@@ -9,8 +9,7 @@ import { getUserInfo, checkToken, getValidAuthToken, type UserInfo } from '../ut
 import BottomNavigation from './BottomNavigation';
 import { uploadImage } from '../utils/file';
 import '../styles/profile-page.css';
-
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+import { API_BASE_URL } from '../config'; 
 
 interface UserStats {
   totalItems: number;

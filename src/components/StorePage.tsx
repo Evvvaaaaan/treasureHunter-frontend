@@ -5,7 +5,7 @@ import BottomNavigation from './BottomNavigation';
 // [추가] 인증 및 API 유틸리티 import
 import { getValidAuthToken, checkToken, getUserInfo } from '../utils/auth';
 import '../styles/store-page.css';
-
+import { API_BASE_URL } from '../config'; 
 interface Product {
   id: string;
   name: string;
@@ -29,7 +29,7 @@ interface CartItem {
 }
 
 // [추가] API 기본 URL 설정
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+
 
 const StorePage: React.FC = () => {
   const navigate = useNavigate();

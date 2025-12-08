@@ -1,6 +1,6 @@
 import { getValidAuthToken } from './auth';
+import { API_BASE_URL } from '../config'; 
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
 export const uploadImage = async (file: File): Promise<string> => {
   const token = await getValidAuthToken();

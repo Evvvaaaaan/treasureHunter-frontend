@@ -5,7 +5,7 @@ import { useTheme } from '../utils/theme';
 import { getValidAuthToken, getUserInfo } from '../utils/auth';
 import { createChatRoom } from '../utils/chat';
 import '../styles/item-detail.css';
-
+import { API_BASE_URL } from '../config'; 
 interface ApiPost {
   id: number;
   title: string;
@@ -70,7 +70,7 @@ interface UserInfo {
   isOnline: boolean;
 }
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+
 
 const CATEGORY_MAP: { [key: string]: string } = {
   'PHONE': '휴대폰',

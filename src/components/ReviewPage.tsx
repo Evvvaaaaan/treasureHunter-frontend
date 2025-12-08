@@ -14,6 +14,7 @@ import { getValidAuthToken, getUserInfo, getUserProfile } from "../utils/auth";
 import { fetchChatRoomDetail } from "../utils/chat";
 import { uploadImage } from "../utils/file";
 import "../styles/review-page.css";
+import { API_BASE_URL } from '../config'; 
 
 interface ReviewData {
   title: string;
@@ -22,7 +23,7 @@ interface ReviewData {
   images: File[];
 }
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+
 
 const ReviewPage: React.FC = () => {
   const navigate = useNavigate();

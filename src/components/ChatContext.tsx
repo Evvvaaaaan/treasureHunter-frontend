@@ -19,7 +19,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const myInfo = getUserInfo();
       if (!myInfo) return;
-      const myId = Number(myInfo.id);
+      // const myId = Number(myInfo.id);
 
       // 1. 채팅방 목록 가져오기
       const rooms = await fetchChatRooms();
