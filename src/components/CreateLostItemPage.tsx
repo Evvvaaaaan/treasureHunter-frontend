@@ -996,7 +996,7 @@
 
           {/* Photo Upload */}
           <div className="form-section">
-            {/* ... (이전과 동일) ... */}
+
             <div className="label-with-check">
               <Label htmlFor="photo-input">사진 업로드 (최대 5장, 선택사항)</Label>
               {formData.photos.length > 0 && (

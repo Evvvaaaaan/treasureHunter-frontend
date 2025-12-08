@@ -23,6 +23,7 @@ import ReviewsPage from './components/ReviewsPage';
 import ChangePasswordPage from './components/ChangePasswordPage';
 import OnboardingPage from './components/OnboardingPage';
 import LeaderboardPage from './components/LeaderboardPage';
+import SearchPage from './components/SearchPage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 import { ChatProvider } from './components/ChatContext';
@@ -372,6 +373,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <SearchPage />
+              </ProtectedRoute>
+            }
+          />
 
         <Route path="/chat/:id/review" element={<ReviewPage />} />
         {/* Redirect Logic */}
