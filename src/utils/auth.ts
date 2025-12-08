@@ -491,7 +491,7 @@ export const getUserProfile = async (userId: string): Promise<UserInfo | null> =
 };
 
 // Create a post
-export const createPost = async (postData: PostData): Promise<ApiPost | null> => { // Return type matches API response for a single post
+export const createPost = async (postData: PostData): Promise<Post | null> => { // Return type matches API response for a single post
     const token = await getValidAuthToken();
     if (!token) {
       console.error("createPost: No valid access token found.");
@@ -515,7 +515,7 @@ export const createPost = async (postData: PostData): Promise<ApiPost | null> =>
         return null;
       }
 
-      const createdPost: ApiPost = await response.json(); // Assuming API returns the created post
+      const createdPost: Post = await response.json();
       console.log("Post created successfully:", createdPost);
       return createdPost;
 
@@ -535,11 +535,11 @@ export const getAuthToken = (): string | null => {
 // ... (기존 코드 유지)
 
 // [추가] 채팅방 생성 요청 DTO
-interface ChatRoomRequestDto {
-  name: string;
-  postId: number;
-  isAnonymous: boolean;
-}
+// interface ChatRoomRequestDto {
+//   name: string;
+//   postId: number;
+//   isAnonymous: boolean;
+// }
 
 // [추가] 채팅방 응답 DTO (필요한 부분만 정의)
 interface ChatRoomResponseDto {

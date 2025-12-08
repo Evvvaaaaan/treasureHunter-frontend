@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Bell, Search, Mic, Loader2, Coins, MapPin, Calendar, Package } from "lucide-react";
+import { ArrowLeft,Search, Loader2, Coins, MapPin, Calendar, Package, X } from "lucide-react";
 import { Input } from "./ui/input";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Badge } from "./ui/badge";

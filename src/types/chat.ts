@@ -55,3 +55,20 @@ export interface ChatReadEvent {
   lastReadChatId: number;
   userType: 'AUTHOR' | 'CALLER';
 }
+// 백엔드의 UserSimpleResponseDto에 대응
+export interface ChatUser {
+  id: number;
+  nickname?: string;
+  profileImage?: string; // [확인] ChatPage에서 partner.image 대신 partner.profileImage를 사용해야 함
+}
+
+// 백엔드의 PostSimpleResponseDto에 대응
+export interface ChatPost {
+  id: number;
+  title?: string;
+  image?: string;
+  author?: ChatUser;
+  createdAt?: string; // [추가] ChatListPage에서 사용됨
+}
+
+// ... (나머지 인터페이스 유지)

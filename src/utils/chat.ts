@@ -1,6 +1,6 @@
 // src/utils/chat.ts
 import { getValidAuthToken } from './auth';
-import type { ChatRoomListResponse, ChatMessage, ChatRoom, ChatMessageListResponse } from '../types/chat';
+import type { ChatRoomListResponse, ChatRoom, ChatMessageListResponse } from '../types/chat';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
 
@@ -48,13 +48,15 @@ export const fetchChatMessages = async (roomId: string, lastChatId: number = 0, 
 
 // 3. 채팅 메시지 전송하기 (수정됨)
 // Endpoint: POST /api/v1/chat/room/{id}/messages
-export const sendChatMessage = async (roomId: string, message: string, type: 'TEXT' | 'IMAGE' = 'TEXT') => {
+export const sendChatMessage = async (roomId: string, message: string, type: 'TEXT' | 'IMAGE' | 'EXIT' = 'TEXT') => {
   const token = await getValidAuthToken();
   if (!token) throw new Error("로그인이 필요합니다.");
 
   // [수정 1] 백엔드 ChatType Enum에 맞춰 변환
   // TEXT -> MESSAGE (백엔드 ChatType: ENTER, MESSAGE, IMAGE, LOCATION, EXIT)
-  const apiType = type === 'TEXT' ? 'MESSAGE' : 'IMAGE';
+  let apiType = 'MESSAGE';
+  if (type === 'IMAGE') apiType = 'IMAGE';
+  if (type === 'EXIT') apiType = 'EXIT';
 
   // [수정 2] 현재 시간을 ISO 8601 형식(UTC)으로 생성
   const sentAt = new Date().toISOString();

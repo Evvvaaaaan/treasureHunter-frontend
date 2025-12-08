@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
-  ArrowLeft, Send, Mic, MoreVertical, Phone, Video, 
-  Paperclip, Smile, Loader2, X, Play, Pause, LogOut, Trash2
+  ArrowLeft, Send,MoreVertical, Phone, Video, 
+  Paperclip, Smile, Loader2, X, Trash2
 } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -283,7 +283,7 @@ const ChatPage: React.FC = () => {
     const partner = roomInfo.participants.find(p => p.id !== Number(currentUser.id));
     return {
       name: partner?.nickname || roomInfo.name || '상대방',
-      image: partner?.profileImage || partner?.image || 'https://via.placeholder.com/150?text=User'
+      image: partner?.profileImage || partner?.profileImage || 'https://via.placeholder.com/150?text=User'
     };
   };
   const partnerInfo = getPartnerInfo();

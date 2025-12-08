@@ -138,6 +138,10 @@ function ChartTooltipContent({
     indicator?: "line" | "dot" | "dashed";
     nameKey?: string;
     labelKey?: string;
+    // [수정] 명시적 타입 정의 추가
+    payload?: any[];
+    active?: boolean;
+    label?: any;
   }) {
   const { config } = useChart();
 
@@ -200,7 +204,7 @@ function ChartTooltipContent({
     >
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
-        {payload.map((item, index) => {
+        {payload.map((item: any, index: number) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`;
           const itemConfig = getPayloadConfigFromPayload(
             config,
@@ -293,12 +297,12 @@ function ChartLegendContent({
   verticalAlign = "bottom",
   nameKey,
 }: React.ComponentProps<"div"> &
-  Pick<
-    RechartsPrimitive.LegendProps,
-    "payload" | "verticalAlign"
-  > & {
+  // [수정] Pick<LegendProps, ...> 대신 직접 정의하여 오류 해결
+  {
     hideIcon?: boolean;
     nameKey?: string;
+    payload?: any[];
+    verticalAlign?: "top" | "middle" | "bottom";
   }) {
   const { config } = useChart();
 
@@ -314,7 +318,7 @@ function ChartLegendContent({
         className,
       )}
     >
-      {payload.map((item) => {
+      {payload.map((item: any) => {
         const key = `${nameKey || item.dataKey || "value"}`;
         const itemConfig = getPayloadConfigFromPayload(
           config,
