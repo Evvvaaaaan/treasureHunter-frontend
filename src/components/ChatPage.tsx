@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  ArrowLeft, Send,MoreVertical, Phone, Video, 
+import {
+  ArrowLeft, Send, MoreVertical, Phone, Video,
   Paperclip, Smile, Loader2, X, Trash2
 } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
@@ -10,16 +10,16 @@ import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 
 import { useTheme } from '../utils/theme';
 import { getUserInfo } from '../utils/auth';
-import { 
-  fetchChatRoomDetail, 
-  fetchChatMessages, 
-  sendChatMessage, 
+import {
+  fetchChatRoomDetail,
+  fetchChatMessages,
+  sendChatMessage,
   updateReadCursor,
-  deleteChatRoom 
+  deleteChatRoom
 } from '../utils/chat';
 import { fetchPostDetail } from '../utils/post';
 import { uploadImage } from '../utils/file';
-import { useChat } from '../components/ChatContext'; 
+import { useChat } from '../components/ChatContext';
 import type { ChatRoom, ChatMessage, ChatReadEvent } from '../types/chat';
 import {
   DropdownMenu,
@@ -37,22 +37,8 @@ const ChatPage: React.FC = () => {
   const { id: roomId } = useParams<{ id: string }>();
   const { theme } = useTheme();
   const { updateUnreadCount } = useChat();
-  
-  // [수정] 채팅방 나가기 (EXIT 메시지 전송)
-  const handleLeaveChat = async () => {
-    if (!confirm("채팅방을 나가시겠습니까? 상대방에게 알림이 전송됩니다.")) {
-      return;
-    }
-    try {
-      if (roomId) {
-        await sendChatMessage(roomId, "채팅방을 나갔습니다.", 'EXIT');
-        navigate('/chat-list');
-      }
-    } catch (error) {
-      console.error("채팅방 나가기 실패:", error);
-      alert("채팅방 나가기에 실패했습니다.");
-    }
-  };
+
+
 
   // [추가] 채팅방 삭제 (DB에서 삭제)
   const handleDeleteChat = async () => {
@@ -69,10 +55,10 @@ const ChatPage: React.FC = () => {
       alert("채팅방 삭제에 실패했습니다.");
     }
   };
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const currentUser = getUserInfo();
 
   const [roomInfo, setRoomInfo] = useState<ChatRoom | null>(null);
@@ -82,21 +68,20 @@ const ChatPage: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [myUserType, setMyUserType] = useState<'AUTHOR' | 'CALLER' | null>(null);
-  
+
   const myUserTypeRef = useRef<'AUTHOR' | 'CALLER' | null>(null);
-  
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const [isRecording, setIsRecording] = useState(false);
-  
+
   const stompClient = useRef<Client | null>(null);
-  
+
   const lastReadIdRef = useRef<number>(0);
-  const readUpdateTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const readUpdateTimerRef = useRef<any | null>(null);
 
   useEffect(() => {
     myUserTypeRef.current = myUserType;
@@ -116,7 +101,7 @@ const ChatPage: React.FC = () => {
 
         setRoomInfo(roomData);
         setMessages(syncData.chats || []);
-        
+
         console.log("[Sync] Opponent Last Read ID:", syncData.opponentLastReadChatId);
         setOpponentLastReadId(syncData.opponentLastReadChatId || 0);
 
@@ -176,7 +161,7 @@ const ChatPage: React.FC = () => {
           if (message.body) {
             const event: ChatReadEvent = JSON.parse(message.body);
             const currentMyType = myUserTypeRef.current;
-            
+
             if (currentMyType && event.userType !== currentMyType) {
               setOpponentLastReadId((prev) => Math.max(prev, event.lastReadChatId));
             }
@@ -195,7 +180,7 @@ const ChatPage: React.FC = () => {
       if (client.active) client.deactivate();
       if (readUpdateTimerRef.current) clearTimeout(readUpdateTimerRef.current);
     };
-  }, [roomId]); 
+  }, [roomId]);
 
   // 3. 자동 스크롤
   useEffect(() => {
@@ -205,7 +190,7 @@ const ChatPage: React.FC = () => {
   // 4. 읽음 처리 요청
   const handleReadUpdate = (chatId: number) => {
     if (chatId <= lastReadIdRef.current) return;
-    
+
     lastReadIdRef.current = chatId;
     localStorage.setItem(`lastRead_${roomId}`, chatId.toString());
     setTimeout(updateUnreadCount, 1000);
@@ -292,13 +277,13 @@ const ChatPage: React.FC = () => {
     if (!isoString) return '';
     let safeTimestamp = isoString;
     if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
-        safeTimestamp += 'Z';
+      safeTimestamp += 'Z';
     }
     const date = new Date(safeTimestamp);
     let hours = date.getHours();
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? '오후' : '오전';
-    hours = hours % 12 || 12; 
+    hours = hours % 12 || 12;
     return `${ampm} ${hours}:${minutes.toString().padStart(2, '0')}`;
   };
 
@@ -328,22 +313,22 @@ const ChatPage: React.FC = () => {
         <div className="header-actions-new">
           <button className="header-icon-btn"><Phone size={20} /></button>
           <button className="header-icon-btn"><Video size={20} /></button>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="header-icon-btn transition-colors hover:bg-gray-100 rounded-full p-2 outline-none focus:ring-2 focus:ring-primary/20 active:bg-gray-200">
                 <MoreVertical size={20} />
               </button>
             </DropdownMenuTrigger>
-            
-            <DropdownMenuContent 
-              align="end" 
+
+            <DropdownMenuContent
+              align="end"
               sideOffset={8}
               className="w-56 z-50 p-2 bg-white/95 backdrop-blur-sm rounded-xl border border-gray-100 shadow-lg ring-1 ring-black/5 animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
             >
               {/* [수정] 메뉴 아이템 변경: 나가기 및 삭제 */}
-              
-              <DropdownMenuItem 
+
+              <DropdownMenuItem
                 onClick={handleDeleteChat}
                 className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition-all cursor-pointer hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 outline-none"
               >
@@ -367,14 +352,14 @@ const ChatPage: React.FC = () => {
                   <img src={partnerInfo.image} alt={partnerInfo.name} />
                 </div>
               )}
-              
+
               <div className="message-group-new" style={{ display: 'flex', flexDirection: 'column', alignItems: isMyMessage ? 'flex-end' : 'flex-start' }}>
-                
+
                 {message.type === 'IMAGE' ? (
                   <div className={`message-image-new ${isMyMessage ? 'my-bubble' : 'other-bubble'}`} style={{ padding: '4px', background: 'transparent' }}>
-                    <img 
-                      src={message.message} 
-                      alt="전송된 이미지" 
+                    <img
+                      src={message.message}
+                      alt="전송된 이미지"
                       className="rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                       style={{ maxWidth: '200px', maxHeight: '300px', objectFit: 'cover' }}
                       onClick={() => window.open(message.message, '_blank')}
@@ -385,23 +370,23 @@ const ChatPage: React.FC = () => {
                     <p>{message.message}</p>
                   </div>
                 )}
-                
-                <div 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '4px', 
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
                     marginTop: '2px',
                     flexDirection: isMyMessage ? 'row-reverse' : 'row'
                   }}
                 >
-                   <span className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}>
+                  <span className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}>
                     {formatTime(message.sentAt)}
-                   </span>
-                   
-                   {isMyMessage && isRead && (
-                     <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 500 }}>읽음</span>
-                   )}
+                  </span>
+
+                  {isMyMessage && isRead && (
+                    <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 500 }}>읽음</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -428,7 +413,7 @@ const ChatPage: React.FC = () => {
         )}
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
         <button className="input-icon-btn-new" onClick={() => fileInputRef.current?.click()}><Paperclip size={22} /></button>
-        
+
         <div className="input-wrapper-new">
           <input
             type="text"
@@ -443,7 +428,7 @@ const ChatPage: React.FC = () => {
             {showEmojiPicker ? <X size={20} /> : <Smile size={20} />}
           </button>
         </div>
-        
+
         <button className="send-btn-new" onClick={handleSendMessage} disabled={isSending || (!inputMessage.trim() && !selectedFile)}>
           <Send size={20} />
         </button>

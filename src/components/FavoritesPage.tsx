@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MapPin, Calendar, Filter, Bookmark, Trash2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Heart, MapPin, Calendar, Filter, Bookmark, Trash2, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Badge } from './ui/badge';
 import BottomNavigation from './BottomNavigation';
 // auth 유틸리티 import
-import { getUserInfo, checkToken, getValidAuthToken, type UserInfo } from '../utils/auth';
+import { getUserInfo, checkToken, getValidAuthToken } from '../utils/auth';
 import '../styles/my-items-page.css'; // 기존 스타일 재사용 (또는 favorites-page.css)
-import { API_BASE_URL } from '../config'; 
+import { API_BASE_URL } from '../config';
 // API 기본 URL
 
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
@@ -40,7 +40,7 @@ const CATEGORY_MAP: { [key: string]: string } = {
 
 const FavoritesPage: React.FC = () => {
   const navigate = useNavigate();
-  
+
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [filteredFavorites, setFilteredFavorites] = useState<FavoriteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,33 +75,33 @@ const FavoritesPage: React.FC = () => {
 
       // 최신 유저 정보 조회 (likedPosts 포함)
       const freshUserInfo = await checkToken(currentUser.id.toString());
-      
+
       if (freshUserInfo && freshUserInfo.likedPosts) {
         const mappedItems: FavoriteItem[] = freshUserInfo.likedPosts.map((post) => {
-            const displayImage = post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE;
-            const category = CATEGORY_MAP[post.itemCategory] || post.itemCategory;
-            
-            return {
-                id: post.id.toString(),
-                title: post.title,
-                category: category,
-                location: `위도: ${post.lat}, 경도: ${post.lon}`, // 필요시 역지오코딩 추가 가능
-                date: post.lostAt,
-                image: displayImage,
-                status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
-                bookmarkedAt: new Date().toISOString(), // API에 필드가 없다면 현재 시간 대체
-                rewardPoints: post.setPoint,
-                isCompleted: post.isCompleted
-            };
+          const displayImage = post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE;
+          const category = CATEGORY_MAP[post.itemCategory] || post.itemCategory;
+
+          return {
+            id: post.id.toString(),
+            title: post.title,
+            category: category,
+            location: `위도: ${post.lat}, 경도: ${post.lon}`, // 필요시 역지오코딩 추가 가능
+            date: post.lostAt,
+            image: displayImage,
+            status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
+            bookmarkedAt: new Date().toISOString(), // API에 필드가 없다면 현재 시간 대체
+            rewardPoints: post.setPoint,
+            isCompleted: post.isCompleted
+          };
         });
         setFavorites(mappedItems);
       } else {
-          setFavorites([]);
+        setFavorites([]);
       }
 
     } catch (error) {
       console.error('Failed to load favorites:', error);
-      setFavorites([]); 
+      setFavorites([]);
     } finally {
       setIsLoading(false);
     }
@@ -154,16 +154,16 @@ const FavoritesPage: React.FC = () => {
         }
         // Body 없음
       });
-      
+
       // 204 No Content 또는 200 OK 성공 처리
       if (response.status === 204 || response.ok) {
-          // 성공 시 UI에서 즉시 제거
-          setFavorites(prev => prev.filter(item => item.id !== itemId));
-          // filteredFavorites는 useEffect에 의해 자동으로 업데이트됨
-          alert("삭제되었습니다.");
+        // 성공 시 UI에서 즉시 제거
+        setFavorites(prev => prev.filter(item => item.id !== itemId));
+        // filteredFavorites는 useEffect에 의해 자동으로 업데이트됨
+        alert("삭제되었습니다.");
       } else {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || '삭제 실패');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || '삭제 실패');
       }
     } catch (error) {
       console.error('Failed to remove favorite:', error);
@@ -173,10 +173,10 @@ const FavoritesPage: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
     } catch {
-        return dateString;
+      return dateString;
     }
   };
 
@@ -197,11 +197,11 @@ const FavoritesPage: React.FC = () => {
         <div className="header-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
-                <ArrowLeft size={24} color="#111827" />
+              <ArrowLeft size={24} color="#111827" />
             </button>
             <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#111827' }}>관심 목록</h1>
           </div>
-          <button 
+          <button
             className="filter-toggle"
             onClick={() => setShowFilters(!showFilters)}
             style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280' }}
@@ -212,7 +212,7 @@ const FavoritesPage: React.FC = () => {
 
         {/* Filters */}
         {showFilters && (
-          <motion.div 
+          <motion.div
             className="filters-panel"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -223,23 +223,23 @@ const FavoritesPage: React.FC = () => {
               <label style={{ display: 'block', fontSize: '13px', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>유형</label>
               <div className="filter-buttons" style={{ display: 'flex', gap: '8px' }}>
                 {['all', 'lost', 'found'].map(type => (
-                    <button
-                        key={type}
-                        onClick={() => setFilterType(type as any)}
-                        style={{ 
-                            padding: '6px 14px', 
-                            borderRadius: '20px', 
-                            border: `1px solid ${filterType === type ? '#10b981' : '#e5e7eb'}`,
-                            backgroundColor: filterType === type ? '#10b981' : 'white',
-                            color: filterType === type ? 'white' : '#6b7280',
-                            fontSize: '13px',
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        {type === 'all' ? '전체' : type === 'lost' ? '분실물' : '습득물'}
-                    </button>
+                  <button
+                    key={type}
+                    onClick={() => setFilterType(type as any)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      border: `1px solid ${filterType === type ? '#10b981' : '#e5e7eb'}`,
+                      backgroundColor: filterType === type ? '#10b981' : 'white',
+                      color: filterType === type ? 'white' : '#6b7280',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {type === 'all' ? '전체' : type === 'lost' ? '분실물' : '습득물'}
+                  </button>
                 ))}
               </div>
             </div>
@@ -249,31 +249,31 @@ const FavoritesPage: React.FC = () => {
               <div className="filter-buttons" style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => setSortBy('recent')}
-                  style={{ 
-                    padding: '6px 14px', 
-                    borderRadius: '20px', 
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
                     border: `1px solid ${sortBy === 'recent' ? '#10b981' : '#e5e7eb'}`,
                     backgroundColor: sortBy === 'recent' ? '#10b981' : 'white',
                     color: sortBy === 'recent' ? 'white' : '#6b7280',
                     fontSize: '13px',
                     fontWeight: 500,
                     cursor: 'pointer'
-                }}
+                  }}
                 >
                   최근 저장순
                 </button>
                 <button
                   onClick={() => setSortBy('date')}
-                  style={{ 
-                    padding: '6px 14px', 
-                    borderRadius: '20px', 
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
                     border: `1px solid ${sortBy === 'date' ? '#10b981' : '#e5e7eb'}`,
                     backgroundColor: sortBy === 'date' ? '#10b981' : 'white',
                     color: sortBy === 'date' ? 'white' : '#6b7280',
                     fontSize: '13px',
                     fontWeight: 500,
                     cursor: 'pointer'
-                }}
+                  }}
                 >
                   날짜순
                 </button>
@@ -298,7 +298,7 @@ const FavoritesPage: React.FC = () => {
             </div>
             <h2 style={{ fontSize: '18px', marginBottom: '8px', color: '#111827' }}>관심 목록이 비어있습니다</h2>
             <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>마음에 드는 아이템을 관심 목록에 추가해보세요!</p>
-            <button 
+            <button
               className="browse-button"
               onClick={() => navigate('/home')}
               style={{ padding: '12px 24px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}
@@ -343,26 +343,26 @@ const FavoritesPage: React.FC = () => {
                   >
                     {item.status === 'lost' ? '분실' : '습득'}
                   </Badge>
-                  
+
                   {/* 삭제 버튼 (우측 상단) */}
                   <button
                     className="remove-favorite-btn"
                     onClick={(e) => handleRemoveFavorite(item.id, e)}
-                    style={{ 
-                        position: 'absolute',
-                        top: '8px',
-                        right: '8px',
-                        width: '28px', 
-                        height: '28px', 
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                        border: 'none', 
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: '#ef4444',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      width: '28px',
+                      height: '28px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#ef4444',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
                     <Trash2 size={14} />

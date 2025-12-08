@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ThumbsUp, Award, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ThumbsUp, Award } from 'lucide-react';
 import BottomNavigation from './BottomNavigation';
 import { getUserInfo, checkToken, getValidAuthToken } from '../utils/auth';
 import '../styles/review-page.css'; // 기존 review-page.css 재활용 또는 새로 생성 필요
@@ -23,7 +23,7 @@ interface ReceivedReview {
   images: string[];
   // createdAt 필드가 auth.ts의 ReceivedReview에는 없지만, 보통 리뷰에는 날짜가 있으므로 확인 필요.
   // 만약 없다면 임의의 날짜나 생략 처리. 여기서는 있다고 가정하거나 없으면 현재 시간으로 처리.
-  createdAt?: string; 
+  createdAt?: string;
 }
 
 // UI 표시용 인터페이스
@@ -58,7 +58,7 @@ const ReviewsPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent');
   const [filterRating, setFilterRating] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   const [stats, setStats] = useState<RatingStats>({
     average: 0,
@@ -98,10 +98,10 @@ const ReviewsPage: React.FC = () => {
 
       // 최신 유저 정보 조회 (receivedReviews 포함)
       const freshUserInfo = await checkToken(currentUser.id.toString());
-      
+
       if (freshUserInfo && freshUserInfo.receivedReviews) {
         const apiReviews = freshUserInfo.receivedReviews;
-        
+
         // 통계 계산
         let totalScore = 0;
         const distribution = {
@@ -114,7 +114,7 @@ const ReviewsPage: React.FC = () => {
 
         const mappedReviews: ReviewUI[] = apiReviews.map((review: ReceivedReview) => {
           totalScore += review.score;
-          
+
           if (review.score >= 90) distribution.excellent++;
           else if (review.score >= 80) distribution.good++;
           else if (review.score >= 70) distribution.average++;
@@ -130,7 +130,7 @@ const ReviewsPage: React.FC = () => {
             content: review.content,
             title: review.title,
             // API에 createdAt이 없다면 임시로 현재 시간 사용 (실제로는 API 수정 필요할 수 있음)
-            createdAt: review.createdAt || new Date().toISOString(), 
+            createdAt: review.createdAt || new Date().toISOString(),
             helpful: 0, // API에 관련 필드가 없다면 0
             category: 'lost', // API에 카테고리 정보가 없다면 기본값
             images: review.images || []
@@ -163,7 +163,7 @@ const ReviewsPage: React.FC = () => {
       const now = new Date();
       const diff = now.getTime() - date.getTime();
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      
+
       if (days === 0) return '오늘';
       if (days === 1) return '어제';
       if (days < 7) return `${days}일 전`;
@@ -201,8 +201,8 @@ const ReviewsPage: React.FC = () => {
           <span className="range-text">{range}</span>
         </div>
         <div className="rating-bar-container" style={{ flex: 1, height: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', margin: '0 12px', overflow: 'hidden' }}>
-          <div 
-            className="rating-bar-fill" 
+          <div
+            className="rating-bar-fill"
             style={{ width: `${percentage}%`, height: '100%', backgroundColor: '#10b981', borderRadius: '4px' }}
           />
         </div>
@@ -260,7 +260,7 @@ const ReviewsPage: React.FC = () => {
             <p className="rating-grade" style={{ fontSize: '16px', fontWeight: 600, color: getScoreColor(stats.average), margin: '8px 0 4px' }}>{getScoreGrade(stats.average)}</p>
             <p className="rating-count" style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>{stats.total}개의 후기</p>
           </div>
-          
+
           <div className="rating-distribution" style={{ flex: 1 }}>
             {renderRatingBar('excellent', stats.distribution.excellent, '90-100')}
             {renderRatingBar('good', stats.distribution.good, '80-89')}
@@ -282,15 +282,15 @@ const ReviewsPage: React.FC = () => {
             { key: 'fair', label: '60-69점' },
             { key: 'poor', label: '0-59점' }
           ].map((filter) => (
-            <button 
+            <button
               key={filter.label}
               className={`filter-chip ${filterRating === filter.key ? 'active' : ''}`}
               onClick={() => setFilterRating(filter.key as any)}
-              style={{ 
-                padding: '8px 16px', 
-                borderRadius: '20px', 
-                border: `1px solid ${filterRating === filter.key ? '#10b981' : '#e5e7eb'}`, 
-                backgroundColor: filterRating === filter.key ? '#10b981' : 'white', 
+              style={{
+                padding: '8px 16px',
+                borderRadius: '20px',
+                border: `1px solid ${filterRating === filter.key ? '#10b981' : '#e5e7eb'}`,
+                backgroundColor: filterRating === filter.key ? '#10b981' : 'white',
                 color: filterRating === filter.key ? 'white' : '#6b7280',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -303,25 +303,25 @@ const ReviewsPage: React.FC = () => {
             </button>
           ))}
         </div>
-        
+
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <select 
-            className="sort-select" 
+          <select
+            className="sort-select"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'recent' | 'rating')}
-            style={{ 
-                padding: '6px 12px', 
-                borderRadius: '8px', 
-                border: '1px solid #e5e7eb', 
-                fontSize: '13px', 
-                color: '#374151',
-                outline: 'none',
-                cursor: 'pointer'
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+              fontSize: '13px',
+              color: '#374151',
+              outline: 'none',
+              cursor: 'pointer'
             }}
-            >
+          >
             <option value="recent">최신순</option>
             <option value="rating">높은 점수순</option>
-            </select>
+          </select>
         </div>
       </div>
 
@@ -331,8 +331,8 @@ const ReviewsPage: React.FC = () => {
           filteredReviews.map(review => (
             <div key={review.id} className="review-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
               <div className="review-header" style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-                <img 
-                  src={review.reviewerImage} 
+                <img
+                  src={review.reviewerImage}
                   alt={review.reviewerName}
                   className="reviewer-image"
                   style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e5e7eb' }}
@@ -346,15 +346,15 @@ const ReviewsPage: React.FC = () => {
                     </span> */}
                   </div>
                   <div className="review-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div 
-                      className="review-score-badge" 
-                      style={{ 
-                        backgroundColor: getScoreColor(review.rating), 
-                        color: 'white', 
-                        fontSize: '11px', 
-                        fontWeight: 700, 
-                        padding: '2px 6px', 
-                        borderRadius: '4px' 
+                    <div
+                      className="review-score-badge"
+                      style={{
+                        backgroundColor: getScoreColor(review.rating),
+                        color: 'white',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '4px'
                       }}
                     >
                       {review.rating}점
@@ -366,18 +366,18 @@ const ReviewsPage: React.FC = () => {
 
               <div className="review-content">
                 <p className="review-item-name" style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', fontWeight: 500 }}>
-                    <span style={{ marginRight: '4px' }}>📦</span>
-                    {review.title}
+                  <span style={{ marginRight: '4px' }}>📦</span>
+                  {review.title}
                 </p>
                 <p className="review-text" style={{ fontSize: '15px', color: '#374151', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{review.content}</p>
-              
+
                 {/* 이미지 렌더링 추가 */}
                 {review.images && review.images.length > 0 && (
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto' }}>
-                        {review.images.map((img, idx) => (
-                            <img key={idx} src={img} alt={`review-img-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
-                        ))}
-                    </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto' }}>
+                    {review.images.map((img, idx) => (
+                      <img key={idx} src={img} alt={`review-img-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                    ))}
+                  </div>
                 )}
               </div>
 

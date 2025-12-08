@@ -6,19 +6,19 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 // [MODIFIED] clearTokens 및 checkToken을 import에 추가합니다.
-import { signupUser, saveUserInfo, getUserInfo, type UserInfo, checkToken, clearTokens } from '../utils/auth';
+import { signupUser, saveUserInfo, getUserInfo, checkToken, clearTokens } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
 
 export default function SignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   const [userId, setUserId] = useState<string | null>(null);
   const [nickname, setNickname] = useState('');
   const [name, setName] = useState('');
   const [profileImage, setProfileImage] = useState('');
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,13 +33,13 @@ export default function SignupPage() {
       setTimeout(() => navigate('/login', { replace: true }), 2000);
       return;
     }
-    
+
     setUserId(idFromUrl);
 
     if (tempUserInfo) {
-        setName(tempUserInfo.name || '');
-        setNickname(tempUserInfo.name || '');
-        setProfileImage(tempUserInfo.profileImage || '');
+      setName(tempUserInfo.name || '');
+      setNickname(tempUserInfo.name || '');
+      setProfileImage(tempUserInfo.profileImage || '');
     }
   }, [navigate, searchParams]);
 
@@ -78,7 +78,7 @@ export default function SignupPage() {
         if (updatedUserInfo) {
           // 업데이트된 최신 정보를 로컬 스토리지에 저장합니다.
           saveUserInfo(updatedUserInfo);
-          
+
           // [MODIFIED] '/home' 대신 '/verify-phone'으로 이동합니다.
           navigate('/verify-phone');
         } else {
@@ -88,8 +88,8 @@ export default function SignupPage() {
         }
 
       } else {
-          // signupUser가 false를 반환하는 경우 (일반적인 실패)
-          setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        // signupUser가 false를 반환하는 경우 (일반적인 실패)
+        setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
     } catch (err: any) {
       // [MODIFIED] 백엔드에서 전달된 에러 메시지를 표시합니다.
@@ -112,16 +112,16 @@ export default function SignupPage() {
       reader.readAsDataURL(file);
     }
   };
-  
+
   if (!userId && !error) {
-      return (
-          <div className="signup-page">
-              <div className="flex flex-col items-center">
-                  <Loader2 className="spinner h-12 w-12 text-primary" />
-                  <p className="mt-4 text-gray-600">사용자 정보를 불러오는 중...</p>
-              </div>
-          </div>
-      );
+    return (
+      <div className="signup-page">
+        <div className="flex flex-col items-center">
+          <Loader2 className="spinner h-12 w-12 text-primary" />
+          <p className="mt-4 text-gray-600">사용자 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

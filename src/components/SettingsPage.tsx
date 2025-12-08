@@ -7,7 +7,7 @@ import {
   Sun,
   Bell,
   Lock,
-  Globe,
+
   Info,
   ChevronRight,
   Smartphone,

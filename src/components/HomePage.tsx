@@ -23,7 +23,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
 import { Button } from './ui/button';
 import BottomNavigation from './BottomNavigation';
-import { API_BASE_URL } from '../config'; 
+import { API_BASE_URL } from '../config';
 
 interface AuthorInfo {
   id: number;
@@ -52,9 +52,9 @@ interface ApiPost {
 }
 
 interface ApiResponse {
-    clientLat: number;
-    clientLon: number;
-    posts: ApiPost[];
+  clientLat: number;
+  clientLon: number;
+  posts: ApiPost[];
 }
 
 interface LostItem {
@@ -69,7 +69,7 @@ interface LostItem {
   createdAt: string;
 }
 
-const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png'; 
+const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
 // Haversine 거리 계산 함수 (km 단위)
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -82,9 +82,9 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): nu
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
   return distance;
@@ -92,33 +92,33 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
-  
+
   // UTC 시간으로 인식하도록 'Z' 처리 (이미 있으면 무시)
   let safeTimestamp = dateString;
   if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
-      safeTimestamp += 'Z';
+    safeTimestamp += 'Z';
   }
 
   const date = new Date(safeTimestamp);
   const now = new Date();
-  
+
   // 초 단위 차이 계산
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   // 미래 시간인 경우 방금 전 처리
   if (diffInSeconds < 0) return '방금 전';
 
   // 1분 미만
   if (diffInSeconds < 60) return '방금 전';
-  
+
   // 1시간 미만
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
-  
+
   // 24시간 미만
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours}시간 전`;
-  
+
   // 그 외: 날짜 표시 (KST)
   return new Intl.DateTimeFormat('ko-KR', {
     month: 'short',
@@ -130,7 +130,7 @@ const formatDate = (dateString: string) => {
 export default function HomePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(getUserInfo());
+  const [userInfo] = useState<UserInfo | null>(getUserInfo());
   const [searchQuery, setSearchQuery] = useState('');
   const [rawPosts, setRawPosts] = useState<ApiPost[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -139,8 +139,8 @@ export default function HomePage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-  
+  const [unreadNotifications] = useState(0);
+
   // [NEW] 정렬 옵션 상태 추가 (기본값: 최신순)
   const [sortOption, setSortOption] = useState<'latest' | 'distance'>('latest');
 
@@ -163,7 +163,7 @@ export default function HomePage() {
 
     try {
       let url = `${API_BASE_URL}/posts`;
-      
+
       // [MODIFIED] 정렬 옵션에 따라 URL 변경
       if (sortOption === 'distance') {
         url = `${API_BASE_URL}/posts?search_type=distance&lat=${lat}&lon=${lon}`;
@@ -186,41 +186,41 @@ export default function HomePage() {
           const errorData = await response.json();
           errorMessage = errorData.message || JSON.stringify(errorData);
         } catch {
-           try {
-               const errorText = await response.text();
-               console.error("API Error Response (Non-JSON):", errorText);
-               if (response.status === 404) {
-                   errorMessage = `API 엔드포인트를 찾을 수 없습니다: ${url}`;
-               } else {
-                   errorMessage = `서버 응답 오류 (상태: ${response.status}).`;
-               }
-           } catch {
+          try {
+            const errorText = await response.text();
+            console.error("API Error Response (Non-JSON):", errorText);
+            if (response.status === 404) {
+              errorMessage = `API 엔드포인트를 찾을 수 없습니다: ${url}`;
+            } else {
+              errorMessage = `서버 응답 오류 (상태: ${response.status}).`;
+            }
+          } catch {
             console.log('error reading response text');
-           }
+          }
         }
         throw new Error(errorMessage);
       }
 
-       const contentType = response.headers.get("content-type");
-       if (!contentType || !contentType.includes("application/json")) {
-           const responseText = await response.text();
-           console.error("Expected JSON, but received:", contentType, responseText);
-           throw new Error("서버로부터 예상치 못한 형식의 응답을 받았습니다.");
-       }
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const responseText = await response.text();
+        console.error("Expected JSON, but received:", contentType, responseText);
+        throw new Error("서버로부터 예상치 못한 형식의 응답을 받았습니다.");
+      }
 
       const data: ApiResponse = await response.json();
-      
-      console.log('API Response Data:', data); 
+
+      console.log('API Response Data:', data);
 
       const postList = data.posts || [];
       if (!Array.isArray(postList)) {
-          console.error("API did not return an array in data.posts:", data);
-          throw new Error("서버로부터 게시글 목록(배열)을 받지 못했습니다.");
+        console.error("API did not return an array in data.posts:", data);
+        throw new Error("서버로부터 게시글 목록(배열)을 받지 못했습니다.");
       }
-      
+
       console.log('Extracted postList:', postList);
 
-      setRawPosts(postList); 
+      setRawPosts(postList);
 
     } catch (err) {
       console.error('게시글 로딩 실패:', err);
@@ -260,10 +260,10 @@ export default function HomePage() {
           };
           setUserLocation(newLoc);
           console.log("User location updated:", newLoc);
-          
+
           // 위치 기반 정렬 중이라면 위치 업데이트 시 재호출
           if (sortOption === 'distance') {
-             fetchPosts(newLoc.lat, newLoc.lon);
+            fetchPosts(newLoc.lat, newLoc.lon);
           }
         },
         (error) => {
@@ -281,7 +281,7 @@ export default function HomePage() {
     clearTokens();
     navigate('/login');
   };
-  
+
   const handleDeleteUser = () => {
     setShowProfileMenu(false);
     setIsDeleteDialogOpen(true);
@@ -311,7 +311,7 @@ export default function HomePage() {
           post.lon
         );
       }
-  
+
       return {
         id: post.id.toString(),
         title: post.title,
@@ -361,7 +361,7 @@ export default function HomePage() {
             </div>
 
             <div className="header-actions">
-               <button
+              <button
                 className="notification-btn"
                 onClick={() => navigate('/notifications')}
               >
@@ -378,7 +378,7 @@ export default function HomePage() {
                   </span>
                 )}
               </button>
-               <button
+              <button
                 className="search-toggle-btn"
                 onClick={() => setIsSearchExpanded(!isSearchExpanded)}
               >
@@ -423,15 +423,15 @@ export default function HomePage() {
                       <span>로그아웃</span>
                     </button>
                     <button onClick={handleDeleteUser} className="menu-item delete-account">
-                        <Trash2 style={{ width: '1rem', height: '1rem' }} />
-                        <span>회원 탈퇴</span>
+                      <Trash2 style={{ width: '1rem', height: '1rem' }} />
+                      <span>회원 탈퇴</span>
                     </button>
                   </motion.div>
                 )}
               </div>
             </div>
           </div>
-                    {isSearchExpanded && (
+          {isSearchExpanded && (
             <motion.form
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -502,18 +502,18 @@ export default function HomePage() {
           <div className="section-header">
             {/* [NEW] Sort Buttons */}
             <div className="sort-buttons">
-                <button 
-                  className={`sort-btn ${sortOption === 'latest' ? 'active' : ''}`} 
-                  onClick={() => setSortOption('latest')}
-                >
-                  최신순
-                </button>
-                <button 
-                  className={`sort-btn ${sortOption === 'distance' ? 'active' : ''}`} 
-                  onClick={() => setSortOption('distance')}
-                >
-                  거리순
-                </button>
+              <button
+                className={`sort-btn ${sortOption === 'latest' ? 'active' : ''}`}
+                onClick={() => setSortOption('latest')}
+              >
+                최신순
+              </button>
+              <button
+                className={`sort-btn ${sortOption === 'distance' ? 'active' : ''}`}
+                onClick={() => setSortOption('distance')}
+              >
+                거리순
+              </button>
             </div>
           </div>
 
@@ -545,7 +545,7 @@ export default function HomePage() {
                       alt={item.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    
+
                     <Badge
                       className={
                         item.status === "lost"
@@ -586,10 +586,10 @@ export default function HomePage() {
                   </div>
                   <div className="item-info">
                     <h3 className="item-title" style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>{item.title}</h3>
-                    
+
                     {/* 상세 정보(content) 제거하고 포인트, 위치, 날짜만 표시 */}
                     <div className="item-meta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                      
+
                       {/* 1. 포인트 (있을 경우만) */}
                       {item.points > 0 && (
                         <div className="meta-item" title={`리워드: ${item.points}P`}>
@@ -601,21 +601,21 @@ export default function HomePage() {
                       )}
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '0.25rem' }}>
-                          {/* 2. 위치 (거리) */}
-                          <div className="meta-item" title="내 위치로부터의 거리">
-                            <Navigation style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
-                            <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                              {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 미상'}
-                            </span>
-                          </div>
+                        {/* 2. 위치 (거리) */}
+                        <div className="meta-item" title="내 위치로부터의 거리">
+                          <Navigation style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
+                          <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 미상'}
+                          </span>
+                        </div>
 
-                          {/* 3. 게시 날짜 */}
-                          <div className="meta-item" title="게시일">
-                            <Calendar style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
-                            <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                              {formatDate(item.createdAt)}
-                            </span>
-                          </div>
+                        {/* 3. 게시 날짜 */}
+                        <div className="meta-item" title="게시일">
+                          <Calendar style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
+                          <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            {formatDate(item.createdAt)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -627,14 +627,14 @@ export default function HomePage() {
               <div className="no-results-icon">
                 <Search style={{ width: '2rem', height: '2rem', color: '#9ca3af' }} />
               </div>
-              <p style={{ color: '#4b5563' }}>  
+              <p style={{ color: '#4b5563' }}>
                 {searchQuery ? '검색 결과가 없습니다' : '등록된 게시물이 없습니다.'}
               </p>
-               {!searchQuery && lostItems.length === 0 && (
-                   <Button onClick={() => navigate('/create')} style={{marginTop: '1rem'}}>
-                       <Plus size={16} style={{marginRight: '0.5rem'}} /> 첫 게시물 등록하기
-                   </Button>
-               )}
+              {!searchQuery && lostItems.length === 0 && (
+                <Button onClick={() => navigate('/create')} style={{ marginTop: '1rem' }}>
+                  <Plus size={16} style={{ marginRight: '0.5rem' }} /> 첫 게시물 등록하기
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -659,7 +659,7 @@ export default function HomePage() {
             animate={{ opacity: 1, scale: 1 }}
           >
             <h3>회원 탈퇴</h3>
-            <p>정말로 회원 탈퇴를 진행하시겠습니까?<br/>모든 정보가 영구적으로 삭제됩니다.</p>
+            <p>정말로 회원 탈퇴를 진행하시겠습니까?<br />모든 정보가 영구적으로 삭제됩니다.</p>
             <div className="delete-dialog-actions">
               <button onClick={() => setIsDeleteDialogOpen(false)} className="dialog-cancel-btn">취소</button>
               <button onClick={confirmDeleteUser} className="dialog-confirm-btn">탈퇴</button>

@@ -1,15 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Settings, Edit2, Star, Award, TrendingUp, 
-  MessageCircle, Package, ChevronRight, Camera, LogOut,
+import {
+  Package, ChevronRight, Camera, LogOut, Settings, TrendingUp,
   Activity as ActivityIcon, Bell, Mail, Shield, Trophy
 } from 'lucide-react';
 import { getUserInfo, checkToken, getValidAuthToken, type UserInfo } from '../utils/auth';
 import BottomNavigation from './BottomNavigation';
 import { uploadImage } from '../utils/file';
 import '../styles/profile-page.css';
-import { API_BASE_URL } from '../config'; 
+import { API_BASE_URL } from '../config';
 
 interface UserStats {
   totalItems: number;
@@ -38,18 +38,18 @@ interface Activity {
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  
+
   const [user, setUser] = useState<UserInfo | null>(getUserInfo());
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editNickname, setEditNickname] = useState('');
   // API에 bio 필드가 없으므로 로컬 상태로만 관리하거나 제외 (여기서는 제외하고 닉네임/이름 수정에 집중)
-  
+
   const [profileImage, setProfileImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
-  
+
   const [stats, setStats] = useState<UserStats>({
     totalItems: 0,
     successfulMatches: 0,
@@ -58,8 +58,8 @@ const ProfilePage: React.FC = () => {
     trustScore: 0,
   });
 
-  const [activities, setActivities] = useState<Activity[]>([]);
-  
+  const [_activities, setActivities] = useState<Activity[]>([]);
+
   // 뱃지 데이터는 API에서 상세 정보를 주지 않으므로 더미 또는 badgeCount 기반 생성
   const [badges, setBadges] = useState<Badge[]>([]);
 
@@ -73,35 +73,35 @@ const ProfilePage: React.FC = () => {
 
       // 최신 정보 로드
       const freshData = await checkToken(currentUser.id.toString());
-      
+
       if (freshData) {
         setUser(freshData);
         setEditNickname(freshData.nickname);
         setEditName(freshData.name);
         setProfileImage(freshData.profileImage);
-        
+
         // 통계 계산
         setStats({
           totalItems: freshData.posts?.length || 0,
           successfulMatches: freshData.returnedItemsCount || 0,
           currentPoints: freshData.point || 0,
-          averageRating: freshData.totalReviews > 0 
-            ? Math.round(parseFloat((freshData.totalScore / freshData.totalReviews).toFixed(1)) )
+          averageRating: freshData.totalReviews > 0
+            ? Math.round(parseFloat((freshData.totalScore / freshData.totalReviews).toFixed(1)))
             : 0,
           trustScore: freshData.totalScore,
-          
+
         });
 
         // 활동 내역 생성 (게시글 등록 + 리뷰 받음)
         const postActivities: Activity[] = (freshData.posts || []).map(post => ({
-          id: `post-${post.id}`,
+          id: `post - ${post.id} `,
           type: 'item_posted',
           description: `'${post.title}' 게시글 등록`,
           timestamp: post.createdAt
         }));
 
         const reviewActivities: Activity[] = (freshData.receivedReviews || []).map(review => ({
-          id: `review-${review.id}`,
+          id: `review - ${review.id} `,
           type: 'review_received',
           description: `후기 도착: "${review.content.substring(0, 10)}..."`,
           timestamp: new Date().toISOString() // 리뷰 생성일이 없다면 현재 시간 임시 사용
@@ -115,12 +115,12 @@ const ProfilePage: React.FC = () => {
 
         // 뱃지 생성 (badgeCount 기반 더미)
         const earnedBadges: Badge[] = Array.from({ length: freshData.badgeCount || 0 }).map((_, idx) => ({
-            id: `badge-${idx}`,
-            name: `뱃지 ${idx + 1}`,
-            description: '활동을 통해 획득했습니다.',
-            icon: '🏅',
-            earnedDate: new Date().toISOString(),
-            rarity: 'common'
+          id: `badge - ${idx} `,
+          name: `뱃지 ${idx + 1} `,
+          description: '활동을 통해 획득했습니다.',
+          icon: '🏅',
+          earnedDate: new Date().toISOString(),
+          rarity: 'common'
         }));
         setBadges(earnedBadges);
       }
@@ -149,7 +149,7 @@ const ProfilePage: React.FC = () => {
       const token = await getValidAuthToken();
       if (!token) throw new Error("인증 토큰이 없습니다.");
 
-      let finalImageUrl = user.profileImage; 
+      let finalImageUrl = user.profileImage;
 
       if (editImageFile) {
         try {
@@ -163,11 +163,11 @@ const ProfilePage: React.FC = () => {
       }
 
       // 프로필 수정 API 호출 (PATCH)
-      const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
+      const response = await fetch(`${API_BASE_URL} /user/${user.id} `, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${token} `,
         },
         body: JSON.stringify({
           nickname: editNickname,
@@ -189,7 +189,7 @@ const ProfilePage: React.FC = () => {
 
     } catch (error) {
       console.error('Failed to save profile:', error);
-      alert(`프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+      alert(`프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"} `);
     } finally {
       setIsSaving(false);
     }
@@ -197,7 +197,7 @@ const ProfilePage: React.FC = () => {
 
   const handleLogout = () => {
     if (confirm('로그아웃 하시겠습니까?')) {
-      localStorage.clear(); 
+      localStorage.clear();
       navigate('/login');
     }
   };
@@ -211,35 +211,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'review_received': return '🎉';
-      case 'badge_earned': return '🏅';
-      case 'item_posted': return '📦';
-      default: return '📌';
-    }
-  };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '';
-    try {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        
-        if (hours < 24) {
-        return `${hours}시간 전`;
-        }
-        const days = Math.floor(hours / 24);
-        if (days < 7) {
-        return `${days}일 전`;
-        }
-        return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-    } catch {
-        return dateString;
-    }
-  };
 
   if (!user) return null;
 
@@ -288,7 +260,7 @@ const ProfilePage: React.FC = () => {
                 <div className="profile-info">
                   <h2>{user.nickname}</h2>
                   {/* Bio가 없으므로 이메일이나 이름 표시 */}
-                  <p className="profile-bio">{user.email}</p> 
+                  <p className="profile-bio">{user.email}</p>
                 </div>
               )}
             </div>
@@ -311,17 +283,17 @@ const ProfilePage: React.FC = () => {
 
           {/* Stats Row */}
           <div className="stats-row">
-            <div className="stat-item" style={{display: 'block'}}>
+            <div className="stat-item" style={{ display: 'block' }}>
               <p className="stat-value">{stats.totalItems}</p>
               <p className="stat-label text-[10px]">등록 아이템</p>
             </div>
             <div className="stat-divider"></div>
-            <div className="stat-item" style={{display: 'block'}}>
+            <div className="stat-item" style={{ display: 'block' }}>
               <p className="stat-value">{stats.successfulMatches}</p>
               <p className="stat-label">성공 매칭</p>
             </div>
             <div className="stat-divider"></div>
-            <div className="stat-item" style={{display: 'block'}}>
+            <div className="stat-item" style={{ display: 'block' }}>
               <p className="stat-value">{stats.averageRating.toFixed(0)}</p>
               <p className="stat-label">평균 평점</p>
             </div>
@@ -330,28 +302,28 @@ const ProfilePage: React.FC = () => {
 
         {/* 획득한 뱃지 섹션 (있는 경우만 표시) */}
         {badges.length > 0 && (
-            <div className="menu-section">
-                <h3 className="section-title">획득한 뱃지</h3>
-                <div className="badges-grid" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
-                {badges.map((badge) => (
-                    <div 
-                    key={badge.id} 
-                    className="badge-card"
-                    style={{ 
-                        border: `1px solid ${getRarityColor(badge.rarity)}`, 
-                        borderRadius: '8px', 
-                        padding: '8px', 
-                        minWidth: '80px', 
-                        textAlign: 'center',
-                        backgroundColor: '#fff'
-                    }}
-                    >
-                    <div className="badge-icon" style={{ fontSize: '24px' }}>{badge.icon}</div>
-                    <p className="badge-name" style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '4px' }}>{badge.name}</p>
-                    </div>
-                ))}
+          <div className="menu-section">
+            <h3 className="section-title">획득한 뱃지</h3>
+            <div className="badges-grid" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+              {badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className="badge-card"
+                  style={{
+                    border: `1px solid ${getRarityColor(badge.rarity)} `,
+                    borderRadius: '8px',
+                    padding: '8px',
+                    minWidth: '80px',
+                    textAlign: 'center',
+                    backgroundColor: '#fff'
+                  }}
+                >
+                  <div className="badge-icon" style={{ fontSize: '24px' }}>{badge.icon}</div>
+                  <p className="badge-name" style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '4px' }}>{badge.name}</p>
                 </div>
+              ))}
             </div>
+          </div>
         )}
 
         {/* Account Section */}

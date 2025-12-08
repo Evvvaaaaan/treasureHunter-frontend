@@ -107,7 +107,7 @@ export interface AuthTokens {
 export interface PostData {
   title: string;
   content: string;
-  type: 'lost' | 'found';
+  type: 'lost' | 'found' | 'LOST' | 'FOUND';
   images: string[]; // URLs after upload
   setPoint: number;
   itemCategory: string;
@@ -139,7 +139,7 @@ export const saveTokens = (tokens: AuthTokens) => {
   } else {
     // If exprTime is not provided, remove any old expiration time
     localStorage.removeItem('tokenExpiration');
-     console.warn('exprTime not provided in token response. Cannot set auto-logout timer.');
+    console.warn('exprTime not provided in token response. Cannot set auto-logout timer.');
   }
 };
 
@@ -150,17 +150,17 @@ export const getTokens = (): (AuthTokens & { expirationTimestamp?: number }) | n
   const expirationTimestampStr = localStorage.getItem('tokenExpiration');
 
   if (!accessToken || !refreshToken) {
-      clearTokens(); // Ensure clean state if tokens are missing
-      return null;
+    clearTokens(); // Ensure clean state if tokens are missing
+    return null;
   }
 
   const expirationTimestamp = expirationTimestampStr ? parseInt(expirationTimestampStr, 10) : undefined;
 
   // Basic check if timestamp is valid
   if (expirationTimestamp && isNaN(expirationTimestamp)) {
-      console.error("Invalid tokenExpiration found in localStorage.");
-      localStorage.removeItem('tokenExpiration'); // Clean up invalid data
-      return { accessToken, refreshToken }; // Return without expiration
+    console.error("Invalid tokenExpiration found in localStorage.");
+    localStorage.removeItem('tokenExpiration'); // Clean up invalid data
+    return { accessToken, refreshToken }; // Return without expiration
   }
 
 
@@ -179,9 +179,9 @@ export const isTokenExpired = (): boolean => {
 
   // Check if current time is past the stored expiration time
   const isExpired = Date.now() >= tokens.expirationTimestamp;
-   if (isExpired) {
-       console.log(`Token expired at ${new Date(tokens.expirationTimestamp).toLocaleString()}. Current time: ${new Date().toLocaleString()}`);
-   }
+  if (isExpired) {
+    console.log(`Token expired at ${new Date(tokens.expirationTimestamp).toLocaleString()}. Current time: ${new Date().toLocaleString()}`);
+  }
   return isExpired;
 };
 
@@ -198,7 +198,7 @@ export const clearTokens = () => {
 // Save user info to localStorage
 export const saveUserInfo = (userInfo: UserInfo) => {
   // Ensure ID is stored consistently, convert if needed (though API should provide number)
-   const infoToSave = { ...userInfo, id: Number(userInfo.id) };
+  const infoToSave = { ...userInfo, id: Number(userInfo.id) };
   localStorage.setItem('userInfo', JSON.stringify(infoToSave));
 };
 
@@ -211,11 +211,11 @@ export const getUserInfo = (): UserInfo | null => {
     const userInfo: UserInfo = JSON.parse(userInfoStr);
     // Basic validation
     if (userInfo && typeof userInfo.id === 'number') {
-        return userInfo;
+      return userInfo;
     } else {
-        console.error("Invalid user info found in localStorage:", userInfo);
-        clearTokens(); // Clear invalid data
-        return null;
+      console.error("Invalid user info found in localStorage:", userInfo);
+      clearTokens(); // Clear invalid data
+      return null;
     }
   } catch (error) {
     console.error("Failed to parse user info from localStorage:", error);
@@ -257,12 +257,12 @@ export const fetchAndStoreTokens = async (): Promise<AuthTokens | null> => {
 
 // Refresh the access token using the refresh token
 export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
-    console.log("Attempting to refresh access token...");
+  console.log("Attempting to refresh access token...");
   const currentTokens = getTokens();
   if (!currentTokens?.refreshToken) {
-      console.log("Refresh failed: No refresh token found.");
-      clearTokens(); // Clear everything if refresh token is missing
-      return null;
+    console.log("Refresh failed: No refresh token found.");
+    clearTokens(); // Clear everything if refresh token is missing
+    return null;
   }
 
   try {
@@ -273,7 +273,7 @@ export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
     });
 
     if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
+      const errorBody = await response.json().catch(() => ({}));
       console.error(`Token refresh failed. Status: ${response.status}`, errorBody);
       clearTokens(); // Clear tokens if refresh fails
       return null;
@@ -281,13 +281,13 @@ export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
 
     const newTokens: AuthTokens = await response.json();
     if (newTokens.accessToken && newTokens.refreshToken && newTokens.exprTime) {
-        console.log("Access token refreshed successfully.");
-        saveTokens(newTokens); // Save the new tokens and update expiration
-        return newTokens;
+      console.log("Access token refreshed successfully.");
+      saveTokens(newTokens); // Save the new tokens and update expiration
+      return newTokens;
     } else {
-         console.error("Refresh response missing required token data.");
-         clearTokens(); // Clear if response is malformed
-         return null;
+      console.error("Refresh response missing required token data.");
+      clearTokens(); // Clear if response is malformed
+      return null;
     }
   } catch (error) {
     console.error('Token refresh request failed:', error);
@@ -298,41 +298,41 @@ export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
 
 // [NEW] Get a valid auth token, attempting refresh if expired
 export const getValidAuthToken = async (): Promise<string | null> => {
-    const tokens = getTokens();
+  const tokens = getTokens();
 
-    if (!tokens?.accessToken) {
-        console.log("getValidAuthToken: No access token found initially.");
-        return null; // No token exists
-    }
+  if (!tokens?.accessToken) {
+    console.log("getValidAuthToken: No access token found initially.");
+    return null; // No token exists
+  }
 
-    if (isTokenExpired()) {
-        console.log("getValidAuthToken: Access token expired, attempting refresh...");
-        const newTokens = await refreshAccessToken();
-        if (newTokens) {
-            console.log("getValidAuthToken: Refresh successful, returning new token.");
-            return newTokens.accessToken;
-        } else {
-            console.log("getValidAuthToken: Refresh failed, no valid token available.");
-            return null; // Refresh failed
-        }
+  if (isTokenExpired()) {
+    console.log("getValidAuthToken: Access token expired, attempting refresh...");
+    const newTokens = await refreshAccessToken();
+    if (newTokens) {
+      console.log("getValidAuthToken: Refresh successful, returning new token.");
+      return newTokens.accessToken;
     } else {
-       // console.log("getValidAuthToken: Current token is valid.");
-        return tokens.accessToken; // Token is still valid
+      console.log("getValidAuthToken: Refresh failed, no valid token available.");
+      return null; // Refresh failed
     }
+  } else {
+    // console.log("getValidAuthToken: Current token is valid.");
+    return tokens.accessToken; // Token is still valid
+  }
 };
 
 // [NEW] Checks authentication status, attempts refresh, returns boolean
 export const checkAuthStatus = async (): Promise<boolean> => {
-    const token = await getValidAuthToken();
-    const hasValidToken = token !== null;
-    // console.log("checkAuthStatus result:", hasValidToken);
-    return hasValidToken;
+  const token = await getValidAuthToken();
+  const hasValidToken = token !== null;
+  // console.log("checkAuthStatus result:", hasValidToken);
+  return hasValidToken;
 };
 
 
 // Check user info using a valid token (refreshes if needed)
 export const checkToken = async (userId: string): Promise<UserInfo | null> => {
-   // Use getValidAuthToken to ensure we use a fresh token if needed
+  // Use getValidAuthToken to ensure we use a fresh token if needed
   const token = await getValidAuthToken();
   if (!token) {
     console.error("checkToken: No valid access token available after checking/refreshing.");
@@ -348,13 +348,13 @@ export const checkToken = async (userId: string): Promise<UserInfo | null> => {
     });
 
     if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        console.error(`Failed to fetch user info with token. Status: ${response.status}`, errorBody);
-        // If it's 401 again even after attempting refresh, clear tokens
-        if (response.status === 401 || response.status === 403) {
-            clearTokens();
-        }
-        return null;
+      const errorBody = await response.json().catch(() => ({}));
+      console.error(`Failed to fetch user info with token. Status: ${response.status}`, errorBody);
+      // If it's 401 again even after attempting refresh, clear tokens
+      if (response.status === 401 || response.status === 403) {
+        clearTokens();
+      }
+      return null;
     }
 
     const userInfo: UserInfo = await response.json();
@@ -378,11 +378,11 @@ export const signupUser = async (
   profileImage: string,
   name: string
 ): Promise<boolean> => {
-   // Use getValidAuthToken to ensure token validity
+  // Use getValidAuthToken to ensure token validity
   const token = await getValidAuthToken();
   if (!token) {
-      console.error('Signup failed: No valid token.');
-      return false;
+    console.error('Signup failed: No valid token.');
+    return false;
   }
 
   try {
@@ -396,15 +396,15 @@ export const signupUser = async (
     });
 
     if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        console.error(`Signup failed. Status: ${response.status}`, errorBody);
-        
-        // [MODIFIED] 서버에서 보낸 에러 메시지를 throw합니다.
-        if (errorBody.message) {
-            throw new Error(errorBody.message);
-        }
-        
-        return false;
+      const errorBody = await response.json().catch(() => ({}));
+      console.error(`Signup failed. Status: ${response.status}`, errorBody);
+
+      // [MODIFIED] 서버에서 보낸 에러 메시지를 throw합니다.
+      if (errorBody.message) {
+        throw new Error(errorBody.message);
+      }
+
+      return false;
     }
     console.log("Signup successful.");
     return true; // Return true on successful signup (2xx status)
@@ -425,10 +425,10 @@ export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver'): string => {
 export const deleteUser = async (userId: string): Promise<boolean> => {
   // Use getValidAuthToken to ensure token validity
   const token = await getValidAuthToken();
-   if (!token) {
-       console.error('User deletion failed: No valid token.');
-       return false;
-   }
+  if (!token) {
+    console.error('User deletion failed: No valid token.');
+    return false;
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
@@ -443,9 +443,9 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
       clearTokens(); // Clear local data after successful deletion
       return true;
     } else {
-        const errorBody = await response.json().catch(() => ({}));
-        console.error(`User deletion failed. Status: ${response.status}`, errorBody);
-        return false;
+      const errorBody = await response.json().catch(() => ({}));
+      console.error(`User deletion failed. Status: ${response.status}`, errorBody);
+      return false;
     }
   } catch (error) {
     console.error('User deletion request failed:', error);
@@ -455,7 +455,7 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
 
 // Get user profile (similar to checkToken but might be used differently)
 export const getUserProfile = async (userId: string): Promise<UserInfo | null> => {
-   // Use getValidAuthToken to ensure token validity
+  // Use getValidAuthToken to ensure token validity
   const token = await getValidAuthToken();
   if (!token) {
     console.error("getUserProfile: No valid access token found.");
@@ -470,18 +470,18 @@ export const getUserProfile = async (userId: string): Promise<UserInfo | null> =
     });
 
     if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        console.error(`Failed to fetch user profile. Status: ${response.status}`, errorBody);
-        // If it's 401/403, potentially clear tokens as access is denied
-        if (response.status === 401 || response.status === 403) {
-             // clearTokens(); // 다른 사람 프로필 조회 실패가 내 로그아웃을 유발하면 안 될 수도 있음 (상황에 따라 결정)
-        }
+      const errorBody = await response.json().catch(() => ({}));
+      console.error(`Failed to fetch user profile. Status: ${response.status}`, errorBody);
+      // If it's 401/403, potentially clear tokens as access is denied
+      if (response.status === 401 || response.status === 403) {
+        // clearTokens(); // 다른 사람 프로필 조회 실패가 내 로그아웃을 유발하면 안 될 수도 있음 (상황에 따라 결정)
+      }
       return null;
     }
 
     const userInfo: UserInfo = await response.json();
-     // [FIXED] Don't overwrite local user info when viewing other profiles
-     // saveUserInfo(userInfo); 
+    // [FIXED] Don't overwrite local user info when viewing other profiles
+    // saveUserInfo(userInfo); 
     return userInfo;
 
   } catch (error) {
@@ -492,44 +492,44 @@ export const getUserProfile = async (userId: string): Promise<UserInfo | null> =
 
 // Create a post
 export const createPost = async (postData: PostData): Promise<Post | null> => { // Return type matches API response for a single post
-    const token = await getValidAuthToken();
-    if (!token) {
-      console.error("createPost: No valid access token found.");
+  const token = await getValidAuthToken();
+  if (!token) {
+    console.error("createPost: No valid access token found.");
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/post`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(postData),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      console.error(`Failed to create post. Status: ${response.status}`, errorBody);
+      // Consider specific error handling based on status code if needed
       return null;
     }
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/post`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(postData),
-      });
+    const createdPost: Post = await response.json();
+    console.log("Post created successfully:", createdPost);
+    return createdPost;
 
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        console.error(`Failed to create post. Status: ${response.status}`, errorBody);
-        // Consider specific error handling based on status code if needed
-        return null;
-      }
-
-      const createdPost: Post = await response.json();
-      console.log("Post created successfully:", createdPost);
-      return createdPost;
-
-    } catch (error) {
-      console.error('Creating post failed:', error);
-      return null;
-    }
+  } catch (error) {
+    console.error('Creating post failed:', error);
+    return null;
+  }
 };
 
 // [NEW - Optional] Simple function to just get the access token string synchronously
 // Useful for cases where immediate token value is needed without async check/refresh
 // **Warning:** This token might be expired. Use getValidAuthToken for API calls.
 export const getAuthToken = (): string | null => {
-    return localStorage.getItem('accessToken');
+  return localStorage.getItem('accessToken');
 };
 
 // ... (기존 코드 유지)
@@ -576,14 +576,14 @@ export const createChatRoom = async (
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));
-      
+
       // 이미 존재하는 채팅방인 경우 (백엔드 에러코드 확인 필요, 보통 400 Bad Request)
       if (errorBody.code === 'CHAT_ROOM_ALREADY_EXIST') {
         alert("이미 존재하는 채팅방입니다. 채팅 목록을 확인해주세요.");
         // TODO: 기획에 따라 기존 채팅방 ID를 조회해서 이동시키는 로직이 필요할 수 있음
         return null;
       }
-      
+
       if (errorBody.code === 'CHAT_WITH_SELF_NOT_ALLOWED') {
         alert("자기 자신과는 채팅할 수 없습니다.");
         return null;
