@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Loader2, Crosshair } from 'lucide-react'; // Loader2 추가
+import { ChevronDown, Loader2, Crosshair, HelpCircle } from 'lucide-react'; // Loader2 추가
 import BottomNavigation from './BottomNavigation';
 import { useTheme } from '../utils/theme';
 import { getValidAuthToken } from '../utils/auth';
@@ -203,6 +203,7 @@ export default function MapPage() {
   const [_myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [myLocationMarker, setMyLocationMarker] = useState<google.maps.Marker | null>(null); // 내 위치 마커 상태 추가
   const [isLocating, setIsLocating] = useState(false); // 위치 찾는 중 상태 추가
+  const [showLegend, setShowLegend] = useState(false); // 마커 범례 표시 상태
 
   // 마커 인스턴스 관리를 위한 Ref (지도에서 제거할 때 필요)
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -383,7 +384,32 @@ export default function MapPage() {
     <div className={`map-page ${theme}`}>
       {/* 지도 컨테이너 */}
       <div ref={mapRef} className="map-container" />
+      {/* [추가] 맵 컨트롤 영역 (물음표 버튼) */}
+      <div className="map-controls">
+        <button 
+          className="map-control-btn"
+          onClick={() => setShowLegend(!showLegend)}
+          aria-label="범례 보기"
+        >
+          <HelpCircle size={24} />
+        </button>
+      </div>
 
+      {/* [추가] 범례 (Legend) 표시 */}
+      {showLegend && (
+        <div className="map-legend">
+          <div className="legend-item">
+            {/* found 클래스는 초록색 (습득물) */}
+            <div className="legend-marker found" />
+            <span>습득물</span>
+          </div>
+          <div className="legend-item">
+            {/* lost 클래스는 빨간색 (분실물) */}
+            <div className="legend-marker lost" />
+            <span>분실물</span>
+          </div>
+        </div>
+      )}
       {/* 내 위치로 이동 버튼 */}
       <button
         className="my-location-btn"
@@ -397,7 +423,7 @@ export default function MapPage() {
           <Crosshair size={24} />
         )}
       </button>
-
+      
       {/* 마커 정보 카드 (선택된 게시글이 있을 때 표시) */}
       {selectedPost && (
         <div className="marker-info-card" onClick={() => navigate(`/items/${selectedPost.id}`)}>
