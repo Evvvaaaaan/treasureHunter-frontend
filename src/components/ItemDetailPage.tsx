@@ -538,7 +538,7 @@ const ItemDetailPage: React.FC = () => {
 
         <div className="description-section">
           <h2>상세 설명</h2>
-          <p style={{whiteSpace: 'pre-wrap'}}>{item.description}</p>
+          <p style={{whiteSpace: 'pre-wrap',wordBreak: 'break-all', overflowWrap: 'break-word'}}>{item.description}</p>
         </div>
 
         <div className="info-section">
