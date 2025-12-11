@@ -5,6 +5,7 @@ import { useTheme } from '../utils/theme';
 import { getValidAuthToken, getUserInfo, type UserInfo } from '../utils/auth';
 import BottomNavigation from './BottomNavigation';
 import '../styles/my-items-page.css';
+import { API_BASE_URL } from '../config'; 
 
 interface ApiPost {
   id: number;
@@ -37,7 +38,7 @@ interface MyItem {
   distance: number | null;
 }
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://treasurehunter.seohamin.com/api/v1';
+
 
 const CATEGORY_MAP: { [key: string]: string } = {
   'PHONE': '휴대폰',
