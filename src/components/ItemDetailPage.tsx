@@ -257,29 +257,7 @@ const ItemDetailPage: React.FC = () => {
     }
   };
 
-  const handleComplete = async () => {
-    if (!confirm('이 게시물을 완료(찾음/돌려줌) 처리하시겠습니까?\n완료 시 포인트가 지급됩니다.')) return;
-    try {
-      const token = await getValidAuthToken();
-      if (!token) {
-        alert("로그인이 필요합니다.");
-        return;
-      }
-      const response = await fetch(`${API_BASE_URL}/post/${id}/complete`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        alert('게시물이 완료 처리되었습니다.');
-        navigate('/home');
-      } else {
-        throw new Error('완료 처리에 실패했습니다.');
-      }
-    } catch (error) {
-      alert(`오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
-    }
-    setIsMenuOpen(false);
-  };
+
 
   const handleDelete = async () => {
     if (!confirm('정말 이 게시물을 삭제하시겠습니까?')) return;
@@ -433,9 +411,6 @@ const ItemDetailPage: React.FC = () => {
                     <button className="menu-item edit" onClick={handleEdit}>
                       <Edit size={18} /><span>수정</span>
                     </button>
-                    <button className="menu-item complete" onClick={handleComplete}>
-                      <Check size={18} /><span>완료</span>
-                    </button>
                     <button className="menu-item delete" onClick={handleDelete}>
                       <Trash size={18} /><span>삭제</span>
                     </button>
@@ -538,7 +513,7 @@ const ItemDetailPage: React.FC = () => {
 
         <div className="description-section">
           <h2>상세 설명</h2>
-          <p style={{whiteSpace: 'pre-wrap'}}>{item.description}</p>
+          <p style={{whiteSpace: 'pre-wrap',wordBreak: 'break-all', overflowWrap: 'break-word'}}>{item.description}</p>
         </div>
 
         <div className="info-section">

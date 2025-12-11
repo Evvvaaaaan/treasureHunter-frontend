@@ -27,6 +27,11 @@ import SearchPage from './components/SearchPage';
 import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 import { ChatProvider } from './components/ChatContext';
+import AppInfoPage from './components/static/AppInfoPage';
+import HelpPage from './components/static/HelpPage';
+import TermsPage from './components/static/TermsPage';
+import LicensesPage from './components/static/LicensesPage';
+import PrivacyPage from './components/static/PrivacyPage';
 
 
 /**
@@ -379,9 +384,16 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-
+            
+            <Route path="/about" element={<AppInfoPage />} />
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/licenses" element={<LicensesPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} /> {/* Static Info Pages */}
+            
             <Route path="/chat/:id/review" element={<ReviewPage />} />
             {/* Redirect Logic */}
+            
             <Route path="/" element={<RootRedirect />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

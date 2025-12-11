@@ -417,7 +417,7 @@ export const signupUser = async (
 };
 
 // Get OAuth URL for a provider
-export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver'): string => {
+export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver' | 'apple' ): string => {
   return `${API_BASE_URL}/oauth2/authorization/${provider}`;
 };
 

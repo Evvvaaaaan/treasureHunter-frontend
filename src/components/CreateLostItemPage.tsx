@@ -172,7 +172,7 @@ export default function CreateLostItemPage() {
   // Calculate progress (필수 필드 기준)
   const calculateProgress = () => {
     let completed = 0;
-    let total = 6; // 필수 필드 개수: 종류, 이름, 카테고리, 설명(100자), 연락처, 날짜
+    let total = 7; // 필수 필드 개수: 종류, 이름, 카테고리, 설명(100자), 연락처, 날짜
 
     // 필수 필드
     // itemType은 기본값이 있으므로 항상 완료로 간주 가능
@@ -181,8 +181,8 @@ export default function CreateLostItemPage() {
     if (formData.description.length >= 100) completed++;
     if (formData.contactEmail || formData.contactPhone) completed++;
     if (formData.lostDate) completed++;
-    // 위치는 기본값이 있으므로 필수 체크에서는 제외하거나, 주소가 있으면 완료로 처리 가능
-    // 여기서는 기본값이 있으므로 필수로 간주하지 않음. 단, 진행률 계산에는 포함.
+    if (formData.photos.length > 0) completed++; // 사진은 필수로 간주
+    
 
     // 선택사항 (진행률 계산에 포함)
     let optionalTotal = 0;
@@ -211,21 +211,12 @@ export default function CreateLostItemPage() {
   // Check if form is valid (필수 필드만 체크)
   const isFormValid = () => {
     const valid = (
-      formData.itemName.trim() !== '' && // 공백만 있는지 체크
+      formData.itemName.trim() !== '' &&
       formData.category !== '' &&
-      formData.description.trim().length >= 100 && // 공백 제외 100자
-      formData.lostDate !== ''
+      formData.description.trim().length >= 100 &&
+      formData.lostDate !== '' &&
+      formData.photos.length > 0 // [추가] 사진이 1장 이상 있어야 함
     );
-
-    // 디버깅용 로그 유지
-    // console.log('Form Validation Check:', {
-    //   itemName: formData.itemName.trim() !== '',
-    //   category: formData.category !== '',
-    //   descriptionLength: formData.description.trim().length,
-    //   hasContact: !!(formData.contactEmail.trim() || formData.contactPhone.trim()),
-    //   lostDate: formData.lostDate !== '',
-    //   isValid: valid
-    // });
 
     return valid;
   };
@@ -607,9 +598,8 @@ export default function CreateLostItemPage() {
     if (!formData.itemName.trim()) return '분실물 이름을 입력해주세요.';
     if (!formData.category) return '카테고리를 선택해주세요.';
     if (formData.description.trim().length < 100) return '상세 설명을 100자 이상 입력해주세요. (공백 제외)';
-
-
     if (!formData.lostDate) return '분실 날짜를 선택해주세요.';
+    if (formData.photos.length === 0) return '최소 1장 이상의 사진을 업로드해주세요.';
 
     // 날짜 유효성 검사 (미래 날짜 선택 불가 등)
     const today = new Date();
@@ -991,9 +981,8 @@ export default function CreateLostItemPage() {
 
         {/* Photo Upload */}
         <div className="form-section">
-
           <div className="label-with-check">
-            <Label htmlFor="photo-input">사진 업로드 (최대 5장, 선택사항)</Label>
+            <Label htmlFor="photo-input">사진 업로드 * (최대 5장)</Label>
             {formData.photos.length > 0 && (
               <span className="field-check completed">✓ {formData.photos.length}장 업로드됨</span>
             )}
@@ -1203,21 +1192,6 @@ export default function CreateLostItemPage() {
             '등록하기'
           )}
         </Button>
-
-        {/* 디버깅 정보는 개발 중에만 유용하므로 최종 빌드 시 제거하는 것이 좋습니다. */}
-        {/* 개발 환경에서만 보이도록 조건부 렌더링 가능: {import.meta.env.DEV && (...)} */}
-        {import.meta.env.DEV && (
-          <div className="debug-info">
-            <p>필수 필드 체크:</p>
-            <ul>
-              <li style={{ color: formData.itemName.trim() ? '#10b981' : '#ef4444' }}>{formData.itemName.trim() ? '✓' : '✗'} 이름</li>
-              <li style={{ color: formData.category ? '#10b981' : '#ef4444' }}>{formData.category ? '✓' : '✗'} 카테고리</li>
-              <li style={{ color: formData.description.trim().length >= 100 ? '#10b981' : '#ef4444' }}>{formData.description.trim().length >= 100 ? '✓' : '✗'} 설명 ({formData.description.trim().length}/100)</li>
-              <li style={{ color: formData.lostDate ? '#10b981' : '#ef4444' }}>{formData.lostDate ? '✓' : '✗'} 날짜</li>
-            </ul>
-            <p>익명: {isAnonymous ? '✓' : '✗'}</p>
-          </div>
-        )}
 
         <p className="auto-save-hint">
           {/* 진행률 대신 내용이 있을 때 저장된다는 안내 */}

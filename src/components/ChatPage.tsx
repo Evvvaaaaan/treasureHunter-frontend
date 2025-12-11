@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Send, MoreVertical, Phone, Video,
-  Paperclip, Smile, Loader2, X, Trash2
+  Paperclip, Smile, Loader2, X, Trash2, Coins
 } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -29,7 +29,7 @@ import {
 } from "./ui/dropdown-menu";
 
 import '../styles/chat-page.css';
-
+import { API_BASE_URL } from '../config';
 const WS_URL = 'https://treasurehunter.seohamin.com/ws';
 
 const ChatPage: React.FC = () => {
@@ -39,7 +39,53 @@ const ChatPage: React.FC = () => {
   const { updateUnreadCount } = useChat();
 
 
+  const handleSendPoints = async () => {
+    if (!roomInfo?.post?.id) {
+      alert("게시글 정보를 찾을 수 없습니다.");
+      return;
+    }
 
+    if (!roomId) {
+      alert("채팅방 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!confirm('포인트를 전달하고 거래를 완료하시겠습니까?\n완료 시 상대방에게 포인트가 지급됩니다.')) {
+      return;
+    }
+
+    try {
+      const token = await import('../utils/auth').then(m => m.getValidAuthToken());
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      // [수정] body에 chatRoomId 포함
+      const response = await fetch(`${API_BASE_URL}/post/${roomInfo.post.id}/complete`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json' // JSON 전송을 위해 추가
+        },
+        body: JSON.stringify({
+          chatRoomId: roomId // 현재 채팅방 ID 전송
+        })
+      });
+
+      if (response.ok) {
+        alert('포인트가 성공적으로 전달되었습니다.');
+        // 완료 후 홈으로 이동하거나 상태 업데이트
+        navigate('/home');
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || '포인트 전달에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error("포인트 전달 오류:", error);
+      alert(`오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
+  };
   // [추가] 채팅방 삭제 (DB에서 삭제)
   const handleDeleteChat = async () => {
     if (!confirm("채팅방을 삭제하시겠습니까? 대화 내역이 모두 사라지며 복구할 수 없습니다.")) {
@@ -335,6 +381,15 @@ const ChatPage: React.FC = () => {
                 <Trash2 size={18} className="transition-transform group-hover:-translate-x-0.5" />
                 <span>채팅방 나가기</span>
               </DropdownMenuItem>
+              {myUserType === 'AUTHOR' && (
+                <DropdownMenuItem
+                  onClick={handleSendPoints}
+                  className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-yellow-600 transition-all cursor-pointer hover:bg-yellow-50 hover:text-yellow-700 focus:bg-yellow-50 focus:text-yellow-700 outline-none"
+                >
+                  <Coins size={18} className="transition-transform group-hover:-translate-x-0.5" />
+                  <span>포인트 전달하기</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

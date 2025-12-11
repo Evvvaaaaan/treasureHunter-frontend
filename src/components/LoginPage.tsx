@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import '../styles/login-page.css';
 
 export default function LoginPage() {
-  const handleSocialLogin = (provider: 'google' | 'kakao' | 'naver') => {
+  const handleSocialLogin = (provider: 'google' | 'kakao' | 'naver' | 'apple' ) => {
     window.location.href = getOAuthUrl(provider);
   };
 
@@ -122,7 +122,27 @@ export default function LoginPage() {
               </svg>
               카카오로 시작하기
             </Button>
-
+            <Button
+              onClick={() => handleSocialLogin('apple')}
+              className="social-btn apple-btn"
+              style={{
+                width: '100%',
+                height: '3.5rem',
+                backgroundColor: 'black', // Apple 공식 스타일 (검정 배경)
+                color: 'white',
+                border: 'none',
+                marginTop: '0.5rem' // 버튼 간격
+              }}
+            >
+              <svg 
+                style={{ width: '1.25rem', height: '1.25rem', marginRight: '0.75rem' }} 
+                viewBox="0 0 24 24" 
+                fill="currentColor"
+              >
+                <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.74 1.18 0 2.45-1.62 4.09-1.32 1.42.06 2.53.71 3.29 1.83-3.14 1.87-2.31 6.17.65 7.32-.46 1.4-1.12 2.76-2.12 4.4zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+              </svg>
+              Apple로 시작하기
+            </Button>
             <Button
               onClick={() => handleSocialLogin('naver')}
               className="social-btn naver-btn"

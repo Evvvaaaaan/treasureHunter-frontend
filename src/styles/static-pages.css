@@ -1,0 +1,157 @@
+/* src/styles/static-pages.css */
+.static-page {
+  min-height: 100vh;
+  background-color: var(--background);
+  padding-bottom: 2rem;
+}
+
+/* Header */
+.static-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background-color: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.static-header h1 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--foreground);
+}
+
+/* Content Container */
+.static-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Text Section */
+.text-section h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary); /* 스타벅스 그린 같은 강조색 */
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.text-section p {
+  font-size: 0.9375rem;
+  color: var(--muted-foreground);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* Labeling (Icon Grid) Section - 이미지 참고 부분 */
+.labeling-section {
+  margin-top: 1rem;
+}
+
+.labeling-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.label-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+}
+
+.label-icon-box {
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--primary); /* 육각형 느낌의 테두리 색상 */
+  border-radius: 12px; /* 약간 둥근 사각형 (이미지는 육각형이지만 CSS로 쉽게 구현하기 위해 둥근 사각형 사용) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  background-color: white;
+}
+
+/* 육각형 모양을 원한다면 clip-path 사용 가능 */
+.label-icon-box.hexagon {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background-color: var(--primary);
+  color: white;
+  border: none;
+}
+
+.label-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* List Style */
+.info-list {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.info-list li {
+  font-size: 0.9375rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+/* Accordion Style for FAQ/Licenses */
+.accordion-item {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background-color: var(--card);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.accordion-trigger {
+  width: 100%;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  font-weight: 600;
+  color: var(--foreground);
+  cursor: pointer;
+  text-align: left;
+}
+
+.accordion-content {
+  padding: 0 1rem 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  border-top: 1px solid var(--border);
+  background-color: var(--input-background);
+}

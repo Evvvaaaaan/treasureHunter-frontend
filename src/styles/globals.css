@@ -2,30 +2,108 @@
 
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: #111827;
-  --card: #ffffff;
-  --card-foreground: #111827;
-  --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: #10b981;
-  --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #10b981;
   --radius: 0.75rem;
+}
+
+/* Light Mode */
+:root,
+:root.light {
+  --background: #fafbfd;
+  --foreground: #1c1e21;
+  --card: #ffffff;
+  --card-foreground: #1c1e21;
+  --popover: #ffffff;
+  --popover-foreground: #1c1e21;
+  --primary: #10b981;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #1c1e21;
+  --muted: #e8eaed;
+  --muted-foreground: #5f6368;
+  --accent: #f1f3f4;
+  --accent-foreground: #1c1e21;
+  --destructive: #ea4335;
+  --destructive-foreground: #ffffff;
+  --border: #e8eaed;
+  --input: transparent;
+  --input-background: #f8f9fa;
+  --switch-background: #dadce0;
+  --ring: #10b981;
+  --shadow: rgba(60, 64, 67, 0.1);
+  --shadow-md: rgba(60, 64, 67, 0.15);
+  --shadow-lg: rgba(60, 64, 67, 0.2);
+  
+  /* Modern Color Palette */
+  --color-blue: #1a73e8;
+  --color-blue-light: #d2e3fc;
+  --color-green: #10b981;
+  --color-green-light: #d1f4e8;
+  --color-orange: #f9ab00;
+  --color-orange-light: #fef7e0;
+  --color-red: #ea4335;
+  --color-red-light: #fce8e6;
+  --color-purple: #9334e6;
+  --color-purple-light: #f3e8fd;
+  --color-teal: #14b8a6;
+  --color-teal-light: #ccfbf1;
+
+  /* Leaderboard specific */
+  --brand-green: #10b981;
+  --brand-green-light: #d1f4e8;
+  --dark-text: #1a1a1a;
+  --bg-primary: #fafbfd;
+  --bg-secondary: #f4f5f7;
+  --bg-card: #ffffff;
+  --bg-hover: #f8f9fa;
+  --text-primary: #1c1e21;
+  --text-secondary: #5f6368;
+  --border-color: #e8eaed;
+}
+
+/* Dark Mode */
+:root.dark {
+  --background: #0a0e12;
+  --foreground: #e4e6eb;
+  --card: #16191e;
+  --card-foreground: #e4e6eb;
+  --popover: #16191e;
+  --popover-foreground: #e4e6eb;
+  --primary: #10b981;
+  --primary-foreground: #ffffff;
+  --secondary: #1f2328;
+  --secondary-foreground: #e4e6eb;
+  --muted: #2d3139;
+  --muted-foreground: #9ca3af;
+  --accent: #1f2328;
+  --accent-foreground: #e4e6eb;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: transparent;
+  --input-background: #1f2328;
+  --switch-background: #2d3139;
+  --ring: #10b981;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --shadow-lg: rgba(0, 0, 0, 0.6);
+
+  /* Leaderboard specific - Dark Mode */
+  --brand-green: #10b981;
+  --brand-green-light: rgba(16, 185, 129, 0.15);
+  --dark-text: #e4e6eb;
+  --dark-text-secondary: #9ca3af;
+  --dark-bg: #0a0e12;
+  --dark-card: #16191e;
+  --dark-border: rgba(255, 255, 255, 0.12);
+  --dark-hover: #1f2328;
+  --bg-primary: #0a0e12;
+  --bg-secondary: #1f2328;
+  --bg-card: #16191e;
+  --bg-hover: #1f2328;
+  --text-primary: #e4e6eb;
+  --text-secondary: #9ca3af;
+  --border-color: rgba(255, 255, 255, 0.12);
 }
 
 * {
@@ -45,6 +123,22 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive container utility */
+.responsive-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .responsive-container {
+    max-width: 800px;
+  }
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -85,51 +179,4 @@ button {
 
 input, textarea, select {
   font-family: inherit;
-}
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-
-
-.dark {
-  /* Dark Mode Colors */
-  --background: #111827; /* Gray 900 */
-  --foreground: #f9fafb; /* Gray 50 */
-  --card: #1f2937; /* Gray 800 */
-  --card-foreground: #f9fafb;
-  --popover: #1f2937;
-  --popover-foreground: #f9fafb;
-  --primary: #3b82f6; /* Blue 500 */
-  --primary-foreground: #ffffff;
-  --secondary: #374151; /* Gray 700 */
-  --secondary-foreground: #f9fafb;
-  --muted: #374151;
-  --muted-foreground: #9ca3af; /* Gray 400 */
-  --accent: #374151;
-  --accent-foreground: #f9fafb;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #374151;
-  --input: #374151;
-  --ring: #3b82f6;
-}
-
-* {
-  border-color: var(--border);
-}
-
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease; /* 부드러운 전환 효과 */
-}
-
-/* 추가적인 유틸리티 클래스들 (필요한 경우) */
-.page-container {
-  min-height: 100vh;
-  background-color: var(--background);
-  color: var(--foreground);
-  padding-bottom: 80px; /* Bottom Navigation Space */
 }
