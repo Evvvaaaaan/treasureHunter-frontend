@@ -301,7 +301,8 @@ export default function HomePage() {
   };
 
   const lostItems: LostItem[] = useMemo(() => {
-    return rawPosts.map((post: ApiPost) => {
+    // 1. 매핑 (거리 계산 포함)
+    const items = rawPosts.map((post: ApiPost) => {
       let distance: number | null = null;
       if (userLocation) {
         distance = getDistance(
@@ -326,7 +327,23 @@ export default function HomePage() {
         createdAt: post.createdAt,
       };
     });
-  }, [rawPosts, userLocation]);
+
+    // 2. 정렬 (옵션에 따라)
+    if (sortOption === 'distance') {
+      return items.sort((a, b) => {
+        // 거리가 없는(null) 항목은 맨 뒤로 보냄
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1;
+        if (b.distance === null) return -1;
+        
+        // 거리 오름차순 (가까운 순)
+        return a.distance - b.distance;
+      });
+    } else {
+      // 최신순 (기본값)
+      return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+  }, [rawPosts, userLocation, sortOption]); // sortOption 의존성 추가
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
