@@ -69,7 +69,7 @@ const ChatPage: React.FC = () => {
           'Content-Type': 'application/json' // JSON 전송을 위해 추가
         },
         body: JSON.stringify({
-          chatRoomId: roomId // 현재 채팅방 ID 전송
+          roomId: roomId // 현재 채팅방 ID 전송
         })
       });
 
