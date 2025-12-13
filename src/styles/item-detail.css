@@ -955,6 +955,8 @@
 
 /* 분실물: 진한 빨강 배경 + 흰색 글씨 */
 .type-badge.lost {
+  top: 80px;
+  /* z-index: 999; */
   background-color: #ef4444; 
   color: white;
 }
