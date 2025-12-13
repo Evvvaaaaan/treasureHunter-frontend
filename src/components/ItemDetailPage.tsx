@@ -6,6 +6,7 @@ import { getValidAuthToken, getUserInfo } from '../utils/auth';
 import { createChatRoom } from '../utils/chat';
 import '../styles/item-detail.css';
 import { API_BASE_URL } from '../config'; 
+
 interface ApiPost {
   id: number;
   title: string;
@@ -70,8 +71,6 @@ interface UserInfo {
   isOnline: boolean;
 }
 
-
-
 const CATEGORY_MAP: { [key: string]: string } = {
   'PHONE': '휴대폰',
   'WALLET': '지갑',
@@ -89,7 +88,7 @@ const ItemDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { theme } = useTheme();
-  const currentUser = getUserInfo();
+  // const currentUser = getUserInfo(); // loadItemDetail 내부에서 최신 정보 호출하도록 변경
 
   const [item, setItem] = useState<ItemDetail | null>(null);
   const [postAuthor, setPostAuthor] = useState<UserInfo | null>(null);
@@ -98,16 +97,16 @@ const ItemDetailPage: React.FC = () => {
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  const isMyPost = item && currentUser && postAuthor?.id === currentUser.id.toString();
+  // [수정] isMyPost를 상태로 관리 (익명 여부와 관계없이 ID 비교를 위해)
+  const [isMyPost, setIsMyPost] = useState(false);
 
-  // 좌표 -> 주소 변환 함수 (Google Maps Geocoder 사용)
+  // 좌표 -> 주소 변환 함수
   const convertCoordsToAddress = async (lat: number, lng: number) => {
     if (window.google && window.google.maps && window.google.maps.Geocoder) {
       try {
         const geocoder = new google.maps.Geocoder();
         const response = await geocoder.geocode({ location: { lat, lng } });
         if (response.results && response.results[0]) {
-          // "대한민국" 접두어 제거 후 반환
           return response.results[0].formatted_address.replace(/^대한민국\s*/, '');
         }
       } catch (e) {
@@ -116,11 +115,9 @@ const ItemDetailPage: React.FC = () => {
     }
     return null;
   };
-
-  // Google Maps API 로드 대기 및 주소 재업데이트 (데이터 로드 시점에 API가 준비 안 된 경우 대비)
+  
   useEffect(() => {
     if (!item) return;
-    // 이미 주소 형식이면(숫자가 아니면) 스킵
     if (item.location.address && !item.location.address.startsWith('위도:')) return;
 
     const updateAddress = async () => {
@@ -175,8 +172,22 @@ const ItemDetailPage: React.FC = () => {
 
       const data: ApiPost = await response.json();
 
-      // [수정] 초기 주소 설정: API 로드 상태 확인 후 바로 주소 변환 시도
-      let address = `위도: ${data.lat}, 경도: ${data.lon}`; // 기본값 (API 로드 전)
+      // [핵심 수정] 게시물 소유권 확인 로직 추가
+      // 익명 여부(isAnonymous)와 상관없이 실제 author ID와 내 ID를 비교
+      const currentUser = getUserInfo();
+      if (currentUser && data.author) {
+        // 문자열 변환하여 비교 (타입 불일치 방지)
+        if (String(currentUser.id) === String(data.author.id)) {
+            setIsMyPost(true);
+        } else {
+            setIsMyPost(false);
+        }
+      } else {
+        setIsMyPost(false);
+      }
+
+      // 주소 초기값 설정
+      let address = `위도: ${data.lat}, 경도: ${data.lon}`;
       
       if (window.google && window.google.maps && window.google.maps.Geocoder) {
         try {
@@ -202,7 +213,7 @@ const ItemDetailPage: React.FC = () => {
         category: CATEGORY_MAP[data.itemCategory] || data.itemCategory,
         images: images,
         location: {
-          address: address, // 변환된 주소 또는 기본값
+          address: address,
           coordinates: { lat: data.lat, lng: data.lon }
         },
         dateInfo: {
@@ -223,6 +234,7 @@ const ItemDetailPage: React.FC = () => {
 
       setItem(mappedItem);
 
+      // 작성자 정보 설정 (익명 처리 로직 유지)
       if (data.author && !data.isAnonymous) {
         const avgScore = data.author.totalReviews > 0 
             ? data.author.totalScore / data.author.totalReviews 
@@ -239,6 +251,7 @@ const ItemDetailPage: React.FC = () => {
           isOnline: false
         });
       } else {
+        // 익명일 경우 표시 정보는 가리지만, 위에서 isMyPost는 이미 true로 설정됨
         setPostAuthor({
           id: 'anonymous',
           nickname: '익명',
@@ -256,8 +269,6 @@ const ItemDetailPage: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-
 
   const handleDelete = async () => {
     if (!confirm('정말 이 게시물을 삭제하시겠습니까?')) return;
@@ -486,6 +497,8 @@ const ItemDetailPage: React.FC = () => {
             <div className="user-info">
                 <div className="user-name">
                 <span>{postAuthor.nickname}</span>
+                {/* 내 게시글(익명 포함)이면 (나) 표시 */}
+                {isMyPost && <span style={{fontSize:'0.8em', color:'var(--primary)', marginLeft:'4px'}}>(나)</span>}
                 {postAuthor.badges.map((badge, idx) => (
                     <span key={idx} className="user-badge">{badge}</span>
                 ))}
@@ -513,7 +526,7 @@ const ItemDetailPage: React.FC = () => {
 
         <div className="description-section">
           <h2>상세 설명</h2>
-          <p style={{whiteSpace: 'pre-wrap',wordBreak: 'break-all', overflowWrap: 'break-word'}}>{item.description}</p>
+          <p style={{whiteSpace: 'pre-wrap', wordBreak: 'break-all', overflowWrap: 'break-word'}}>{item.description}</p>
         </div>
 
         <div className="info-section">
@@ -542,7 +555,7 @@ const ItemDetailPage: React.FC = () => {
           <p className="location-address">{item.location.address}</p>
           <div className="map-container">
             <iframe
-              src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBN5hX-FL_N57xUwRVVuY4ExZQuro5Ti2s&q=${item.location.coordinates.lat},${item.location.coordinates.lng}&zoom=15`}
+              src={`https://maps.google.com/maps?q=${item.location.coordinates.lat},${item.location.coordinates.lng}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
               width="100%"
               height="250"
               style={{ border: 0, borderRadius: '12px' }}
