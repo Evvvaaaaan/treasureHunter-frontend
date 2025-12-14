@@ -367,7 +367,7 @@ const ItemDetailPage: React.FC = () => {
       const roomId = await createChatRoom(roomName, postId, false);
       navigate(`/chat/${roomId}`);
     } catch (error) {
-      alert("채팅방을 만들 수 없습니다. 잠시 후 다시 시도해주세요.");
+      alert(error.message,'채팅방 생성에 실패했습니다.');
     }
   };
 
