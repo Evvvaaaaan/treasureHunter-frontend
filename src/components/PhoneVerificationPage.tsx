@@ -18,6 +18,34 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
   const [timer, setTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
 
+  // [추가] Web OTP API 자동 입력 로직
+  useEffect(() => {
+    // 코드가 발송된 상태일 때만 리스너 동작
+    if (isCodeSent && 'OTPCredential' in window) {
+      const ac = new AbortController();
+      
+      navigator.credentials.get({
+        otp: { transport: ['sms'] },
+        signal: ac.signal
+      })
+      .then((credential) => {
+        // 타입을 OTPCredential로 단언하거나 위에서 정의한 인터페이스 덕분에 자동 추론됨
+        const otp = credential as OTPCredential;
+        setVerificationCode(otp.code);
+        // 사용자 편의를 위해 알림을 띄우거나 바로 검증 함수를 호출할 수도 있음
+      })
+      .catch((err) => {
+        // 타임아웃이나 사용자가 취소한 경우 에러 발생하므로 로그만 남김
+        console.log('Web OTP Error:', err);
+      });
+
+      return () => {
+        ac.abort();
+      };
+    }
+  }, [isCodeSent]); // isCodeSent가 true가 될 때 실행
+
+  // ... (기존 useEffect 및 핸들러 함수들 그대로 유지) ...
   useEffect(() => {
     if (timer > 0) {
       const interval = setInterval(() => {
@@ -157,19 +185,16 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
   return (
     <div className="phone-verification-page">
       <div className="phone-verification-container">
+        {/* ... (Header 및 Content 상단 유지) ... */}
         <div className="verification-header">
           <h1>전화번호 인증</h1>
-          <button 
-            className="skip-button"
-            onClick={handleSkip}
-          >
-            건너뛰기
-          </button>
+          <button className="skip-button" onClick={handleSkip}>건너뛰기</button>
         </div>
 
         <div className="verification-content">
           <div className="verification-icon">
-            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+             {/* SVG 아이콘 생략 (기존 코드 유지) */}
+             <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
               <circle cx="40" cy="40" r="38" fill="#10b981" fillOpacity="0.1"/>
               <path d="M45 25h-10c-2.21 0-4 1.79-4 4v22c0 2.21 1.79 4 4 4h10c2.21 0 4-1.79 4-4V29c0-2.21-1.79-4-4-4z" stroke="#10b981" strokeWidth="2" fill="none"/>
               <path d="M31 45h18M31 49h18" stroke="#10b981" strokeWidth="2" strokeLinecap="round"/>
@@ -199,13 +224,7 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
                 onClick={handleSendCode}
                 disabled={isLoading || !isValidPhoneNumber(phoneNumber) || (isCodeSent && !canResend)}
               >
-                {isLoading ? (
-                  <span className="spinner"></span>
-                ) : isCodeSent ? (
-                  canResend ? '재전송' : formatTimer(timer)
-                ) : (
-                  '인증번호 받기'
-                )}
+                {isLoading ? <span className="spinner"></span> : isCodeSent ? (canResend ? '재전송' : formatTimer(timer)) : '인증번호 받기'}
               </button>
             </div>
           </div>
@@ -214,18 +233,19 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
             <div className="input-group verification-code-group">
               <label htmlFor="verificationCode">
                 인증번호
-                {timer > 0 && (
-                  <span className="timer">{formatTimer(timer)}</span>
-                )}
+                {timer > 0 && <span className="timer">{formatTimer(timer)}</span>}
               </label>
               <input
                 id="verificationCode"
                 type="text"
-                inputMode="numeric"
                 placeholder="6자리 숫자 입력"
                 value={verificationCode}
                 onChange={handleCodeChange}
                 maxLength={6}
+                
+                // [필수 설정] iOS 및 브라우저가 SMS 코드를 인식하도록 함
+                autoComplete="one-time-code"
+                inputMode="numeric"
               />
               {timer === 0 && (
                 <p className="timer-expired">
@@ -235,11 +255,7 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
             </div>
           )}
 
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+          {error && <div className="error-message">{error}</div>}
 
           {isCodeSent && (
             <button
@@ -269,4 +285,3 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
 };
 
 export default PhoneVerificationPage;
-
