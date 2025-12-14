@@ -473,13 +473,14 @@ const ItemDetailPage: React.FC = () => {
 
       <div className="detail-content">
         <div className="item-header">
-          <span className={`type-badge ${item.type}`}>
-            {item.type === 'lost' ? '분실물' : '습득물'}
-          </span>
-          {item.status === 'completed' && (
-             <span className="type-badge completed" style={{marginLeft: '8px', background: '#6b7280', color: 'white'}}>
+          {item.status === 'completed' ? (
+             <span className="type-badge completed" style={{background: '#6b7280', color: 'white'}}>
                완료
              </span>
+          ) : (
+            <span className={`type-badge ${item.type}`}>
+              {item.type === 'lost' ? '분실물' : '습득물'}
+            </span>
           )}
           <h1>{item.title}</h1>
           <div className="item-meta">
