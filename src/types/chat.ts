@@ -32,9 +32,11 @@ export interface ChatMessage {
   type: 'ENTER' | 'MESSAGE' | 'IMAGE' | 'LOCATION' | 'EXIT' | 'TEXT'; // 'TEXT'는 프론트 편의상 남겨둠
   // [핵심 수정] userType을 백엔드 Enum에 맞게 변경
   userType: 'AUTHOR' | 'CALLER'; 
+  senderId?: number;
   message: string;
   sentAt: string;
   serverAt: string;
+  myUserType?: 'AUTHOR' | 'CALLER'; // 이 메시지를 보는 나의 역할
 }
 // 채팅방 목록 응답 래퍼
 export interface ChatRoomListResponse {
@@ -71,4 +73,17 @@ export interface ChatPost {
   createdAt?: string; // [추가] ChatListPage에서 사용됨
 }
 
-// ... (나머지 인터페이스 유지)
+export interface ChatRoomUI {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  isOnline: boolean;
+  lastMessage: string;
+  lastMessageType: 'text' | 'image' | 'location';
+  timestamp: string;
+  unreadCount: number;
+  itemTitle?: string;
+  itemImage?: string;
+  myUserType: 'AUTHOR' | 'CALLER'; // 이 방에서 나의 역할
+}
