@@ -381,19 +381,19 @@
 }
 
 :root.dark .stats-row {
-  background: linear-gradient(135deg, #3f1d1d 0%, #4c1d1f 100%);
+  background: linear-gradient(135deg, #000000 0%, #122d15ab 29%);
 }
 
 :root.dark .stat-value {
-  color: #fb7185;
+  color: white;
 }
 
 :root.dark .stat-label {
-  color: #fda4af;
+  color: white;
 }
 
 :root.dark .stat-divider {
-  background: #881337;
+  background: white;
 }
 
 :root.dark .menu-item {
