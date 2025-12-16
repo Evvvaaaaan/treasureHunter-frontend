@@ -79,3 +79,69 @@ export const fetchPostsByBounds = async (
 
   return response.json();
 };
+
+// 검색 결과 응답 타입
+export interface SearchResponse {
+  hasNext: boolean;
+  posts: Post[];
+}
+
+/**
+ * 게시글 텍스트 검색 API
+ * @param query 검색어 (공백 제외 3~100자, 한글/영문/숫자만 허용)
+ * @param type 게시글 유형 (LOST | FOUND | ''(전체))
+ * @param page 페이지 번호
+ * @param size 페이지 당 개수
+ */
+export const searchPostsByText = async (
+  query: string,
+  type: 'LOST' | 'FOUND' | '' = '',
+  page: number = 0,
+  size: number = 20
+): Promise<SearchResponse> => {
+  
+  // 1. 유효성 검사 (API 호출 전 클라이언트단 방어)
+  const cleanQuery = query.replace(/\s+/g, ''); // 공백/줄바꿈 제거
+  
+  // 길이 검사 (3 ~ 100자)
+  if (cleanQuery.length < 3 || cleanQuery.length > 100) {
+    throw new Error('검색어는 공백을 제외하고 3글자 이상, 100글자 이하이어야 합니다.');
+  }
+
+  // 특수문자 검사 (한글, 영어, 숫자만 가능)
+  // 정규식: ^[a-zA-Z0-9가-힣\s]*$ (원본 query에는 공백이 있을 수 있으므로 \s 허용)
+  if (!/^[a-zA-Z0-9가-힣\s]+$/.test(query)) {
+    throw new Error('검색어는 한글, 영어, 숫자만 입력 가능합니다.');
+  }
+
+  const token = await getValidAuthToken();
+  if (!token) throw new Error('로그인이 필요합니다.');
+
+  // 2. 쿼리 파라미터 구성
+  const queryParams = new URLSearchParams({
+    searchType: 'text',
+    query: query, // 원본 쿼리 전송 (서버에서 공백 처리 방식에 따라 cleanQuery를 보낼 수도 있음)
+    size: size.toString(),
+    page: page.toString(),
+  });
+
+  if (type) {
+    queryParams.append('postType', type);
+  }
+
+  // 3. API 호출
+  const response = await fetch(`${API_BASE_URL}/api/v1/posts?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || '검색에 실패했습니다.');
+  }
+
+  return response.json();
+};

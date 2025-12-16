@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft,Search, Loader2, Coins, MapPin, Calendar, Package, X } from "lucide-react";
+import { ArrowLeft, Search, Loader2, Coins, MapPin, Calendar, Package, X } from "lucide-react";
 import { Input } from "./ui/input";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Badge } from "./ui/badge";
@@ -10,7 +10,6 @@ import { API_BASE_URL } from '../config';
 
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
-// API Response Type
 interface ApiPost {
   id: number;
   title: string;
@@ -37,7 +36,6 @@ interface ApiPost {
   isCompleted: boolean;
 }
 
-// UI Display Type
 interface SearchResultItem {
   id: string;
   title: string;
@@ -50,38 +48,46 @@ interface SearchResultItem {
   isCompleted: boolean;
 }
 
+type FilterType = 'ALL' | 'LOST' | 'FOUND';
+
 export default function SearchPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // URL에서 초기 검색어 가져오기
-  const initialQuery = searchParams.get("q") || "";
+  const queryParam = searchParams.get("q") || "";
   
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [searchQuery, setSearchQuery] = useState(queryParam);
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [postType, setPostType] = useState<'ALL' | 'LOST' | 'FOUND'>('ALL');
+  const [postType, setPostType] = useState<FilterType>('ALL');
   
-  // 최근 검색어 (로컬 스토리지 사용 권장, 여기서는 State로 유지)
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
-    const saved = localStorage.getItem('recentSearches');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('recentSearches');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
-  // 검색어가 URL에 있거나 필터가 변경되면 API 호출
   useEffect(() => {
-    if (initialQuery) {
-      setSearchQuery(initialQuery);
-      fetchSearchResults(initialQuery, postType);
-    }
-  }, [initialQuery, postType]);
+    setSearchQuery(queryParam);
 
-  // 최근 검색어 저장
+    if (queryParam.trim()) {
+      fetchSearchResults(queryParam, postType);
+    } else {
+      setResults([]);
+    }
+  }, [queryParam, postType]);
+
   useEffect(() => {
     localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
   }, [recentSearches]);
 
-  const fetchSearchResults = async (query: string, type: 'ALL' | 'LOST' | 'FOUND') => {
+  // -----------------------------------------------------------------------
+  // [핵심 수정] API 요청 URL을 요구사항에 맞게 정확히 구성하는 함수
+  // -----------------------------------------------------------------------
+  const fetchSearchResults = async (query: string, type: FilterType) => {
     if (!query.trim()) return;
 
     setIsLoading(true);
@@ -94,11 +100,23 @@ export default function SearchPage() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // API URL 구성
-      let url = `${API_BASE_URL}/posts?searchType=text&query=${encodeURIComponent(query)}`;
+      // [수정] URLSearchParams를 사용하여 파라미터 조합
+      // 목표 URL: /api/v1/posts?searchType=text&query={query}&postType={type}&size=10&page=0
+      const params = new URLSearchParams();
+      
+      params.append('searchType', 'text'); // 고정값
+      params.append('query', query);       // 검색어 (한글 자동 인코딩됨)
+      params.append('size', '10');         // 페이지 당 개수
+      params.append('page', '0');          // 페이지 번호 (0부터 시작)
+
+      // postType은 ALL이 아닐 때만 추가 (LOST or FOUND)
       if (type !== 'ALL') {
-        url += `&postType=${type}`;
+        params.append('postType', type);
       }
+
+      // 최종 URL 생성
+      const url = `${API_BASE_URL}/posts?${params.toString()}`;
+      console.log("Request URL:", url); // 디버깅용: 콘솔에서 URL 확인 가능
 
       const response = await fetch(url, {
         method: 'GET',
@@ -106,18 +124,18 @@ export default function SearchPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Search failed: ${response.status}`);
+        setResults([]);
+        return;
       }
 
       const data = await response.json();
       const posts: ApiPost[] = data.posts || [];
 
-      // API 데이터를 UI 데이터로 변환
       const mappedResults: SearchResultItem[] = posts.map(post => ({
         id: post.id.toString(),
         title: post.title,
-        category: post.itemCategory, // 필요시 한글 매핑 추가
-        location: post.lat && post.lon ? '위치 정보 있음' : '위치 미상', // 실제 주소 변환은 Geocoder 필요
+        category: post.itemCategory,
+        location: '위치 정보',
         date: post.lostAt,
         imageUrl: post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
@@ -134,30 +152,50 @@ export default function SearchPage() {
       setIsLoading(false);
     }
   };
+  // -----------------------------------------------------------------------
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // 최근 검색어 업데이트
-      if (!recentSearches.includes(searchQuery.trim())) {
-        setRecentSearches(prev => [searchQuery.trim(), ...prev].slice(0, 10));
-      }
-      // URL 변경 -> useEffect 트리거 -> API 호출
-      setSearchParams({ q: searchQuery.trim() });
+  const executeSearch = (query: string) => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) return;
+
+    setRecentSearches(prev => {
+      const filtered = prev.filter(q => q !== trimmedQuery);
+      return [trimmedQuery, ...filtered].slice(0, 10);
+    });
+
+    setSearchParams({ q: trimmedQuery });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (e.nativeEvent.isComposing) return;
+      e.preventDefault();
+      executeSearch(searchQuery);
     }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeSearch(searchQuery);
   };
 
   const handleSearchClick = (query: string) => {
     setSearchQuery(query);
-    setSearchParams({ q: query });
+    executeSearch(query);
   };
 
-  const handleRemoveSearch = (query: string) => {
+  const handleRemoveSearch = (e: React.MouseEvent, query: string) => {
+    e.stopPropagation();
     setRecentSearches(recentSearches.filter((item) => item !== query));
   };
 
   const handleClearAll = () => {
     setRecentSearches([]);
+  };
+
+  const handleClearInput = () => {
+    setSearchQuery('');
+    setSearchParams({});
   };
 
   const formatDate = (dateString: string) => {
@@ -173,22 +211,20 @@ export default function SearchPage() {
 
   return (
     <div className="search-page">
-      {/* Header */}
       <header className="search-header">
         <div className="search-header-container">
           <button className="back-btn" onClick={() => navigate(-1)}>
             <ArrowLeft style={{ width: "1.5rem", height: "1.5rem" }} />
           </button>
           <h1>검색</h1>
-          <div style={{ width: "1.5rem" }}></div> {/* Spacer */}
+          <div style={{ width: "1.5rem" }}></div>
         </div>
         
-        {/* Type Filter Tabs - 검색어가 있을 때만 표시하거나 항상 표시 */}
         <div className="filter-tabs" style={{ display: 'flex', gap: '8px', padding: '0 16px 12px' }}>
-          {['ALL', 'LOST', 'FOUND'].map((type) => (
+          {(['ALL', 'LOST', 'FOUND'] as FilterType[]).map((type) => (
             <button
               key={type}
-              onClick={() => setPostType(type as any)}
+              onClick={() => setPostType(type)}
               style={{
                 padding: '6px 12px',
                 borderRadius: '20px',
@@ -207,32 +243,39 @@ export default function SearchPage() {
         </div>
       </header>
 
-      {/* Search Input */}
       <div className="search-input-container">
-        <form onSubmit={handleSearchSubmit} className="search-form">
-          <div className="search-input-wrapper">
+        <form onSubmit={handleFormSubmit} className="search-form">
+          <div className="search-input-wrapper relative">
             <Search className="search-input-icon" />
             <Input
               type="text"
               placeholder="검색어를 입력하세요 (예: 지갑, 아이폰)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
+              onKeyDown={handleKeyDown}
+              className="search-input pr-10" 
               autoFocus
             />
+            {searchQuery && (
+              <button 
+                type="button" 
+                onClick={handleClearInput}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1 hover:text-gray-600"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         </form>
       </div>
 
-      {/* Content */}
       <div className="search-content">
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px' }}>
             <Loader2 className="animate-spin" size={32} color="#10b981" />
             <p style={{ marginTop: '12px', color: '#6b7280' }}>검색 중...</p>
           </div>
-        ) : !initialQuery ? (
-          // Recent Searches (검색어가 없을 때)
+        ) : !queryParam ? (
           <div className="recent-searches">
             <div className="recent-searches-header">
               <h2>최근 검색어</h2>
@@ -247,15 +290,10 @@ export default function SearchPage() {
                 <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', padding: '20px' }}>최근 검색 내역이 없습니다.</p>
               ) : (
                 recentSearches.map((query, index) => (
-                  <div key={index} className="recent-search-item">
+                  <div key={index} className="recent-search-item" onClick={() => handleSearchClick(query)}>
+                    <span className="recent-search-text">{query}</span>
                     <button
-                      onClick={() => handleSearchClick(query)}
-                      className="recent-search-btn"
-                    >
-                      {query}
-                    </button>
-                    <button
-                      onClick={() => handleRemoveSearch(query)}
+                      onClick={(e) => handleRemoveSearch(e, query)}
                       className="remove-search-btn"
                     >
                       <X size={16} color="#9ca3af" />
@@ -266,13 +304,12 @@ export default function SearchPage() {
             </div>
           </div>
         ) : results.length > 0 ? (
-          // Search Results
           <div className="search-results">
             {results.map((item) => (
               <div
                 key={item.id}
                 className="search-result-item"
-                onClick={() => navigate(`/items/${item.id}`)}
+                onClick={() => navigate(`/posts/${item.id}`)}
               >
                 <div className="result-image" style={{ position: 'relative' }}>
                   <ImageWithFallback
@@ -336,7 +373,6 @@ export default function SearchPage() {
             ))}
           </div>
         ) : (
-          // No Results
           <div className="no-results">
             <div className="no-results-icon">
               <Package style={{ width: "3rem", height: "3rem", color: "#d1d5db" }} />
