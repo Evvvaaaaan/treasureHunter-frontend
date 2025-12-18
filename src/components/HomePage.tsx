@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
@@ -23,6 +23,8 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
 import { Button } from './ui/button';
 import BottomNavigation from './BottomNavigation';
+import { useInView } from 'react-intersection-observer';
+
 import { API_BASE_URL } from '../config';
 
 interface AuthorInfo {
@@ -54,6 +56,7 @@ interface ApiPost {
 interface ApiResponse {
   clientLat: number;
   clientLon: number;
+  hasNext: boolean;
   posts: ApiPost[];
 }
 
@@ -93,7 +96,6 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): nu
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
 
-  // UTC 시간으로 인식하도록 'Z' 처리 (이미 있으면 무시)
   let safeTimestamp = dateString;
   if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
     safeTimestamp += 'Z';
@@ -102,28 +104,21 @@ const formatDate = (dateString: string) => {
   const date = new Date(safeTimestamp);
   const now = new Date();
 
-  // 초 단위 차이 계산
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  // 미래 시간인 경우 방금 전 처리
   if (diffInSeconds < 0) return '방금 전';
-
-  // 1분 미만
   if (diffInSeconds < 60) return '방금 전';
 
-  // 1시간 미만
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
 
-  // 24시간 미만
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours}시간 전`;
 
-  // 그 외: 날짜 표시 (KST)
   return new Intl.DateTimeFormat('ko-KR', {
     month: 'short',
     day: 'numeric',
-    timeZone: 'Asia/Seoul', // KST 강제
+    timeZone: 'Asia/Seoul',
   }).format(date);
 };
 
@@ -137,15 +132,26 @@ export default function HomePage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unreadNotifications] = useState(0);
-
-  // [NEW] 정렬 옵션 상태 추가 (기본값: 최신순)
+  
+  // Pagination State
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const [page, setPage] = useState(0);
   const [sortOption, setSortOption] = useState<'latest' | 'distance'>('latest');
 
-  // 위치 정보를 인자로 받아 API를 호출
-  const fetchPosts = async (currentLat?: number, currentLon?: number) => {
+  // 무한 스크롤 감지 Ref
+  const { ref, inView } = useInView({
+    threshold: 0, 
+    rootMargin: '100px', // 바닥보다 100px 위에서 미리 로딩
+  });
+
+  // [수정됨] fetchPosts: 페이지 번호와 리셋 여부를 받음
+  const fetchPosts = useCallback(async (pageNum: number, isReset: boolean = false) => {
+    // 더 이상 페이지가 없고 리셋도 아니면 중단
+    if (!isReset && !hasNextPage) return;
+
     setIsLoading(true);
     setError(null);
     const token = await getValidAuthToken();
@@ -157,17 +163,22 @@ export default function HomePage() {
       return;
     }
 
-    // 위치 정보가 없으면 서울 시청을 기본값으로 사용
-    const lat = currentLat || userLocation?.lat || 37.5665;
-    const lon = currentLon || userLocation?.lon || 126.9780;
+    const lat = userLocation?.lat || 37.5665;
+    const lon = userLocation?.lon || 126.9780;
 
     try {
-      let url = `${API_BASE_URL}/posts`;
+      // URL 파라미터 구성 (page, size 추가)
+      const params = new URLSearchParams();
+      params.append('page', pageNum.toString());
+      params.append('size', '10'); // 한 번에 가져올 개수
 
-      // [MODIFIED] 정렬 옵션에 따라 URL 변경
       if (sortOption === 'distance') {
-        url = `${API_BASE_URL}/posts?search_type=distance&lat=${lat}&lon=${lon}`;
+        params.append('search_type', 'distance');
+        params.append('lat', lat.toString());
+        params.append('lon', lon.toString());
       }
+
+      const url = `${API_BASE_URL}/posts?${params.toString()}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -175,81 +186,64 @@ export default function HomePage() {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
         },
       });
 
       if (!response.ok) {
-        let errorMessage = `HTTP 오류! 상태: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || JSON.stringify(errorData);
-        } catch {
-          try {
-            const errorText = await response.text();
-            console.error("API Error Response (Non-JSON):", errorText);
-            if (response.status === 404) {
-              errorMessage = `API 엔드포인트를 찾을 수 없습니다: ${url}`;
-            } else {
-              errorMessage = `서버 응답 오류 (상태: ${response.status}).`;
-            }
-          } catch {
-            console.log('error reading response text');
-          }
-        }
-        throw new Error(errorMessage);
-      }
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const responseText = await response.text();
-        console.error("Expected JSON, but received:", contentType, responseText);
-        throw new Error("서버로부터 예상치 못한 형식의 응답을 받았습니다.");
+        throw new Error(`HTTP 오류! 상태: ${response.status}`);
       }
 
       const data: ApiResponse = await response.json();
+      const newPosts = data.posts || [];
 
-      console.log('API Response Data:', data);
+      // 데이터 상태 업데이트 (리셋이면 덮어쓰기, 아니면 이어붙이기)
+      setRawPosts((prev) => {
+        if (isReset) return newPosts;
+        
+        // 중복 제거 후 병합
+        const existingIds = new Set(prev.map(p => p.id));
+        const uniquePosts = newPosts.filter(p => !existingIds.has(p.id));
+        return [...prev, ...uniquePosts];
+      });
 
-      const postList = data.posts || [];
-      if (!Array.isArray(postList)) {
-        console.error("API did not return an array in data.posts:", data);
-        throw new Error("서버로부터 게시글 목록(배열)을 받지 못했습니다.");
-      }
-
-      console.log('Extracted postList:', postList);
-
-      setRawPosts(postList);
+      // 다음 페이지 존재 여부 업데이트
+      setHasNextPage(data.hasNext);
 
     } catch (err) {
       console.error('게시글 로딩 실패:', err);
-      setError(err instanceof Error ? err.message : '게시글을 불러오는 중 오류가 발생했습니다.');
+      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userLocation, sortOption, hasNextPage, navigate]);
 
-  // [NEW] 정렬 옵션이 변경될 때마다 데이터 다시 로드
+  // 1. 초기 로드 및 정렬 변경 시 (Page 0부터 다시 로드)
   useEffect(() => {
     if (userInfo) {
-      fetchPosts();
+      setPage(0);
+      setHasNextPage(true);
+      fetchPosts(0, true); // true = isReset
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortOption]);
+  }, [sortOption, userInfo]); // userLocation은 제외 (너무 잦은 리로드 방지)
 
+  // 2. 무한 스크롤 트리거: 화면 바닥 감지 시 페이지 증가
   useEffect(() => {
-    if (!userInfo) {
-      navigate('/login');
-    } else {
-      // 초기 로딩 시 (sortOption이 변경되지 않아도) 데이터 로드
-      // sortOption useEffect와 중복 호출을 막기 위해 location이나 mount 시점 제어 필요할 수 있으나
-      // 현재 로직상 큰 문제 없음. (엄격하게 하려면 mount ref 사용)
-      fetchPosts();
+    if (inView && hasNextPage && !isLoading) {
+      setPage((prev) => prev + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userInfo, navigate, location]);
+  }, [inView, hasNextPage, isLoading]);
 
+  // 3. 페이지 번호 변경 시 추가 데이터 로드
+  useEffect(() => {
+    if (page > 0) {
+      fetchPosts(page, false); // false = append
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  // 위치 정보 가져오기 (마운트 시 1회)
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -259,23 +253,16 @@ export default function HomePage() {
             lon: position.coords.longitude,
           };
           setUserLocation(newLoc);
-          console.log("User location updated:", newLoc);
-
-          // 위치 기반 정렬 중이라면 위치 업데이트 시 재호출
+          // 위치 기반 정렬 중이라면 위치 확보 후 리로드
           if (sortOption === 'distance') {
-            fetchPosts(newLoc.lat, newLoc.lon);
+            fetchPosts(0, true);
           }
         },
-        (error) => {
-          console.error("Error getting user location:", error);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        (error) => console.error("Location error:", error),
+        { enableHighAccuracy: true, timeout: 10000 }
       );
-    } else {
-      console.warn("Geolocation not supported by this browser.");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // mount 시 1회 실행
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogout = () => {
     clearTokens();
@@ -292,16 +279,16 @@ export default function HomePage() {
       const success = await deleteUser(userInfo.id.toString());
       setIsDeleteDialogOpen(false);
       if (success) {
-        alert('회원 탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.');
+        alert('회원 탈퇴 완료');
         navigate('/login', { replace: true });
       } else {
-        alert('회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        alert('회원 탈퇴 실패');
       }
     }
   };
 
+  // UI용 데이터 가공
   const lostItems: LostItem[] = useMemo(() => {
-    // 1. 매핑 (거리 계산 포함)
     const items = rawPosts.map((post: ApiPost) => {
       let distance: number | null = null;
       if (userLocation) {
@@ -319,43 +306,33 @@ export default function HomePage() {
         content: post.content.substring(0, 10) + (post.content.length > 10 ? '...' : ''),
         points: post.setPoint,
         distance: distance,
-        image: post.images && post.images.length > 0
-          ? post.images[0]
-          : DEFAULT_IMAGE,
+        image: post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
         isCompleted: post.isCompleted,
         createdAt: post.createdAt,
       };
     });
 
-    // 2. 정렬 (옵션에 따라)
+    // 클라이언트 사이드 정렬 (API가 정렬해서 주더라도, 위치 거리 계산 후 재정렬 보정)
     if (sortOption === 'distance') {
       return items.sort((a, b) => {
-        // 거리가 없는(null) 항목은 맨 뒤로 보냄
-        if (a.distance === null && b.distance === null) return 0;
         if (a.distance === null) return 1;
         if (b.distance === null) return -1;
-        
-        // 거리 오름차순 (가까운 순)
         return a.distance - b.distance;
       });
     } else {
-      // 최신순 (기본값)
       return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
-  }, [rawPosts, userLocation, sortOption]); // sortOption 의존성 추가
+  }, [rawPosts, userLocation, sortOption]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // 콘솔 로그 대신 검색 페이지로 이동
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-      // 선택 사항: 검색창 닫기 및 초기화
-      // setIsSearchExpanded(false); 
-      // setSearchQuery('');
     }
   };
 
+  // 클라이언트 검색 필터 (현재 로딩된 데이터 내에서만 검색)
   const filteredItems = lostItems.filter(
     (item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -506,7 +483,6 @@ export default function HomePage() {
         )}
 
         <div className="quick-actions">
-          {/* 광고 및 프로모션 배너 */}
           <div className="promo-banner">
             <div className="promo-content">
               <h3>광고 및 프로모션</h3>
@@ -517,7 +493,6 @@ export default function HomePage() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <div className="section-header">
-            {/* [NEW] Sort Buttons */}
             <div className="sort-buttons">
               <button
                 className={`sort-btn ${sortOption === 'latest' ? 'active' : ''}`}
@@ -534,22 +509,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="loading-indicator">
-              <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
-              <p>게시글을 불러오는 중...</p>
-            </div>
-          ) : error ? (
-            <div className="error-message">
-              <AlertCircle style={{ width: '1.25rem', height: '1.25rem' }} />
-              <span>{error}</span>
-              <button onClick={() => fetchPosts()} className="retry-button">재시도</button>
-            </div>
-          ) : filteredItems.length > 0 ? (
+          {filteredItems.length > 0 ? (
             <div className="items-grid">
               {filteredItems.map((item, index) => (
                 <motion.div
-                  key={item.id}
+                  key={`${item.id}-${index}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -562,40 +526,24 @@ export default function HomePage() {
                       alt={item.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-
                     <Badge
-                      className={
-                        item.status === "lost"
-                          ? "badge-lost"
-                          : "badge-found"
-                      }
+                      className={item.status === "lost" ? "badge-lost" : "badge-found"}
                       style={{
                         position: "absolute",
                         top: "0.75rem",
                         right: "0.75rem",
-                        backgroundColor:
-                          item.status === "lost"
-                            ? "#ef4444"
-                            : "#22c55e",
+                        backgroundColor: item.status === "lost" ? "#ef4444" : "#22c55e",
                         color: "white",
                         zIndex: 1
                       }}
                     >
                       {item.status === "lost" ? "분실물" : "습득물"}
                     </Badge>
-
                     {item.isCompleted && (
                       <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: 'bold',
-                        fontSize: '14px',
-                        zIndex: 5
+                        position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'white', fontWeight: 'bold', fontSize: '14px', zIndex: 5
                       }}>
                         완료됨
                       </div>
@@ -603,11 +551,7 @@ export default function HomePage() {
                   </div>
                   <div className="item-info">
                     <h3 className="item-title" style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>{item.title}</h3>
-
-                    {/* 상세 정보(content) 제거하고 포인트, 위치, 날짜만 표시 */}
                     <div className="item-meta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-
-                      {/* 1. 포인트 (있을 경우만) */}
                       {item.points > 0 && (
                         <div className="meta-item" title={`리워드: ${item.points}P`}>
                           <Coins style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#f59e0b' }} />
@@ -616,17 +560,13 @@ export default function HomePage() {
                           </span>
                         </div>
                       )}
-
                       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '0.25rem' }}>
-                        {/* 2. 위치 (거리) */}
                         <div className="meta-item" title="내 위치로부터의 거리">
                           <Navigation style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
                           <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                             {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 미상'}
                           </span>
                         </div>
-
-                        {/* 3. 게시 날짜 */}
                         <div className="meta-item" title="게시일">
                           <Calendar style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
                           <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
@@ -638,19 +578,37 @@ export default function HomePage() {
                   </div>
                 </motion.div>
               ))}
+
+              {/* [NEW] 무한 스크롤 트리거 및 로딩바 */}
+              {hasNextPage && (
+                <div 
+                  ref={ref} 
+                  style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', padding: '20px 0' }}
+                >
+                  {isLoading && (
+                    <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="no-results">
-              <div className="no-results-icon">
-                <Search style={{ width: '2rem', height: '2rem', color: '#9ca3af' }} />
-              </div>
-              <p style={{ color: '#4b5563' }}>
-                {searchQuery ? '검색 결과가 없습니다' : '등록된 게시물이 없습니다.'}
-              </p>
-              {!searchQuery && lostItems.length === 0 && (
-                <Button onClick={() => navigate('/create')} style={{ marginTop: '1rem' }}>
-                  <Plus size={16} style={{ marginRight: '0.5rem' }} /> 첫 게시물 등록하기
-                </Button>
+              {isLoading && page === 0 ? (
+                 <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
+              ) : (
+                <>
+                  <div className="no-results-icon">
+                    <Search style={{ width: '2rem', height: '2rem', color: '#9ca3af' }} />
+                  </div>
+                  <p style={{ color: '#4b5563' }}>
+                    {searchQuery ? '검색 결과가 없습니다' : '등록된 게시물이 없습니다.'}
+                  </p>
+                  {!searchQuery && (
+                    <Button onClick={() => navigate('/create')} style={{ marginTop: '1rem' }}>
+                      <Plus size={16} style={{ marginRight: '0.5rem' }} /> 첫 게시물 등록하기
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           )}

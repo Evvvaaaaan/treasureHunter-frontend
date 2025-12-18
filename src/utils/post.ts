@@ -145,3 +145,52 @@ export const searchPostsByText = async (
 
   return response.json();
 };
+
+export interface PostListResponse {
+  hasNext: boolean;
+  posts: Post[];
+}
+
+/**
+ * 게시글 최신순 조회 API
+ * @param type 'LOST' | 'FOUND' | 'ALL'
+ * @param page 페이지 번호 (0부터 시작)
+ * @param size 페이지 당 개수 (기본 20)
+ */
+export const fetchLatestPosts = async (
+  type: 'LOST' | 'FOUND' | 'ALL',
+  page: number,
+  size: number = 20
+): Promise<PostListResponse> => {
+  const token = await getValidAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // 쿼리 파라미터 구성
+  const queryParams = new URLSearchParams({
+    size: size.toString(),
+    page: page.toString(),
+  });
+
+  // 'ALL'이 아닐 때만 postType 파라미터 추가
+  if (type !== 'ALL') {
+    queryParams.append('postType', type);
+  }
+
+  // API 호출 (GET /api/v1/posts?size=20&page=0&postType=LOST)
+  const response = await fetch(`${API_BASE_URL}/api/v1/posts?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: headers,
+  });
+
+  if (!response.ok) {
+    throw new Error('게시글 목록을 불러오는데 실패했습니다.');
+  }
+
+  return response.json();
+};
