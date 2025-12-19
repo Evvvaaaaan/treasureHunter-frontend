@@ -595,6 +595,7 @@
 .input-with-button {
   display: flex;
   gap: 8px;
+  height: 100px;
 }
 
 .input-with-button input {

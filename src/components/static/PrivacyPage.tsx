@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Users, Share2, Phone, ShieldCheck } from 'lucide-react';
 import '../../styles/static-pages.css'; // 공통 스타일 임포트
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
           <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
             회사는 이용자의 권리를 적극적으로 보장하기 위해 주요 내용을 알기 쉽게 아이콘으로 안내합니다.
           </p>
-          
+
           <div className="labeling-grid">
             <div className="label-card">
               <div className="label-icon-box">

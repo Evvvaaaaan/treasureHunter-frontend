@@ -82,3 +82,13 @@ export interface ChatMessageListResponse {
   hasMore: boolean;
   opponentLastReadChatId: number | null;
 }
+
+
+export interface SendMessageRequest {
+  chatType: string; // 'TALK', 'ENTER', 'LEAVE' 등. 필요하면 Union 타입으로 구체화 가능
+  roomId: string;
+  message: string;
+  sentAt: string;
+  nickname: string;
+  profileImage: string;
+}

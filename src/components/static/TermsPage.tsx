@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import '../../styles/static-pages.css';
@@ -33,7 +33,7 @@ export default function TermsPage() {
           <p>
             본 약관은 서비스를 이용하고자 하는 모든 회원에게 효력이 발생합니다. 회사는 필요한 경우 관련 법령을 위배하지 않는 범위 내에서 약관을 변경할 수 있습니다.
           </p>
-          
+
           {/* 내용 생략 가능 */}
           <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '2rem' }}>
             본 약관은 2024년 12월 11일부터 시행됩니다.

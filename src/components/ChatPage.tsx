@@ -15,12 +15,13 @@ import {
   fetchChatMessages,
   sendChatMessage,
   updateReadCursor,
-  deleteChatRoom
+  deleteChatRoom,
+  sendChatActivity
 } from '../utils/chat';
 import { fetchPostDetail } from '../utils/post';
 import { uploadImage } from '../utils/file';
 import { useChat } from '../components/ChatContext';
-import type { ChatRoom, ChatMessage, ChatReadEvent } from '../types/chat';
+import type { ChatRoom, ChatMessage, ChatReadEvent} from '../types/chat';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +31,7 @@ import {
 
 import '../styles/chat-page.css';
 import { API_BASE_URL } from '../config';
-import { sync } from 'motion/react';
+
 const WS_URL = 'https://treasurehunter.seohamin.com/ws';
 
 const ChatPage: React.FC = () => {
@@ -87,6 +88,8 @@ const ChatPage: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 현재 로그인한 사용자 정보 가져오기
   const currentUser = getUserInfo();
 
   const [roomInfo, setRoomInfo] = useState<ChatRoom | null>(null);
@@ -116,11 +119,11 @@ const ChatPage: React.FC = () => {
   }, [myUserType]);
 
   // =================================================================
-  // 1. 데이터 로드 및 역할/읽음위치 계산 (여기가 핵심)
+  // 1. 데이터 로드 및 역할/읽음위치 계산
   // =================================================================
   useEffect(() => {
     if (!roomId || !currentUser) return;
-
+    sendChatActivity(roomId, 'enter');
     const initChat = async () => {
       setIsLoading(true);
       try {
@@ -133,9 +136,7 @@ const ChatPage: React.FC = () => {
         setMessages(syncData.chats || []);
         console.log("syncData : ",syncData)
         
-        // -------------------------------------------------------------
-        // [수정 1] 내 정체성(UserType)을 안전하게(String 변환) 확인
-        // -------------------------------------------------------------
+        // 내 정체성(UserType) 확인
         const myIdStr = String(currentUser.id);
         let determinedRole: 'AUTHOR' | 'CALLER' | null = null;
 
@@ -158,24 +159,18 @@ const ChatPage: React.FC = () => {
         console.log(`[Identity] MyID: ${myIdStr}, Role: ${finalRole}`);
         setMyUserType(finalRole);
 
-        // -------------------------------------------------------------
-        // [수정 2] 상대방 읽음 위치(OpponentLastReadId)를 더 정확하게 계산
-        // syncData 값이 이상하면, participants 안의 정보를 우선 사용 시도
-        // -------------------------------------------------------------
+        // 상대방 읽음 위치(OpponentLastReadId) 계산
         let finalOpponentReadId = 0;
         console.log("syncData : ", syncData.opponentLastReadChatId);
-        // 상대방 찾기
-        const opponent = roomData.participants.find(p => String(p.id) !== myIdStr);
         
+        const opponent = roomData.participants.find(p => String(p.id) !== myIdStr);
         console.log('상대방 정보:', opponent);
-        // 만약 participant 객체 안에 lastReadChatId가 있다면 그걸 최우선으로 씁니다.
-        // (API 타입에는 없더라도 실제 JSON에는 있을 수 있으므로 any로 접근)
-        if (opponent && (opponent ).lastReadChatId) {
-            finalOpponentReadId = (opponent ).lastReadChatId;
+        
+        if (opponent && (opponent as any).lastReadChatId) {
+            finalOpponentReadId = (opponent as any).lastReadChatId;
             console.log(finalOpponentReadId)
             console.log('상대방이 마지막으로 읽은 채팅 ID (participants 기준):', finalOpponentReadId);  
         } else {
-            // 없으면 syncData 사용 (기존 방식)
             finalOpponentReadId = syncData.opponentLastReadChatId || 0;
             console.log(finalOpponentReadId)
         }
@@ -239,6 +234,7 @@ const ChatPage: React.FC = () => {
     return () => {
       if (client.active) client.deactivate();
       if (readUpdateTimerRef.current) clearTimeout(readUpdateTimerRef.current);
+      sendChatActivity(roomId, 'exit');
     };
   }, [roomId]);
 
@@ -274,23 +270,34 @@ const ChatPage: React.FC = () => {
     }
   }, [messages]);
 
-  // 5. 메시지 전송
+  // 5. 메시지 전송 [수정된 부분]
   const handleSendMessage = async () => {
     if ((!inputMessage.trim() && !selectedFile) || isSending || !roomId) return;
     setIsSending(true);
     setShowEmojiPicker(false);
 
+    // 사용자 정보 준비
+    const nickname = currentUser?.nickname || '알 수 없음';
+    const profileImage = currentUser?.profileImage || '';
+
     try {
       if (selectedFile) {
         const imageUrl = await uploadImage(selectedFile);
-        await sendChatMessage(roomId, imageUrl, 'IMAGE');
+        // 이미지 전송: 닉네임, 프로필 이미지 추가 전달
+        await sendChatMessage(roomId, imageUrl, nickname, profileImage, 'IMAGE');
         handleClearFile();
       }
       if (inputMessage.trim()) {
-        await sendChatMessage(roomId, inputMessage, 'TEXT');
+        // 텍스트 전송: 닉네임, 프로필 이미지 추가 전달
+        await sendChatMessage(roomId, inputMessage, nickname, profileImage, 'TEXT');
         setInputMessage('');
       }
-    } catch (error) { alert('메시지 전송 중 오류가 발생했습니다.'); } finally { setIsSending(false); }
+    } catch (error) { 
+      console.error('메시지 전송 실패:', error);
+      alert('메시지 전송 중 오류가 발생했습니다.'); 
+    } finally { 
+      setIsSending(false); 
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -311,7 +318,7 @@ const ChatPage: React.FC = () => {
     const partner = roomInfo.participants.find(p => String(p.id) !== String(currentUser.id));
     return {
       name: partner?.nickname || roomInfo.name || '상대방',
-      image: partner?.profileImage || partner?.profileImage || 'https://via.placeholder.com/150?text=User'
+      image: partner?.profileImage || 'https://via.placeholder.com/150?text=User'
     };
   };
   const partnerInfo = getPartnerInfo();
@@ -380,7 +387,7 @@ const ChatPage: React.FC = () => {
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', flexDirection: isMyMessage ? 'row-reverse' : 'row' }}>
                   <span className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}> {formatTime(message.sentAt)} </span>
-                  {/* [1 표시 로직] 내 메시지이고, 상대가 아직 안 읽었으면 1 표시 */}
+                  {/* 내 메시지이고, 상대가 아직 안 읽었으면 1 표시 */}
                   {isMyMessage && !isRead && ( <span className="text-xs text-yellow-500 font-medium">1</span> )}
                 </div>
               </div>

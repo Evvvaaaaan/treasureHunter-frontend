@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MapPin, Calendar, Share2, Flag, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart, Edit, Trash, Check, MoreVertical } from 'lucide-react';
+import { MapPin, Calendar, Share2, Flag, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart, Edit, Trash, MoreVertical } from 'lucide-react';
 import { useTheme } from '../utils/theme';
 import { getValidAuthToken, getUserInfo } from '../utils/auth';
 import { createChatRoom } from '../utils/chat';
 import '../styles/item-detail.css';
-import { API_BASE_URL } from '../config'; 
+import { API_BASE_URL } from '../config';
 
 interface ApiPost {
   id: number;
@@ -20,7 +20,7 @@ interface ApiPost {
     totalReviews: number;
   };
   viewCount: number;
-  images: string[]; 
+  images: string[];
   setPoint: number;
   itemCategory: string;
   lat: number;
@@ -96,7 +96,7 @@ const ItemDetailPage: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
+
   // [수정] isMyPost를 상태로 관리 (익명 여부와 관계없이 ID 비교를 위해)
   const [isMyPost, setIsMyPost] = useState(false);
 
@@ -115,34 +115,34 @@ const ItemDetailPage: React.FC = () => {
     }
     return null;
   };
-  
+
   useEffect(() => {
     if (!item) return;
     if (item.location.address && !item.location.address.startsWith('위도:')) return;
 
     const updateAddress = async () => {
-        const addr = await convertCoordsToAddress(item.location.coordinates.lat, item.location.coordinates.lng);
-        if (addr) {
-            setItem(prev => prev ? ({
-                ...prev,
-                location: {
-                    ...prev.location,
-                    address: addr
-                }
-            }) : null);
-        }
+      const addr = await convertCoordsToAddress(item.location.coordinates.lat, item.location.coordinates.lng);
+      if (addr) {
+        setItem(prev => prev ? ({
+          ...prev,
+          location: {
+            ...prev.location,
+            address: addr
+          }
+        }) : null);
+      }
     };
 
     if (window.google && window.google.maps) {
-        updateAddress();
+      updateAddress();
     } else {
-        const interval = setInterval(() => {
-            if (window.google && window.google.maps) {
-                clearInterval(interval);
-                updateAddress();
-            }
-        }, 500);
-        return () => clearInterval(interval);
+      const interval = setInterval(() => {
+        if (window.google && window.google.maps) {
+          clearInterval(interval);
+          updateAddress();
+        }
+      }, 500);
+      return () => clearInterval(interval);
     }
   }, [item]);
 
@@ -155,7 +155,7 @@ const ItemDetailPage: React.FC = () => {
 
   const loadItemDetail = async (itemId: string) => {
     setIsLoading(true);
-    
+
     try {
       const token = await getValidAuthToken();
       const headers: HeadersInit = { 'Accept': 'application/json' };
@@ -178,9 +178,9 @@ const ItemDetailPage: React.FC = () => {
       if (currentUser && data.author) {
         // 문자열 변환하여 비교 (타입 불일치 방지)
         if (String(currentUser.id) === String(data.author.id)) {
-            setIsMyPost(true);
+          setIsMyPost(true);
         } else {
-            setIsMyPost(false);
+          setIsMyPost(false);
         }
       } else {
         setIsMyPost(false);
@@ -188,7 +188,7 @@ const ItemDetailPage: React.FC = () => {
 
       // 주소 초기값 설정
       let address = `위도: ${data.lat}, 경도: ${data.lon}`;
-      
+
       if (window.google && window.google.maps && window.google.maps.Geocoder) {
         try {
           const geocoder = new google.maps.Geocoder();
@@ -200,10 +200,10 @@ const ItemDetailPage: React.FC = () => {
           console.error("Initial geocoding failed, will retry in useEffect", e);
         }
       }
-      
-      const images = data.images && data.images.length > 0 
-          ? data.images 
-          : [DEFAULT_IMAGE];
+
+      const images = data.images && data.images.length > 0
+        ? data.images
+        : [DEFAULT_IMAGE];
 
       const mappedItem: ItemDetail = {
         id: data.id.toString(),
@@ -225,7 +225,7 @@ const ItemDetailPage: React.FC = () => {
           description: data.setPoint > 0 ? `${data.setPoint.toLocaleString()} 포인트` : '사례금 없음'
         },
         status: data.isCompleted ? 'completed' : 'active',
-        viewCount: data.viewCount, 
+        viewCount: data.viewCount,
         bookmarkCount: 0,
         isBookmarked: false,
         likes: data.likeCount || 0,
@@ -236,10 +236,10 @@ const ItemDetailPage: React.FC = () => {
 
       // 작성자 정보 설정 (익명 처리 로직 유지)
       if (data.author && !data.isAnonymous) {
-        const avgScore = data.author.totalReviews > 0 
-            ? data.author.totalScore / data.author.totalReviews 
-            : 0;
-        const trustScore = Math.round(avgScore); 
+        const avgScore = data.author.totalReviews > 0
+          ? data.author.totalScore / data.author.totalReviews
+          : 0;
+        const trustScore = Math.round(avgScore);
 
         setPostAuthor({
           id: data.author.id.toString(),
@@ -264,7 +264,7 @@ const ItemDetailPage: React.FC = () => {
       }
 
     } catch (error) {
-        console.error("Load detail error", error);
+      console.error("Load detail error", error);
     } finally {
       setIsLoading(false);
     }
@@ -298,7 +298,7 @@ const ItemDetailPage: React.FC = () => {
     if (!item || !id) return;
     const token = await getValidAuthToken();
     if (!token) {
-      if(confirm("로그인이 필요한 기능입니다. 로그인하시겠습니까?")) navigate('/login');
+      if (confirm("로그인이 필요한 기능입니다. 로그인하시겠습니까?")) navigate('/login');
       return;
     }
     const prevItem = { ...item };
@@ -358,7 +358,7 @@ const ItemDetailPage: React.FC = () => {
       return;
     }
     try {
-      const roomName = `${item?.title}`; 
+      const roomName = `${item?.title}`;
       const postId = parseInt(item?.id || '0', 10);
       if (!postId) {
         alert("잘못된 게시글 정보입니다.");
@@ -367,7 +367,7 @@ const ItemDetailPage: React.FC = () => {
       const roomId = await createChatRoom(roomName, postId, false);
       navigate(`/chat/${roomId}`);
     } catch (error) {
-      alert(error.message,'채팅방 생성에 실패했습니다.');
+      alert(error instanceof Error ? error.message : '채팅방 생성에 실패했습니다.');
     }
   };
 
@@ -409,8 +409,8 @@ const ItemDetailPage: React.FC = () => {
           </button>
           {isMyPost ? (
             <div className="menu-wrapper">
-              <button 
-                className="icon-button" 
+              <button
+                className="icon-button"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
                 <MoreVertical size={20} />
@@ -474,9 +474,9 @@ const ItemDetailPage: React.FC = () => {
       <div className="detail-content">
         <div className="item-header">
           {item.status === 'completed' ? (
-             <span className="type-badge completed" style={{background: '#6b7280', color: 'white'}}>
-               완료
-             </span>
+            <span className="type-badge completed" style={{ background: '#6b7280', color: 'white' }}>
+              완료
+            </span>
           ) : (
             <span className={`type-badge ${item.type}`}>
               {item.type === 'lost' ? '분실물' : '습득물'}
@@ -490,29 +490,29 @@ const ItemDetailPage: React.FC = () => {
         </div>
 
         {postAuthor && (
-            <div className="user-card" onClick={() => postAuthor.id !== 'anonymous' && navigate(`/other-profile/${postAuthor.id}`)}>
+          <div className="user-card" onClick={() => postAuthor.id !== 'anonymous' && navigate(`/other-profile/${postAuthor.id}`)}>
             <div className="user-avatar-wrapper">
-                <img src={postAuthor.profileImage} alt={postAuthor.nickname} className="user-avatar" />
-                {postAuthor.isOnline && <span className="online-indicator"></span>}
+              <img src={postAuthor.profileImage} alt={postAuthor.nickname} className="user-avatar" />
+              {postAuthor.isOnline && <span className="online-indicator"></span>}
             </div>
             <div className="user-info">
-                <div className="user-name">
+              <div className="user-name">
                 <span>{postAuthor.nickname}</span>
                 {/* 내 게시글(익명 포함)이면 (나) 표시 */}
-                {isMyPost && <span style={{fontSize:'0.8em', color:'var(--primary)', marginLeft:'4px'}}>(나)</span>}
+                {isMyPost && <span style={{ fontSize: '0.8em', color: 'var(--primary)', marginLeft: '4px' }}>(나)</span>}
                 {postAuthor.badges.map((badge, idx) => (
-                    <span key={idx} className="user-badge">{badge}</span>
+                  <span key={idx} className="user-badge">{badge}</span>
                 ))}
-                </div>
-                <div className="user-stats">
+              </div>
+              <div className="user-stats">
                 <span className="trust-score">
-                    <Star size={14} fill="#10b981" stroke="#10b981" />
-                    신뢰도 {postAuthor.trustScore}%
+                  <Star size={14} fill="#10b981" stroke="#10b981" />
+                  신뢰도 {postAuthor.trustScore}%
                 </span>
-                </div>
+              </div>
             </div>
             {postAuthor.id !== 'anonymous' && <ChevronRight size={20} className="chevron" />}
-            </div>
+          </div>
         )}
 
         {item.reward.points > 0 && (
@@ -527,7 +527,7 @@ const ItemDetailPage: React.FC = () => {
 
         <div className="description-section">
           <h2>상세 설명</h2>
-          <p style={{whiteSpace: 'pre-wrap', wordBreak: 'break-all', overflowWrap: 'break-word'}}>{item.description}</p>
+          <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', overflowWrap: 'break-word' }}>{item.description}</p>
         </div>
 
         <div className="info-section">
@@ -569,27 +569,27 @@ const ItemDetailPage: React.FC = () => {
       </div>
 
       <div className="bottom-actions">
-        <button 
+        <button
           className={`like-button ${item.isLiked ? 'active' : ''}`}
           onClick={handleLike}
         >
-          <Heart 
-            size={20} 
+          <Heart
+            size={20}
             fill={item.isLiked ? "#ef4444" : "none"}
             stroke={item.isLiked ? "#ef4444" : "currentColor"}
           />
           <span>{item.likes}</span>
         </button>
-        
+
         {isMyPost ? (
-            <button className="chat-button" style={{background: '#e5e7eb', color: '#374151', cursor: 'default'}}>
-                내가 쓴 글
-            </button>
+          <button className="chat-button" style={{ background: '#e5e7eb', color: '#374151', cursor: 'default' }}>
+            내가 쓴 글
+          </button>
         ) : (
-            <button className="chat-button" onClick={handleStartChat}>
+          <button className="chat-button" onClick={handleStartChat}>
             <MessageCircle size={20} />
             채팅하기
-            </button>
+          </button>
         )}
       </div>
 

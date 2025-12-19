@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-// [MODIFIED] clearTokens 및 checkToken을 import에 추가합니다.
 import { signupUser, saveUserInfo, getUserInfo, checkToken, clearTokens } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
@@ -19,6 +18,11 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [profileImage, setProfileImage] = useState('');
 
+  // 위치 정보 상태
+  const [location, setLocation] = useState<{ lat: string; lon: string } | null>(null);
+  const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,9 +31,8 @@ export default function SignupPage() {
     const tempUserInfo = getUserInfo();
 
     if (!idFromUrl) {
-      // [MODIFIED] 비정상 접근 시, 세션을 강제로 클리어하고 /login으로 보냅니다.
       setError('잘못된 접근입니다. 세션을 초기화하고 로그인 페이지로 이동합니다.');
-      clearTokens(); // <-- 이 코드가 핵심입니다.
+      clearTokens();
       setTimeout(() => navigate('/login', { replace: true }), 2000);
       return;
     }
@@ -42,6 +45,57 @@ export default function SignupPage() {
       setProfileImage(tempUserInfo.profileImage || '');
     }
   }, [navigate, searchParams]);
+
+  // [수정됨] MapPage.tsx의 handleMyLocationClick 로직을 그대로 적용
+  const handleGetLocation = () => {
+    setIsLocationLoading(true);
+    setLocationError(null);
+
+    if (!navigator.geolocation) {
+      setLocationError("브라우저에서 위치 정보를 지원하지 않습니다.");
+      setIsLocationLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        // 성공 시 상태 업데이트
+        setLocation({
+          lat: latitude.toString(),
+          lon: longitude.toString()
+        });
+        setIsLocationLoading(false);
+      },
+      (error) => {
+        setIsLocationLoading(false);
+        console.error("Error getting location:", error);
+        
+        // MapPage.tsx의 에러 메시지 처리 로직과 동일하게 구성
+        let errorMessage = '위치 정보를 가져올 수 없습니다. ';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage += '위치 권한을 허용해주세요.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage += '현재 위치를 확인할 수 없습니다.';
+            break;
+          case error.TIMEOUT:
+            errorMessage += '위치 정보를 가져오는 데 시간이 초과되었습니다.';
+            break;
+          default:
+            errorMessage += '알 수 없는 오류가 발생했습니다.';
+        }
+        setLocationError(errorMessage);
+      },
+      {
+        // MapPage.tsx와 동일한 옵션 사용
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,43 +111,38 @@ export default function SignupPage() {
       return;
     }
 
+
+
     setIsLoading(true);
 
     try {
       const defaultProfileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400';
       const finalProfileImage = profileImage || defaultProfileImage;
 
-      // [MODIFIED] signupUser 함수는 이제 에러 발생 시 throw하므로, 결과를 받아서 처리합니다.
       const success = await signupUser(
         userId,
         nickname,
         finalProfileImage,
-        name
+        name,
+        location?.lat || null,
+        location?.lon || null,
       );
 
       if (success) {
-        // [MODIFIED] 회원가입 성공 시, 최신 유저 정보(role 포함)를 다시 가져옵니다.
         const updatedUserInfo = await checkToken(userId);
 
         if (updatedUserInfo) {
-          // 업데이트된 최신 정보를 로컬 스토리지에 저장합니다.
           saveUserInfo(updatedUserInfo);
-
-          // [MODIFIED] '/home' 대신 '/verify-phone'으로 이동합니다.
           navigate('/verify-phone');
         } else {
-          // 혹시 모를 예외 처리
           setError('회원가입은 되었으나 정보 갱신에 실패했습니다. 다시 로그인해주세요.');
           setTimeout(() => navigate('/login'), 2000);
         }
 
       } else {
-        // signupUser가 false를 반환하는 경우 (일반적인 실패)
         setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
     } catch (err: any) {
-      // [MODIFIED] 백엔드에서 전달된 에러 메시지를 표시합니다.
-      // err 객체가 Error 타입이거나 메시지를 가지고 있다면 그 메시지를 사용합니다.
       const errorMessage = err.message;
       setError(errorMessage);
       console.error("Signup failed:", err);
@@ -143,7 +192,6 @@ export default function SignupPage() {
               <div className="profile-image-wrapper">
                 <div className="profile-image-container">
                   {profileImage ? (
-                    // 2. 'ImageWithFallback' 컴포넌트의 속성에서 'fallbackSrc'를 제거하여 ts(2322) 오류를 해결합니다.
                     <ImageWithFallback
                       src={profileImage}
                       alt="Profile"
@@ -194,6 +242,53 @@ export default function SignupPage() {
                 required
               />
               <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>다른 사용자에게 표시되는 이름입니다</p>
+            </div>
+
+            {/* 위치 등록 섹션 */}
+            <div className="form-field">
+              <Label>선호 위치 *</Label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <Button
+                  type="button"
+                  onClick={handleGetLocation}
+                  disabled={isLocationLoading}
+                  variant="outline"
+                  style={{
+                    height: '3rem',
+                    backgroundColor: location ? '#f0fdf4' : '#f9fafb',
+                    borderColor: location ? '#22c55e' : '#e5e7eb',
+                    color: location ? '#15803d' : '#374151',
+                    justifyContent: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    width: '100%'
+                  }}
+                >
+                  {isLocationLoading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} /> 위치 확인 중...
+                    </>
+                  ) : location ? (
+                    <>
+                      <MapPin size={18} /> 위치 등록 완료
+                    </>
+                  ) : (
+                    <>
+                      <MapPin size={18} /> 현재 위치 등록하기
+                    </>
+                  )}
+                </Button>
+                
+                {locationError && (
+                  <p style={{ fontSize: '0.875rem', color: '#dc2626' }}>{locationError}</p>
+                )}
+                {location && (
+                  <p style={{ fontSize: '0.875rem', color: '#16a34a' }}>
+                    위도: {parseFloat(location.lat).toFixed(4)}, 경도: {parseFloat(location.lon).toFixed(4)}
+                  </p>
+                )}
+              </div>
             </div>
 
             {error && (

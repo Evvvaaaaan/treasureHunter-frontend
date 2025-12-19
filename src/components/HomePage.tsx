@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   Search,
@@ -124,7 +124,7 @@ const formatDate = (dateString: string) => {
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const location = useLocation();
+
   const [userInfo] = useState<UserInfo | null>(getUserInfo());
   const [searchQuery, setSearchQuery] = useState('');
   const [rawPosts, setRawPosts] = useState<ApiPost[]>([]);
@@ -133,9 +133,9 @@ export default function HomePage() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [unreadNotifications] = useState(0);
-  
+
   // Pagination State
   const [hasNextPage, setHasNextPage] = useState(true);
   const [page, setPage] = useState(0);
@@ -143,7 +143,7 @@ export default function HomePage() {
 
   // 무한 스크롤 감지 Ref
   const { ref, inView } = useInView({
-    threshold: 0, 
+    threshold: 0,
     rootMargin: '100px', // 바닥보다 100px 위에서 미리 로딩
   });
 
@@ -162,14 +162,14 @@ export default function HomePage() {
             lon: position.coords.longitude,
           };
           setUserLocation(newLoc);
-          
+
           // 만약 현재 거리순 탭에 있다면, 위치 정보를 얻자마자 새로고침
           if (sortOption === 'distance') {
-             setTimeout(() => {
-                 setPage(0);
-                 setHasNextPage(true);
-                 fetchPosts(0, true, newLoc.lat, newLoc.lon);
-             }, 100);
+            setTimeout(() => {
+              setPage(0);
+              setHasNextPage(true);
+              fetchPosts(0, true, newLoc.lat, newLoc.lon);
+            }, 100);
           }
         },
         (error) => console.error("Location error:", error),
@@ -180,20 +180,20 @@ export default function HomePage() {
 
   // 3. API 호출 함수
   const fetchPosts = useCallback(async (
-    pageNum: number, 
-    isReset: boolean = false, 
-    overrideLat?: number, 
+    pageNum: number,
+    isReset: boolean = false,
+    overrideLat?: number,
     overrideLon?: number
   ) => {
     // 더 이상 페이지가 없고 리셋도 아니면 중단
     if (!isReset && !hasNextPage) return;
 
     setIsLoading(true);
-    setError(null);
+
     const token = await getValidAuthToken();
 
     if (!token) {
-      setError('로그인이 필요합니다. 다시 로그인해주세요.');
+      // setError('로그인이 필요합니다. 다시 로그인해주세요.');
       setIsLoading(false);
       navigate('/login');
       return;
@@ -238,7 +238,7 @@ export default function HomePage() {
       // 데이터 상태 업데이트 (리셋이면 덮어쓰기, 아니면 이어붙이기)
       setRawPosts((prev) => {
         if (isReset) return newPosts;
-        
+
         // 중복 제거 후 병합
         const existingIds = new Set(prev.map(p => p.id));
         const uniquePosts = newPosts.filter(p => !existingIds.has(p.id));
@@ -250,7 +250,7 @@ export default function HomePage() {
 
     } catch (err) {
       console.error('게시글 로딩 실패:', err);
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
+      // setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -600,8 +600,8 @@ export default function HomePage() {
 
               {/* [NEW] 무한 스크롤 트리거 및 로딩바 */}
               {hasNextPage && (
-                <div 
-                  ref={ref} 
+                <div
+                  ref={ref}
                   style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', padding: '20px 0' }}
                 >
                   {isLoading && (
@@ -613,7 +613,7 @@ export default function HomePage() {
           ) : (
             <div className="no-results">
               {isLoading && page === 0 ? (
-                 <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
+                <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
               ) : (
                 <>
                   <div className="no-results-icon">

@@ -7,11 +7,11 @@ import {
   Moon,
   Sun,
   Bell,
-  Lock,
+
   Info,
   ChevronRight,
   Smartphone,
-  Mail,
+
   Shield,
   HelpCircle,
   FileText,
@@ -278,8 +278,8 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* 푸시 알림 권한 요청 Alert 컴포넌트 */}
-      <PushNotificationAlert 
-        open={showPushAlert} 
+      <PushNotificationAlert
+        open={showPushAlert}
         onOpenChange={setShowPushAlert}
         onPermissionGranted={() => setNotifications({ ...notifications, push: true })}
       />

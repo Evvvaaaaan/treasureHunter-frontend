@@ -376,7 +376,9 @@ export const signupUser = async (
   userId: string,
   nickname: string,
   profileImage: string,
-  name: string
+  name: string,
+  lat?: number | null,
+  lon?: number | null
 ): Promise<boolean> => {
   // Use getValidAuthToken to ensure token validity
   const token = await getValidAuthToken();
@@ -392,7 +394,7 @@ export const signupUser = async (
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ nickname, profileImage, name }),
+      body: JSON.stringify({ nickname, profileImage, name, lat, lon }),
     });
 
     if (!response.ok) {

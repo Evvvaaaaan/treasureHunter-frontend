@@ -1,0 +1,47 @@
+type User @table {
+  displayName: String!
+  createdAt: Timestamp!
+  email: String
+  photoUrl: String
+  phoneNumber: String
+}
+
+type ItemCategory @table {
+  name: String!
+  createdAt: Timestamp!
+}
+
+type LostReport @table {
+  title: String!
+  description: String!
+  lostDate: Date!
+  approximateLostLocation: String!
+  createdAt: Timestamp!
+  imageUrl: String
+  contactInfo: String
+  resolvedAt: Timestamp
+  user: User
+  category: ItemCategory
+}
+
+type FoundReport @table {
+  title: String!
+  description: String!
+  foundDate: Date!
+  approximateFoundLocation: String!
+  createdAt: Timestamp!
+  imageUrl: String
+  contactInfo: String
+  resolvedAt: Timestamp
+  user: User
+  category: ItemCategory
+}
+
+type Message @table {
+  content: String!
+  createdAt: Timestamp!
+  sender: User!
+  receiver: User!
+  lostReport: LostReport
+  foundReport: FoundReport
+}

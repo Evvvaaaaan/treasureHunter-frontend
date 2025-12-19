@@ -71,6 +71,8 @@ const mapFrontTypeToBackend = (frontType: ChatFrontType): 'MESSAGE' | 'IMAGE' | 
 export const sendChatMessage = async (
   roomId: string,
   message: string,
+  nickname: string,      
+  profileImage: string,
   type: ChatFrontType = 'TEXT',
 ) => {
   const token = await getValidAuthToken();
@@ -90,6 +92,8 @@ export const sendChatMessage = async (
       roomId,
       message,
       sentAt,
+      nickname,
+      profileImage,
     }),
   });
 
@@ -201,4 +205,25 @@ export const deleteChatRoom = async (roomId: string) => {
   }
 
   return true;
+};
+
+export const sendChatActivity = async (roomId: string, type: 'enter' | 'exit') => {
+  const token = await getValidAuthToken();
+  if (!token) return; // 로그인이 안되어 있으면 무시 (혹은 에러 처리)
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chat/room/${roomId}/activity?type=${type}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Body가 없으므로 Content-Type은 생략하거나 필요시 추가
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`Failed to send chat activity (${type}):`, response.status);
+    }
+  } catch (error) {
+    console.error(`Error sending chat activity (${type}):`, error);
+  }
 };

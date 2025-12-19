@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import type { MessagePayload } from "firebase/messaging";
+// ... (기존 컴포넌트 import 생략, 변함 없음) ...
 import LoginPage from './components/LoginPage';
 import AuthCallback from './components/AuthCallback';
 import ItemDetailPage from './components/ItemDetailPage';
@@ -33,6 +35,10 @@ import TermsPage from './components/static/TermsPage';
 import LicensesPage from './components/static/LicensesPage';
 import PrivacyPage from './components/static/PrivacyPage';
 
+// ✅ [수정 1] firebase.ts에서 필요한 함수만 import (firebaseApp 직접 사용 X)
+import { requestPermission, onMessageListener } from './firebase'; 
+import { API_BASE_URL } from './config';
+
 
 /**
  * 앱 로딩 시 전체 화면 스피너
@@ -46,10 +52,10 @@ function FullPageSpinner() {
 }
 
 /**
- * PublicRoute: 비동기 토큰 유효성 검사 및 온보딩 체크 추가
- * 로그인하지 않은 사용자만 접근할 수 있는 경로를 처리합니다.
+ * PublicRoute
  */
 function PublicRoute({ children }: { children: React.ReactNode }) {
+  // ... (기존 코드 유지) ...
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const location = useLocation();
@@ -73,26 +79,22 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (isAuthenticated) {
-    // 유효한 토큰이 있으면 /home으로 보냅니다.
     return <Navigate to="/home" replace />;
   }
 
-  // [추가된 로직] 로그인하지 않은 상태에서 온보딩을 보지 않았다면 온보딩 페이지로 리다이렉트
-  // 단, 현재 페이지가 이미 /onboarding이면 리다이렉트 하지 않음
   const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding') === 'true';
   if (!hasSeenOnboarding && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
   
-  // 유효한 토큰이 없고 온보딩도 확인했거나 현재 온보딩 페이지라면 해당 페이지 표시
   return <>{children}</>;
 }
 
 /**
- * ProtectedRoute: 비동기 토큰 유효성 및 최신 유저 정보 검사
- * 로그인한 사용자만 접근할 수 있는 경로를 처리합니다.
+ * ProtectedRoute
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  // ... (기존 코드 유지) ...
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -145,10 +147,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * RootRedirect: 비동기 토큰 유효성 및 온보딩 상태 검사
- * 앱 시작 시 '/' 경로에서 올바른 위치로 보내줍니다.
+ * RootRedirect
  */
 function RootRedirect() {
+  // ... (기존 코드 유지) ...
   const [isLoading, setIsLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
@@ -177,9 +179,7 @@ function RootRedirect() {
     return <FullPageSpinner />;
   }
 
-  // 인증 정보가 없을 경우
   if (!userInfo) {
-    // [추가된 로직] 온보딩을 보지 않았다면 온보딩 페이지로, 봤다면 로그인 페이지로
     const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding') === 'true';
     if (!hasSeenOnboarding) {
       return <Navigate to="/onboarding" replace />;
@@ -187,24 +187,84 @@ function RootRedirect() {
     return <Navigate to="/login" replace />;
   }
   
-  // 인증 정보 있음 -> 역할(role)에 따라 분기
   if (userInfo.role === 'NOT_REGISTERED') {
     return <Navigate to="/signup" replace />;
   }
   if (userInfo.role === 'NOT_VERIFIED') {
     return <Navigate to="/home" replace />; 
   }
-  // 'USER' 역할
   return <Navigate to="/home" replace />;
 }
 
 export default function App() {
+
+  const sendTokenToServer = async (fcmToken: string) => {
+    try {
+      // API 기본 주소 (환경변수나 실제 주소로 변경 필요)
+      
+      
+      // 인증 토큰 가져오기 (로그인 된 상태여야 서버가 받아줄 것 같으므로)
+      const authToken = await getValidAuthToken(); 
+
+      if (!authToken) {
+        console.log("로그인 상태가 아니라서 서버에 FCM 토큰을 보내지 않았습니다.");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/notification/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`, // JWT 토큰 포함
+        },
+        body: JSON.stringify({
+          token: fcmToken,
+          platform: 'IOS' // 요청하신 대로 'IOS'로 설정 (웹이면 'WEB'이 맞을 수 있음)
+        }),
+      });
+
+      if (response.ok) {
+        console.log("✅ FCM 토큰 서버 전송 성공");
+      } else {
+        console.error("❌ FCM 토큰 서버 전송 실패:", response.status);
+      }
+    } catch (error) {
+      console.error("❌ FCM 토큰 전송 중 에러:", error);
+    }
+  };
+  // ✅ [수정 2] FCM 초기화 로직을 useEffect 안으로 이동
+  useEffect(() => {
+    // 1. 권한 요청 및 토큰 확인
+    const initFcm = async () => {
+      const token = await requestPermission();
+      // TODO: 여기서 받은 token을 백엔드 서버에 저장하는 API를 호출해야 합니다.
+      if (token) {
+        console.log("App.tsx - FCM Token:", token);
+        await sendTokenToServer(token);
+      }
+    };
+
+    initFcm();
+
+    // 2. 포그라운드 메시지 수신 대기
+    // onMessageListener가 Promise를 반환한다고 가정 시 처리
+    // (만약 unsubscribe 함수를 반환한다면 로직이 달라질 수 있음)
+    onMessageListener().then((payload: MessagePayload ) => {
+       if (payload) {
+         console.log("포그라운드 알림 수신:", payload);
+         // 여기서 Toast 메시지 등을 띄울 수 있습니다.
+         // 예: toast.info(payload.notification.title);
+       }
+    }).catch(err => console.error(err));
+
+  }, []);
+
   return (
     <ThemeProvider>
       <ChatProvider>
         <Router>
           <Routes>
-            {/* Public Routes */}
+            {/* ... (기존 라우트 설정 유지, 변경 없음) ... */}
             <Route 
               path="/onboarding" 
               element={
@@ -213,6 +273,7 @@ export default function App() {
                 </PublicRoute>
               } 
             />
+            {/* ... 나머지 모든 Route들 ... */}
             <Route
               path="/login"
               element={
@@ -222,8 +283,6 @@ export default function App() {
               }
             />
             <Route path="/auth/callback" element={<AuthCallback />} />
-
-            {/* Protected Routes */}
             <Route
               path="/signup"
               element={
@@ -389,10 +448,9 @@ export default function App() {
             <Route path="/help" element={<HelpPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/licenses" element={<LicensesPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} /> {/* Static Info Pages */}
+            <Route path="/privacy" element={<PrivacyPage />} />
             
             <Route path="/chat/:id/review" element={<ReviewPage />} />
-            {/* Redirect Logic */}
             
             <Route path="/" element={<RootRedirect />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -402,3 +460,5 @@ export default function App() {
     </ThemeProvider>
   );
 }
+
+// ✅ [수정 3] 파일 맨 아래에 있던 잘못된 리스너 코드 삭제됨

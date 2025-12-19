@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import '../../styles/static-pages.css';
@@ -45,7 +45,7 @@ export default function HelpPage() {
         <div className="accordion-list">
           {faqs.map((faq, idx) => (
             <div key={idx} className="accordion-item">
-              <button 
+              <button
                 className="accordion-trigger"
                 onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
               >
@@ -68,9 +68,9 @@ export default function HelpPage() {
           <p style={{ fontSize: '0.875rem', color: '#15803d', marginBottom: '1rem' }}>
             고객센터로 문의해주시면 친절하게 답변해 드립니다.
           </p>
-          <button style={{ 
-            padding: '0.75rem 1.5rem', backgroundColor: '#10b981', color: 'white', 
-            border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' 
+          <button style={{
+            padding: '0.75rem 1.5rem', backgroundColor: '#10b981', color: 'white',
+            border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer'
           }}>
             1:1 문의하기
           </button>

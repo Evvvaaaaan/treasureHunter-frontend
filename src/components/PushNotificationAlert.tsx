@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -18,10 +18,10 @@ interface PushNotificationAlertProps {
   onPermissionGranted?: () => void;
 }
 
-export function PushNotificationAlert({ 
-  open, 
-  onOpenChange, 
-  onPermissionGranted 
+export function PushNotificationAlert({
+  open,
+  onOpenChange,
+  onPermissionGranted
 }: PushNotificationAlertProps) {
   const [alertType, setAlertType] = useState<'request' | 'denied'>('request');
 
@@ -73,7 +73,7 @@ export function PushNotificationAlert({
             {alertType === 'denied' ? '알림 권한 필요' : '알림 설정'}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {alertType === 'denied' 
+            {alertType === 'denied'
               ? '중요한 소식을 받기 위해 알림 권한이 필요합니다. 설정에서 알림을 허용해주세요.'
               : '새로운 메시지와 매칭 정보를 놓치지 않도록 푸시 알림을 허용하시겠습니까?'}
           </AlertDialogDescription>
