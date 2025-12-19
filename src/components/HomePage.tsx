@@ -74,7 +74,7 @@ interface LostItem {
 
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
-// Haversine 거리 계산 함수 (km 단위)
+// Haversine 거리 계산 함수 (km 단위) - 표시용
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   if (!lat1 || !lon1 || !lat2 || !lon2) {
     return 0;
@@ -147,8 +147,44 @@ export default function HomePage() {
     rootMargin: '100px', // 바닥보다 100px 위에서 미리 로딩
   });
 
-  // [수정됨] fetchPosts: 페이지 번호와 리셋 여부를 받음
-  const fetchPosts = useCallback(async (pageNum: number, isReset: boolean = false) => {
+  // 1. 초기 로그인 체크
+  useEffect(() => {
+    if (!userInfo) navigate('/login');
+  }, [userInfo, navigate]);
+
+  // 2. 위치 정보 가져오기 (마운트 시 1회)
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLoc = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          };
+          setUserLocation(newLoc);
+          
+          // 만약 현재 거리순 탭에 있다면, 위치 정보를 얻자마자 새로고침
+          if (sortOption === 'distance') {
+             setTimeout(() => {
+                 setPage(0);
+                 setHasNextPage(true);
+                 fetchPosts(0, true, newLoc.lat, newLoc.lon);
+             }, 100);
+          }
+        },
+        (error) => console.error("Location error:", error),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 3. API 호출 함수
+  const fetchPosts = useCallback(async (
+    pageNum: number, 
+    isReset: boolean = false, 
+    overrideLat?: number, 
+    overrideLon?: number
+  ) => {
     // 더 이상 페이지가 없고 리셋도 아니면 중단
     if (!isReset && !hasNextPage) return;
 
@@ -163,8 +199,9 @@ export default function HomePage() {
       return;
     }
 
-    const lat = userLocation?.lat || 37.5665;
-    const lon = userLocation?.lon || 126.9780;
+    // 인자로 받은 좌표가 있으면 최우선 사용, 없으면 userLocation 사용, 그것도 없으면 기본값
+    const lat = overrideLat || userLocation?.lat || 37.5665;
+    const lon = overrideLon || userLocation?.lon || 126.9780;
 
     try {
       // URL 파라미터 구성 (page, size 추가)
@@ -172,10 +209,12 @@ export default function HomePage() {
       params.append('page', pageNum.toString());
       params.append('size', '10'); // 한 번에 가져올 개수
 
+      // [핵심 수정] 거리순 API 호출 시 파라미터 명세 준수
       if (sortOption === 'distance') {
-        params.append('search_type', 'distance');
+        params.append('searchType', 'distance'); // 기존 search_type -> searchType 으로 수정
         params.append('lat', lat.toString());
         params.append('lon', lon.toString());
+        params.append('maxDistance', '50'); // 필수: 최대 반경 50km
       }
 
       const url = `${API_BASE_URL}/posts?${params.toString()}`;
@@ -217,52 +256,32 @@ export default function HomePage() {
     }
   }, [userLocation, sortOption, hasNextPage, navigate]);
 
-  // 1. 초기 로드 및 정렬 변경 시 (Page 0부터 다시 로드)
+  // 4. 초기 로드 및 정렬 변경 시
   useEffect(() => {
     if (userInfo) {
       setPage(0);
       setHasNextPage(true);
-      fetchPosts(0, true); // true = isReset
+      fetchPosts(0, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortOption, userInfo]); // userLocation은 제외 (너무 잦은 리로드 방지)
+  }, [sortOption, userInfo]);
 
-  // 2. 무한 스크롤 트리거: 화면 바닥 감지 시 페이지 증가
+  // 5. 무한 스크롤 트리거: 화면 바닥 감지 시 페이지 증가
   useEffect(() => {
+    // 거리순, 최신순 상관없이 inView가 true가 되면 동작
     if (inView && hasNextPage && !isLoading) {
       setPage((prev) => prev + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, hasNextPage, isLoading]);
 
-  // 3. 페이지 번호 변경 시 추가 데이터 로드
+  // 6. 페이지 번호 변경 시 추가 데이터 로드
   useEffect(() => {
     if (page > 0) {
       fetchPosts(page, false); // false = append
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
-
-  // 위치 정보 가져오기 (마운트 시 1회)
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newLoc = {
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
-          };
-          setUserLocation(newLoc);
-          // 위치 기반 정렬 중이라면 위치 확보 후 리로드
-          if (sortOption === 'distance') {
-            fetchPosts(0, true);
-          }
-        },
-        (error) => console.error("Location error:", error),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogout = () => {
     clearTokens();
@@ -332,7 +351,7 @@ export default function HomePage() {
     }
   };
 
-  // 클라이언트 검색 필터 (현재 로딩된 데이터 내에서만 검색)
+  // 클라이언트 검색 필터
   const filteredItems = lostItems.filter(
     (item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
