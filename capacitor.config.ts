@@ -2,7 +2,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.junsun.treasurehunter',
+  appId: '1:97393197228:ios:3e01b5494ad1d46cfc5f09',
   appName: 'Treasure Hunter',
   webDir: 'dist',
   plugins: {
