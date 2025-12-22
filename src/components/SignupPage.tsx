@@ -124,8 +124,8 @@ export default function SignupPage() {
         nickname,
         finalProfileImage,
         name,
-        location?.lat || null,
-        location?.lon || null,
+        location?.lat ? Number(location.lat) : null,
+        location?.lon ? Number(location.lon) : null,
       );
 
       if (success) {

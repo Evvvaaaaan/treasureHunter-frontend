@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Home, Map, MessageCircle, User } from "lucide-react";
-import { useChat } from "../components/ChatContext" 
+import { useChat } from "../components/ChatContext"
 import "../styles/bottom-navigation.css";
 
 export default function BottomNavigation() {
@@ -17,12 +17,12 @@ export default function BottomNavigation() {
   ];
 
   const isActive = (path: string) => {
-    return location.pathname === path || 
-           (path === "/chat-list" && location.pathname.startsWith("/chat"));
+    return location.pathname === path ||
+      (path === "/chat-list" && location.pathname.startsWith("/chat"));
   };
 
   return (
-    <nav className="bottom-navigation">
+    <nav className="bottom-navigation" style={{ paddingBottom: 'calc(var(--sab) + 0px)' }}>
       {navItems.map((item) => {
         const Icon = item.icon;
         const active = isActive(item.path);

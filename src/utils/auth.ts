@@ -418,8 +418,36 @@ export const signupUser = async (
   }
 };
 
+// [NEW] Login with social token (native flow)
+export const loginWithSocialToken = async (provider: string, token: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/${provider}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    if (!response.ok) {
+      console.error(`Social login failed. Status: ${response.status}`);
+      return false;
+    }
+
+    const data: AuthTokens = await response.json();
+    if (data.accessToken && data.refreshToken) {
+      saveTokens(data);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Social login request failed:', error);
+    return false;
+  }
+};
+
 // Get OAuth URL for a provider
-export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver' | 'apple' ): string => {
+export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver' | 'apple'): string => {
   return `${API_BASE_URL}/oauth2/authorization/${provider}`;
 };
 

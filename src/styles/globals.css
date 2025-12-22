@@ -5,6 +5,12 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --radius: 0.75rem;
+
+  /* Safe Area Insets */
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
 }
 
 /* Light Mode */
@@ -34,7 +40,7 @@
   --shadow: rgba(60, 64, 67, 0.1);
   --shadow-md: rgba(60, 64, 67, 0.15);
   --shadow-lg: rgba(60, 64, 67, 0.2);
-  
+
   /* Modern Color Palette */
   --color-blue: #1a73e8;
   --color-blue-light: #d2e3fc;
@@ -124,8 +130,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-              color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Responsive container utility */
@@ -141,7 +147,12 @@ body {
   }
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: var(--font-weight-medium);
   line-height: 1.2;
 }
@@ -177,6 +188,8 @@ button {
   font-family: inherit;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: inherit;
 }

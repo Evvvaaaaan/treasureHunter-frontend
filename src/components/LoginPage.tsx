@@ -1,13 +1,65 @@
 
 import { motion } from 'motion/react';
 import { MapPin, Search, Star } from 'lucide-react';
-import { getOAuthUrl} from '../utils/auth';
+import { getOAuthUrl, loginWithSocialToken } from '../utils/auth';
 import { Button } from './ui/button';
 import '../styles/login-page.css';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { SignInWithApple } from '@capacitor-community/apple-sign-in';
+import type { SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor-community/apple-sign-in';
+import { useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
-  const handleSocialLogin = (provider: 'google' | 'kakao' | 'naver' | 'apple' ) => {
-    window.location.href = getOAuthUrl(provider);
+  const navigate = useNavigate();
+
+  const handleSocialLogin = async (provider: 'google' | 'kakao' | 'naver' | 'apple') => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        if (provider === 'google') {
+          const user = await GoogleAuth.signIn();
+          console.log('Google User:', user);
+          if (user.authentication.idToken) {
+            const success = await loginWithSocialToken('google', user.authentication.idToken);
+            if (success) {
+              navigate('/home'); // Or wherever you redirect after login
+            } else {
+              alert('Google 로그인 실패 (토큰 검증 오류)');
+            }
+          }
+        } else if (provider === 'apple') {
+          const options: SignInWithAppleOptions = {
+            clientId: 'com.junsun.treasurehunter', // Bundle ID matches usually
+            redirectURI: 'https://treasurehunter.seohamin.com/login/oauth2/code/apple', // Required for Apple Sign In sometimes
+            scopes: 'name email',
+            state: '12345',
+            nonce: 'nonce',
+          };
+
+          const result: SignInWithAppleResponse = await SignInWithApple.authorize(options);
+          console.log('Apple User:', result);
+          if (result.response && result.response.identityToken) {
+            const success = await loginWithSocialToken('apple', result.response.identityToken);
+            if (success) {
+              navigate('/home');
+            } else {
+              alert('Apple 로그인 실패 (토큰 검증 오류)');
+            }
+          }
+        } else {
+          // Kakao/Naver (Native SDK not verified yet, fallback to web)
+          // For a better UX, you might want to use Browser plugin instead of full redirect
+          window.location.href = getOAuthUrl(provider);
+        }
+      } catch (error) {
+        console.error('Native login error:', error);
+        // Fallback or alert?
+        // alert('로그인 중 오류가 발생했습니다.');
+      }
+    } else {
+      // Web Environment
+      window.location.href = getOAuthUrl(provider);
+    }
   };
 
   return (
@@ -134,9 +186,9 @@ export default function LoginPage() {
                 marginTop: '0.5rem' // 버튼 간격
               }}
             >
-              <svg 
-                style={{ width: '1.25rem', height: '1.25rem', marginRight: '0.75rem' }} 
-                viewBox="0 0 24 24" 
+              <svg
+                style={{ width: '1.25rem', height: '1.25rem', marginRight: '0.75rem' }}
+                viewBox="0 0 24 24"
                 fill="currentColor"
               >
                 <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.74 1.18 0 2.45-1.62 4.09-1.32 1.42.06 2.53.71 3.29 1.83-3.14 1.87-2.31 6.17.65 7.32-.46 1.4-1.12 2.76-2.12 4.4zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />

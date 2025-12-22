@@ -212,7 +212,7 @@ export const sendChatActivity = async (roomId: string, type: 'enter' | 'exit') =
   if (!token) return; // 로그인이 안되어 있으면 무시 (혹은 에러 처리)
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/chat/room/${roomId}/activity?type=${type}`, {
+    const response = await fetch(`${API_BASE_URL}/chat/room/${roomId}/activity?type=${type}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
