@@ -4,6 +4,8 @@ import { ChevronDown, Loader2, Crosshair, HelpCircle, Shield } from 'lucide-reac
 import BottomNavigation from './BottomNavigation';
 import { useTheme } from '../utils/theme';
 import { getValidAuthToken } from '../utils/auth';
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
 import '../styles/map-page.css';
 import { API_BASE_URL } from '../config';
 
@@ -273,7 +275,7 @@ export default function MapPage() {
         scale: 1, // SVG 경로 크기에 맞춰 스케일 조정 (기존 10 -> 1.5 정도가 적당)
         anchor: new google.maps.Point(12, 12), // 아이콘 중심점 설정 (24x24 기준 중앙)
       },
-      zIndex: 1, 
+      zIndex: 1,
     });
 
     // 클릭 시 정보창 (선택 사항)
@@ -360,7 +362,7 @@ export default function MapPage() {
     // 기존 마커들 지도에서 제거
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
-    
+
     const pinPath = "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z";
     // 새로운 마커 생성
     posts.forEach((post) => {
@@ -397,76 +399,68 @@ export default function MapPage() {
   }, [map, posts]);
 
   // [수정] 내 위치 가져오기 함수 (CreateLostItemPage 참고)
-  const handleMyLocationClick = () => {
+  const handleMyLocationClick = async () => {
     if (!map) return;
-
-    if (!navigator.geolocation) {
-      alert('브라우저에서 위치 정보를 지원하지 않습니다.');
-      return;
-    }
 
     setIsLocating(true); // 로딩 시작
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const pos = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-
-        setMyLocation(pos);
-        map.setCenter(pos);
-        map.setZoom(15);
-
-        // 기존 내 위치 마커가 있으면 제거
-        if (myLocationMarker) {
-          myLocationMarker.setMap(null);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const permission = await Geolocation.checkPermissions();
+        if (permission.location !== 'granted') {
+          const req = await Geolocation.requestPermissions();
+          if (req.location !== 'granted') throw new Error('Location permission denied');
         }
+      }
 
-        // 내 위치 표시 마커 생성
-        const newMarker = new google.maps.Marker({
-          position: pos,
-          map: map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: "#4285F4",
-            fillOpacity: 1,
-            strokeColor: "white",
-            strokeWeight: 2,
-          },
-          title: "내 위치",
-          zIndex: 999, // 다른 마커보다 위에 표시
-        });
-
-        setMyLocationMarker(newMarker);
-        setIsLocating(false); // 로딩 종료
-      },
-      (error) => {
-        setIsLocating(false); // 로딩 종료
-        console.error("Error getting location:", error);
-        let errorMessage = '위치 정보를 가져올 수 없습니다. ';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage += '위치 권한을 허용해주세요.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage += '현재 위치를 확인할 수 없습니다.';
-            break;
-          case error.TIMEOUT:
-            errorMessage += '위치 정보를 가져오는 데 시간이 초과되었습니다.';
-            break;
-          default:
-            errorMessage += '알 수 없는 오류가 발생했습니다.';
-        }
-        alert(errorMessage);
-      },
-      {
+      const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0
+      });
+
+      const pos = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+
+      setMyLocation(pos);
+      map.setCenter(pos);
+      map.setZoom(15);
+
+      // 기존 내 위치 마커가 있으면 제거
+      if (myLocationMarker) {
+        myLocationMarker.setMap(null);
       }
-    );
+
+      // 내 위치 표시 마커 생성
+      const newMarker = new google.maps.Marker({
+        position: pos,
+        map: map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: "#4285F4",
+          fillOpacity: 1,
+          strokeColor: "white",
+          strokeWeight: 2,
+        },
+        title: "내 위치",
+        zIndex: 999, // 다른 마커보다 위에 표시
+      });
+
+      setMyLocationMarker(newMarker);
+
+    } catch (error: any) {
+      console.error("Error getting location:", error);
+      let errorMessage = '위치 정보를 가져올 수 없습니다.';
+      if (error.message === 'Location permission denied') {
+        errorMessage = '위치 권한이 거부되었습니다.';
+      }
+      alert(errorMessage);
+    } finally {
+      setIsLocating(false);
+    }
   };
 
   return (
@@ -475,14 +469,14 @@ export default function MapPage() {
       <div ref={mapRef} className="map-container" />
       {/* [추가] 맵 컨트롤 영역 (물음표 버튼) */}
       <div className="map-controls">
-        <button 
+        <button
           className="map-control-btn"
           onClick={() => setShowLegend(!showLegend)}
           aria-label="범례 보기"
         >
           <HelpCircle size={24} />
         </button>
-        <button 
+        <button
           className={`map-control-btn ${showSafeZones ? 'active-safe' : ''}`}
           onClick={toggleSafeZones}
           aria-label="안심 거래 존"
@@ -506,11 +500,11 @@ export default function MapPage() {
             <span>분실물</span>
           </div>
           <div className="legend-item">
-            <Shield size={16} fill="#1E88E5" stroke="none" style={{marginRight: 8}} />
+            <Shield size={16} fill="#1E88E5" stroke="none" style={{ marginRight: 8 }} />
             <span>경찰서</span>
           </div>
           <div className="legend-item">
-            <Shield size={16} fill="#FBC02D" stroke="none" style={{marginRight: 8}} />
+            <Shield size={16} fill="#FBC02D" stroke="none" style={{ marginRight: 8 }} />
             <span>편의점</span>
           </div>
         </div>
@@ -528,7 +522,7 @@ export default function MapPage() {
           <Crosshair size={24} />
         )}
       </button>
-      
+
       {/* 마커 정보 카드 (선택된 게시글이 있을 때 표시) */}
       {selectedPost && (
         <div className="marker-info-card" onClick={() => navigate(`/items/${selectedPost.id}`)}>

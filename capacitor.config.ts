@@ -3,12 +3,12 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.junsun.treasurehunter',
-  appName: 'treasure',
+  appName: 'Treasure Hunter',
   webDir: 'dist',
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],
-      serverClientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com', // Web Client ID
+      serverClientId: '272231760809-e8i08dnkevi90oo457mh7vapa2l1naq3.apps.googleusercontent.com', // Web Client ID
       iosClientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com', // iOS Client ID (same as Client ID part)
       forceCodeForRefreshToken: true,
     },
@@ -21,3 +21,4 @@ const config: CapacitorConfig = {
 };
 
 export default config;
+
