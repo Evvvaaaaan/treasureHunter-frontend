@@ -490,7 +490,7 @@ import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core'; // 플랫폼 확인용
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth'; // ★ Google Auth 추가
+// import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth'; // ★ Google Auth Removed
 
 // ... (기존 컴포넌트 import 들은 그대로 유지) ...
 import LoginPage from './components/LoginPage';
@@ -683,7 +683,7 @@ export default function App() {
         },
         body: JSON.stringify({
           token: fcmToken,
-          platform: platform 
+          platform: platform
         }),
       });
 
@@ -699,14 +699,9 @@ export default function App() {
 
   useEffect(() => {
     // ★ [중요] Google Login 초기화 (iOS Crash 방지용)
-    if (Capacitor.isNativePlatform()) {
-      GoogleAuth.initialize({
-        // 여기에 capacitor.config.ts에 넣었던 iosClientId와 동일한 값을 넣으세요.
-        clientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com', 
-        scopes: ['profile', 'email'],
-        grantOfflineAccess: true,
-      });
-    }
+    // if (Capacitor.isNativePlatform()) {
+    //   // GoogleAuth.initialize is not needed for @capgo/capacitor-social-login
+    // }
 
     // 1. FCM 권한 요청 및 초기화
     const initFcm = async () => {
@@ -743,25 +738,25 @@ export default function App() {
 
     // 3. Android 뒤로 가기 버튼 처리 (Hardware Back Button)
     const setupBackButton = async () => {
-        const backButtonListener = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-            if (canGoBack) {
-                window.history.back();
-            } else {
-                const currentPath = window.location.pathname;
-                // 루트 페이지들에서는 앱 종료
-                if (['/home', '/login', '/onboarding', '/'].includes(currentPath)) {
-                    CapacitorApp.exitApp();
-                } else {
-                    // 그 외 페이지인데 history가 꼬여서 canGoBack이 false라면 홈으로 이동
-                     window.location.href = '/home';
-                }
-            }
-        });
-        
-        // cleanup function 반환
-        return () => {
-            backButtonListener.remove();
-        };
+      const backButtonListener = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+        if (canGoBack) {
+          window.history.back();
+        } else {
+          const currentPath = window.location.pathname;
+          // 루트 페이지들에서는 앱 종료
+          if (['/home', '/login', '/onboarding', '/'].includes(currentPath)) {
+            CapacitorApp.exitApp();
+          } else {
+            // 그 외 페이지인데 history가 꼬여서 canGoBack이 false라면 홈으로 이동
+            window.location.href = '/home';
+          }
+        }
+      });
+
+      // cleanup function 반환
+      return () => {
+        backButtonListener.remove();
+      };
     };
 
     // setupBackButton 호출 및 cleanup 관리
@@ -769,7 +764,7 @@ export default function App() {
     setupBackButton().then(cleanup => { cleanupBackButton = cleanup; });
 
     return () => {
-        if (cleanupBackButton) cleanupBackButton();
+      if (cleanupBackButton) cleanupBackButton();
     };
 
   }, []);
@@ -779,7 +774,7 @@ export default function App() {
       <ChatProvider>
         <Router>
           <Routes>
-             {/* ... 기존 라우트 설정 ... */}
+            {/* ... 기존 라우트 설정 ... */}
             <Route path="/onboarding" element={<PublicRoute><OnboardingPage /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/auth/callback" element={<AuthCallback />} />
@@ -803,13 +798,13 @@ export default function App() {
             <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
             <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
-            
+
             <Route path="/about" element={<AppInfoPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/licenses" element={<LicensesPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
-            
+
             <Route path="/chat/:id/review" element={<ReviewPage />} />
             <Route path="/" element={<RootRedirect />} />
             <Route path="*" element={<Navigate to="/" replace />} />

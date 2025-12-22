@@ -5,7 +5,7 @@
         <key>CFBundleDevelopmentRegion</key>
         <string>en</string>
         <key>CFBundleDisplayName</key>
-        <string>treasure</string>
+        <string>Treasure Hunter</string>
         <key>CFBundleExecutable</key>
         <string>$(EXECUTABLE_NAME)</string>
         <key>CFBundleIdentifier</key>
@@ -32,6 +32,10 @@
         <string>현재 위치 기반으로 주변 분실물을 찾기 위해 위치 권한이 필요합니다.</string>
         <key>NSLocationAlwaysUsageDescription</key>
         <string>백그라운드에서도 위치 기반 알림을 받기 위해 위치 권한이 필요합니다.</string>
+        <key>NSLocationAlwaysUsageDescription</key>
+        <string>백그라운드에서도 위치 기반 알림을 받기 위해 위치 권한이 필요합니다.</string>
+        <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+        <string>백그라운드에서도 위치 기반 알림을 받기 위해 위치 권한이 필요합니다.</string>
         <key>UILaunchStoryboardName</key>
         <string>LaunchScreen</string>
         <key>UIMainStoryboardFile</key>
@@ -55,6 +59,8 @@
         </array>
         <key>UIViewControllerBasedStatusBarAppearance</key>
         <true/>
+        <key>GIDClientID</key>
+        <string>272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com</string>
         <key>CFBundleURLTypes</key>
         <array>
                 <dict>

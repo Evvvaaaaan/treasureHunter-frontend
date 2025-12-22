@@ -430,7 +430,8 @@ export const loginWithSocialToken = async (provider: string, token: string): Pro
     });
 
     if (!response.ok) {
-      console.error(`Social login failed. Status: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Social login failed. Status: ${response.status}, Body: ${errorText}`);
       return false;
     }
 
@@ -441,7 +442,11 @@ export const loginWithSocialToken = async (provider: string, token: string): Pro
     }
     return false;
   } catch (error) {
-    console.error('Social login request failed:', error);
+    console.error('Social login request failed. Error details:', error);
+    if (error instanceof Error) {
+      console.error('Message:', error.message);
+      console.error('Stack:', error.stack);
+    }
     return false;
   }
 };

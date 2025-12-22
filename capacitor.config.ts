@@ -2,15 +2,19 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: '1:97393197228:ios:3e01b5494ad1d46cfc5f09',
+  appId: 'com.junsun.treasurehunter',
   appName: 'Treasure Hunter',
   webDir: 'dist',
   plugins: {
-    GoogleAuth: {
-      scopes: ['profile', 'email'],
-      serverClientId: '272231760809-e8i08dnkevi90oo457mh7vapa2l1naq3.apps.googleusercontent.com', // Web Client ID
-      iosClientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com', // iOS Client ID (same as Client ID part)
-      forceCodeForRefreshToken: true,
+    SocialLogin: {
+      google: {
+        webClientId: '272231760809-e8i08dnkevi90oo457mh7vapa2l1naq3.apps.googleusercontent.com',
+        iosClientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com',
+        forceCodeForRefreshToken: true,
+      },
+    },
+    CapacitorHttp: {
+      enabled: true,
     },
   }, // Vite의 기본 빌드 폴더명
   // server: {

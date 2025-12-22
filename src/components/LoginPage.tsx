@@ -5,7 +5,8 @@ import { getOAuthUrl, loginWithSocialToken } from '../utils/auth';
 import { Button } from './ui/button';
 import '../styles/login-page.css';
 import { Capacitor } from '@capacitor/core';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { SocialLogin } from '@capgo/capacitor-social-login';
+// import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import type { SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor-community/apple-sign-in';
 import { useNavigate } from 'react-router-dom';
@@ -17,10 +18,20 @@ export default function LoginPage() {
     if (Capacitor.isNativePlatform()) {
       try {
         if (provider === 'google') {
-          const user = await GoogleAuth.signIn();
-          console.log('Google User:', user);
-          if (user.authentication.idToken) {
-            const success = await loginWithSocialToken('google', user.authentication.idToken);
+          // const user = await GoogleAuth.signIn();
+          const result = await SocialLogin.login({
+            provider: 'google',
+            options: {
+              scopes: ['email', 'profile']
+            }
+          });
+          console.log('Google User:', result);
+
+          // Use type assertion or safe access to avoid lint errors until types are fully aligned
+          const response = result.result as any;
+
+          if (response.idToken) {
+            const success = await loginWithSocialToken('google', response.idToken);
             if (success) {
               navigate('/home'); // Or wherever you redirect after login
             } else {
