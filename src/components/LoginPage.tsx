@@ -42,12 +42,13 @@ export default function LoginPage() {
 
           if (user.serverAuthCode) {
             // ① iOS 특수문자 인코딩 문제 해결
-            const rawCode = decodeURIComponent(user.serverAuthCode);
-            console.log('Sending Decoded Code:', rawCode);
+            // const rawCode = decodeURIComponent(user.serverAuthCode);
+            // console.log('Sending Decoded Code:', rawCode);
+            // console.log(rawCode);
 
             // ② 백엔드로 코드 전송 (CapacitorHttp 사용)
             // auth.ts에서 수정된 함수는 이제 boolean이 아니라 객체(authData)를 반환함
-            const authData = await loginWithSocialToken('google', rawCode);
+            const authData = await loginWithSocialToken('google', user.serverAuthCode);
             console.log("authData: ",authData);
             if (authData) {
               console.log('백엔드 응답 데이터:', authData);
@@ -56,11 +57,11 @@ export default function LoginPage() {
               if (authData.role === 'USER') {
                 // [A] 이미 가입된 회원 -> 토큰 저장 후 홈으로 이동
                 saveTokens(authData); 
-                navigate('/home');
+                navigate('/home', { replace: true });
               } 
               else if (authData.role === 'NOT_REGISTERED') {
                 // [B] 신규 회원 -> 토큰을 들고 회원가입(프로필 설정) 페이지로 이동
-                navigate('/signup-profile', { 
+                navigate('/signup', { 
                   state: { 
                     accessToken: authData.accessToken,
                     refreshToken: authData.refreshToken 

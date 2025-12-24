@@ -1,4 +1,5 @@
 import { CapacitorHttp } from "@capacitor/core";
+// import { redirect } from "react-router-dom";
 
 // [MODIFIED] Added API_BASE_URL constant
 const API_BASE_URL = 'https://treasurehunter.seohamin.com';
@@ -426,18 +427,27 @@ export interface SocialLoginResponse extends AuthTokens {
 }
 
 // [NEW] Login with social token (native flow)
-export const loginWithSocialToken = async (provider: string, code: string, name?: string): Promise<SocialLoginResponse | null> => {
+export const loginWithSocialToken = async (provider: string, code: string, name?: string, redirect_uri?: string): Promise<SocialLoginResponse | null> => {
+  const sendName = name ? name : 'null';
+  console.log('========== [loginWithSocialToken 요청 시작] ==========');
+  console.log('Provider (제공자):', provider);
+  console.log('Auth Code (인증 코드):', code);
+  console.log('User Name (이름):', name || '이름 없음');
+  console.log('sendName 값:', sendName);  
+  console.log('Redirect URI:', redirect_uri || 'postmessage');
+  console.log('===================================================');
   try {
     // fetch 대신 CapacitorHttp.post 사용
     const response = await CapacitorHttp.post({
       url: `${API_BASE_URL}/api/v1/auth/oauth2`,
       headers: { 'Content-Type': 'application/json' },
-      data: { provider, code, name, redirect_uri: 'postmessage' },
+      data: { provider, code, sendName },
     });
 
     // CapacitorHttp는 응답 데이터가 response.data에 담깁니다.
     console.log('CapacitorHttp Response Status:', response.status);
     console.log('CapacitorHttp Response Data:', JSON.stringify(response.data));
+    console.log(response.data.redirect_uri);
 
     if (response.status === 200 || response.status === 201) {
       const data = response.data;
