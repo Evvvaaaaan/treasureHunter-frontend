@@ -1,3 +1,5 @@
+import { CapacitorHttp } from "@capacitor/core";
+
 // [MODIFIED] Added API_BASE_URL constant
 const API_BASE_URL = 'https://treasurehunter.seohamin.com';
 
@@ -419,37 +421,87 @@ export const signupUser = async (
 };
 
 // [NEW] Login with social token (native flow)
-export const loginWithSocialToken = async (provider: string, token: string): Promise<boolean> => {
+export interface SocialLoginResponse extends AuthTokens {
+  role: 'USER' | 'NOT_REGISTERED';
+}
+
+// [NEW] Login with social token (native flow)
+export const loginWithSocialToken = async (provider: string, code: string, name?: string): Promise<SocialLoginResponse | null> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/${provider}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token }),
+    // fetch 대신 CapacitorHttp.post 사용
+    const response = await CapacitorHttp.post({
+      url: `${API_BASE_URL}/api/v1/auth/oauth2`,
+      headers: { 'Content-Type': 'application/json' },
+      data: { provider, code, name, redirect_uri: 'postmessage' },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Social login failed. Status: ${response.status}, Body: ${errorText}`);
-      return false;
-    }
+    // CapacitorHttp는 응답 데이터가 response.data에 담깁니다.
+    console.log('CapacitorHttp Response Status:', response.status);
+    console.log('CapacitorHttp Response Data:', JSON.stringify(response.data));
 
-    const data: AuthTokens = await response.json();
-    if (data.accessToken && data.refreshToken) {
-      saveTokens(data);
-      return true;
+    if (response.status === 200 || response.status === 201) {
+      const data = response.data;
+      if (data.accessToken && data.refreshToken) {
+        // role이 응답에 포함되어 있다고 가정
+        return data as SocialLoginResponse;
+      } else {
+        console.error('Missing tokens in response data:', data);
+      }
+    } else {
+      console.error('Unexpected status code:', response.status);
     }
-    return false;
+    return null;
   } catch (error) {
-    console.error('Social login request failed. Error details:', error);
-    if (error instanceof Error) {
-      console.error('Message:', error.message);
-      console.error('Stack:', error.stack);
+    console.error('네이티브 통신 실패:', error);
+    if (error instanceof TypeError && error.message === 'Load failed') {
+      console.error('🚨 원인: 네트워크 차단 (CORS 문제이거나 인터넷 연결 없음)');
+      console.error('👉 백엔드 개발자에게 "capacitor://localhost" 오리진을 허용해달라고 요청하세요.');
+    } else if (error instanceof Error) {
+      console.error('메시지:', error.message);
+      console.error('스택:', error.stack);
+    } else {
+      console.error('알 수 없는 오류:', JSON.stringify(error));
     }
-    return false;
+    return null;
   }
 };
+// 배포 시, 현재 주석된 코드 사용
+// export const loginWithSocialToken = async (provider: string, code: string, name?: string): Promise<boolean> => {
+//   try {
+//     const response = await fetch(`${API_BASE_URL}/api/v1/auth/oauth2`, {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//       body: JSON.stringify({ provider, code, name, access_type: 'offline' ,redirect_uri: 'postmessage'}),
+//     });
+
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       console.error(`Social login failed. Status: ${response.status}, Body: ${errorText}`);
+//       return false;
+//     }
+
+//     const data: AuthTokens = await response.json();
+//     if (data.accessToken && data.refreshToken) {
+//       saveTokens(data);
+//       return true;
+//     }
+//     return false;
+//   } catch (error) {
+//     console.error('Social login request failed. Error details:', error);
+//     if (error instanceof TypeError && error.message === 'Load failed') {
+//       console.error('🚨 원인: 네트워크 차단 (CORS 문제이거나 인터넷 연결 없음)');
+//       console.error('👉 백엔드 개발자에게 "capacitor://localhost" 오리진을 허용해달라고 요청하세요.');
+//     } else if (error instanceof Error) {
+//       console.error('메시지:', error.message);
+//       console.error('스택:', error.stack);
+//     } else {
+//       console.error('알 수 없는 오류:', JSON.stringify(error));
+//     }
+//     return false;
+//   }
+// };
 
 // Get OAuth URL for a provider
 export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver' | 'apple'): string => {
