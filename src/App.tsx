@@ -778,7 +778,7 @@ export default function App() {
             <Route path="/onboarding" element={<PublicRoute><OnboardingPage /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/signup" element={<ProtectedRoute><SignupPage /></ProtectedRoute>} />
+            <Route path='/signup' element={<SignupPage />} /> 
             <Route path="/verify-phone" element={<ProtectedRoute><PhoneVerificationPage /></ProtectedRoute>} />
             <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
             <Route path="/create" element={<ProtectedRoute><CreateItemPage /></ProtectedRoute>} />

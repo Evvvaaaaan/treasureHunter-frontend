@@ -61,6 +61,8 @@ export default function LoginPage() {
               } 
               else if (authData.role === 'NOT_REGISTERED') {
                 // [B] 신규 회원 -> 토큰을 들고 회원가입(프로필 설정) 페이지로 이동
+                console.log("🆕 신규 회원입니다. 회원가입 페이지로 이동합니다.");
+                saveTokens(authData); 
                 navigate('/signup', { 
                   state: { 
                     accessToken: authData.accessToken,

@@ -376,47 +376,64 @@ export const checkToken = async (userId: string): Promise<UserInfo | null> => {
 
 // Sign up a new user
 export const signupUser = async (
-  userId: string,
   nickname: string,
   profileImage: string,
   name: string,
   lat?: number | null,
   lon?: number | null
-): Promise<boolean> => {
-  // Use getValidAuthToken to ensure token validity
+): Promise<UserInfo | null> => {
+  // 1. 토큰 확인 (API 명세: Authorization Header 필수)
   const token = await getValidAuthToken();
   if (!token) {
     console.error('Signup failed: No valid token.');
-    return false;
+    return null;
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
+    // 2. API 엔드포인트 수정 (userId 제거 -> /api/v1/user)
+    const response = await fetch(`${API_BASE_URL}/api/v1/user`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ nickname, profileImage, name, lat, lon }),
+      // 3. Body 데이터 구성 (API 명세에 맞춰 lat, lon을 String으로 변환)
+      body: JSON.stringify({ 
+        nickname, 
+        profileImage, 
+        name, 
+        lat: lat !== undefined && lat !== null ? String(lat) : null, 
+        lon: lon !== undefined && lon !== null ? String(lon) : null 
+      }),
     });
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));
       console.error(`Signup failed. Status: ${response.status}`, errorBody);
+      const errorText = await response.text();
+      console.error(`🚨 회원가입 실패 (Status: ${response.status})`);
+      console.error(`🚨 서버 응답 본문: ${errorText}`);
 
-      // [MODIFIED] 서버에서 보낸 에러 메시지를 throw합니다.
+      
+      
+      // 서버에서 보내주는 구체적인 에러 메시지가 있다면 throw
       if (errorBody.message) {
         throw new Error(errorBody.message);
       }
-
-      return false;
+      return null;
     }
-    console.log("Signup successful.");
-    return true; // Return true on successful signup (2xx status)
+    
+
+    // 4. 성공 시 응답(UserInfo) 반환
+    const registeredUser: UserInfo = await response.json();
+    console.log("Signup successful:", registeredUser);
+    return registeredUser;
 
   } catch (error) {
-    console.error('Signup request failed:', error);
-    // [MODIFIED] 에러를 다시 던져서 컴포넌트에서 처리할 수 있게 합니다.
+    console.error('Signup request failed details:', error);
+    if (error instanceof Error) {
+        console.error('Error Message:', error.message);
+    }
     throw error;
   }
 };
@@ -569,6 +586,9 @@ export const getUserProfile = async (userId: string): Promise<UserInfo | null> =
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));
       console.error(`Failed to fetch user profile. Status: ${response.status}`, errorBody);
+      console.error(`🚨 회원가입 실패 (Status: ${response.status})`);
+      const errorText = await response.text();
+      console.error(`🚨 서버 응답 본문: ${errorText}`);
       // If it's 401/403, potentially clear tokens as access is denied
       if (response.status === 401 || response.status === 403) {
         // clearTokens(); // 다른 사람 프로필 조회 실패가 내 로그아웃을 유발하면 안 될 수도 있음 (상황에 따라 결정)
