@@ -8,7 +8,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 // ✅ getValidAuthToken 추가
-import { signupUser, saveUserInfo, getUserInfo, getValidAuthToken } from '../utils/auth';
+import { signupUser, saveUserInfo, getValidAuthToken } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
 
@@ -43,12 +43,12 @@ export default function SignupPage() {
         }
 
         // 기존에 저장된(소셜 로그인 등에서 온) 정보가 있다면 미리 채워주기
-        const tempUserInfo = getUserInfo();
-        if (tempUserInfo) {
-          if (!name) setName(tempUserInfo.name || '');
-          if (!nickname) setNickname(tempUserInfo.nickname || tempUserInfo.name || '');
-          if (!profileImage) setProfileImage(tempUserInfo.profileImage || '');
-        }
+        // const tempUserInfo = getUserInfo();
+        // if (tempUserInfo) {
+        //   if (!name) setName(tempUserInfo.name || '');
+        //   if (!nickname) setNickname(tempUserInfo.nickname || tempUserInfo.name || '');
+        //   if (!profileImage) setProfileImage(tempUserInfo.profileImage || '');
+        // }
       } catch (err) {
         console.error("Initialization error:", err);
       } finally {
@@ -229,7 +229,6 @@ export default function SignupPage() {
               />
               <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>다른 사용자에게 표시되는 이름입니다</p>
             </div>
-
             <div className="form-field">
               <Label>선호 위치 *</Label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

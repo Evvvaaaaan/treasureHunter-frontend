@@ -31,38 +31,36 @@ export default function LoginPage() {
     }
   }, []);
 
+  // src/components/LoginPage.tsx
+
   const handleSocialLogin = async (provider: 'google' | 'kakao' | 'naver' | 'apple') => {
     // 📱 1. 네이티브 앱 환경 (iOS/Android)
     if (Capacitor.isNativePlatform()) {
       try {
         if (provider === 'google') {
-          // --- [Google 로그인 로직 시작] ---
+          // --- [Google 로그인 로직] ---
           const user = await GoogleAuth.signIn();
-          console.log('Google User Result:', user);
-
+          
           if (user.serverAuthCode) {
-            // ① iOS 특수문자 인코딩 문제 해결
-            // const rawCode = decodeURIComponent(user.serverAuthCode);
-            // console.log('Sending Decoded Code:', rawCode);
-            // console.log(rawCode);
-
-            // ② 백엔드로 코드 전송 (CapacitorHttp 사용)
-            // auth.ts에서 수정된 함수는 이제 boolean이 아니라 객체(authData)를 반환함
             const authData = await loginWithSocialToken('google', user.serverAuthCode);
-            console.log("authData: ",authData);
+            
             if (authData) {
               console.log('백엔드 응답 데이터:', authData);
 
-              // ③ Role에 따른 페이지 이동 분기 처리
-              if (authData.role === 'USER') {
-                // [A] 이미 가입된 회원 -> 토큰 저장 후 홈으로 이동
+              // ✅ [수정됨] USER 또는 NOT_VERIFIED 상태일 때 홈으로 이동
+              if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
+                console.log(`기존/미인증 회원(${authData.role}) -> 홈으로 이동`);
+                
+                // 1. 토큰 저장 (홈 화면 API 호출용)
                 saveTokens(authData); 
+                
+                // 2. 홈으로 이동
                 navigate('/home', { replace: true });
               } 
+              // ✅ [복구됨] 신규 회원은 회원가입 페이지로 이동
               else if (authData.role === 'NOT_REGISTERED') {
-                // [B] 신규 회원 -> 토큰을 들고 회원가입(프로필 설정) 페이지로 이동
-                console.log("🆕 신규 회원입니다. 회원가입 페이지로 이동합니다.");
-                saveTokens(authData); 
+                console.log("신규 회원 -> 회원가입 페이지 이동");
+                saveTokens(authData);
                 navigate('/signup', { 
                   state: { 
                     accessToken: authData.accessToken,
@@ -71,18 +69,16 @@ export default function LoginPage() {
                 });
               } 
               else {
-                alert('로그인 상태를 확인할 수 없습니다. (Role 정보 없음)');
+                alert(`알 수 없는 회원 상태입니다: ${authData.role}`);
               }
             } else {
               alert('서버 로그인 실패: 응답이 없습니다.');
             }
-          } else {
-            alert('구글 인증 코드를 받지 못했습니다.');
           }
-          // --- [Google 로그인 로직 끝] ---
 
         } else if (provider === 'apple') {
           // --- [Apple 로그인 로직] ---
+          // ... (기존 Apple 로그인 옵션 설정) ...
           const options: SignInWithAppleOptions = {
             clientId: 'com.junsun.treasurehunter',
             redirectURI: 'https://treasurehunter.seohamin.com/login/oauth2/code/apple',
@@ -90,39 +86,36 @@ export default function LoginPage() {
             state: '12345',
             nonce: 'nonce',
           };
-
+          
           const result: SignInWithAppleResponse = await SignInWithApple.authorize(options);
           
           if (result.response && result.response.authorizationCode) {
-            let name = undefined;
+            // ... (이름 추출 로직 유지) ...
+             let name = undefined;
             if (result.response.givenName || result.response.familyName) {
               name = [result.response.familyName, result.response.givenName].filter(Boolean).join('');
             }
 
-            // Apple도 동일하게 데이터를 받아와서 처리
             const authData = await loginWithSocialToken('apple', result.response.authorizationCode, name);
             
             if (authData) {
-              if (authData.role === 'USER') {
+              // ✅ [수정됨] Apple 로그인도 동일하게 적용
+              if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
                 saveTokens(authData);
-                navigate('/home');
+                navigate('/home', { replace: true });
               } else if (authData.role === 'NOT_REGISTERED') {
                 navigate('/signup-profile', { state: { ...authData } });
               }
-            } else {
-              alert('Apple 로그인 실패 (서버 응답 없음)');
             }
           }
         } else {
-          // Kakao/Naver (앱 SDK 미구현 시 웹으로 이동)
           window.location.href = getOAuthUrl(provider);
         }
       } catch (error) {
         console.error('Native login error:', error);
-        // 사용자가 취소(code: -5)한 경우 조용히 처리
       }
     } else {
-      // 💻 2. 웹 환경 (브라우저 리다이렉트 방식)
+      // 💻 2. 웹 환경
       window.location.href = getOAuthUrl(provider);
     }
   };

@@ -522,7 +522,7 @@ import TermsPage from './components/static/TermsPage';
 import LicensesPage from './components/static/LicensesPage';
 import PrivacyPage from './components/static/PrivacyPage';
 
-import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken } from './utils/auth';
+import { getUserInfo, type UserInfo, getValidAuthToken, clearTokens, checkToken, getUserIdFromToken } from './utils/auth';
 import { ThemeProvider } from './utils/theme';
 import { ChatProvider } from './components/ChatContext';
 
@@ -586,11 +586,29 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => {
       const token = await getValidAuthToken();
       if (token) {
-        const staleUserInfo = getUserInfo();
-        if (staleUserInfo && staleUserInfo.id) {
-          const freshUserInfo = await checkToken(staleUserInfo.id.toString());
-          setUserInfo(freshUserInfo);
+        let currentInfo = getUserInfo();
+
+        // 1. 로컬에 정보가 없으면 토큰에서 ID 추출하여 서버에서 가져오기 시도
+        if (!currentInfo || !currentInfo.id) {
+          console.log("UserInfo missing locally, attempting recovery from token...");
+          const userId = getUserIdFromToken(token);
+          if (userId) {
+            currentInfo = await checkToken(userId);
+          }
+        }
+
+        // 2. 정보가 있으면 (또는 복구되었으면) 최신 정보 확인
+        if (currentInfo && currentInfo.id) {
+          const freshUserInfo = await checkToken(currentInfo.id.toString());
+          if (freshUserInfo) {
+            setUserInfo(freshUserInfo);
+          } else {
+            // 서버 확인 실패 시 (삭제된 계정 등) 로그아웃
+            clearTokens();
+            setUserInfo(null);
+          }
         } else {
+          // 복구 실패 시 로그아웃
           clearTokens();
           setUserInfo(null);
         }
@@ -633,10 +651,25 @@ function RootRedirect() {
     const checkAuth = async () => {
       const token = await getValidAuthToken();
       if (token) {
-        const staleUserInfo = getUserInfo();
-        if (staleUserInfo && staleUserInfo.id) {
-          const freshUserInfo = await checkToken(staleUserInfo.id.toString());
-          setUserInfo(freshUserInfo);
+        let currentInfo = getUserInfo();
+
+        // 1. 로컬에 정보가 없으면 토큰에서 ID 추출하여 서버에서 가져오기 시도
+        if (!currentInfo || !currentInfo.id) {
+          console.log("RootRedirect: UserInfo missing locally, attempting recovery from token...");
+          const userId = getUserIdFromToken(token);
+          if (userId) {
+            currentInfo = await checkToken(userId);
+          }
+        }
+
+        if (currentInfo && currentInfo.id) {
+          const freshUserInfo = await checkToken(currentInfo.id.toString());
+          if (freshUserInfo) {
+            setUserInfo(freshUserInfo);
+          } else {
+            clearTokens();
+            setUserInfo(null);
+          }
         } else {
           clearTokens();
           setUserInfo(null);
@@ -778,9 +811,9 @@ export default function App() {
             <Route path="/onboarding" element={<PublicRoute><OnboardingPage /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path='/signup' element={<SignupPage />} /> 
+            <Route path='/signup' element={<SignupPage />} />
             <Route path="/verify-phone" element={<ProtectedRoute><PhoneVerificationPage /></ProtectedRoute>} />
-            <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+            <Route path="/home" element={<HomePage />} />
             <Route path="/create" element={<ProtectedRoute><CreateItemPage /></ProtectedRoute>} />
             <Route path="/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
             <Route path="/items/:id" element={<ProtectedRoute><ItemDetailPage /></ProtectedRoute>} />
