@@ -5,6 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Treasure Hunter',
   webDir: 'dist',
   server: {
+    url: 'http://192.168.0.208:51845',
+    cleartext: true,
     androidScheme: 'https'
   },
   plugins: {

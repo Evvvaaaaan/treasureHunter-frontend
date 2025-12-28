@@ -59,34 +59,46 @@ export default function SignupPage() {
     initializePage();
   }, [navigate]);
 
-  // ... (handleGetLocation 함수는 기존 유지) ...
+  // 위치 정보 가져오기 핸들러
   const handleGetLocation = () => {
-    setIsLocationLoading(true);
-    setLocationError(null);
-
+    // 1. 브라우저/기기 지원 여부 확인
     if (!navigator.geolocation) {
-      setLocationError("브라우저에서 위치 정보를 지원하지 않습니다.");
-      setIsLocationLoading(false);
+      alert("이 기기에서는 위치 정보를 사용할 수 없습니다.");
       return;
     }
 
+    // (선택) 로딩 표시가 필요하다면 여기서 state true 설정
+    // setIsLoadingLocation(true); 
+
+    // 2. 위치 요청
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        // ✅ 성공 시
         const { latitude, longitude } = position.coords;
-        setLocation({
-          lat: latitude.toString(),
-          lon: longitude.toString()
-        });
-        setIsLocationLoading(false);
+        setLocation({ lat: latitude, lon: longitude });
+        console.log(`위치 갱신 완료: ${latitude}, ${longitude}`);
       },
       (error) => {
-        setIsLocationLoading(false);
-        console.error("Error getting location:", error);
-        let errorMessage = '위치 정보를 가져올 수 없습니다.';
-        if (error.code === error.PERMISSION_DENIED) errorMessage = '위치 권한을 허용해주세요.';
-        setLocationError(errorMessage);
+        // ❌ 실패 시
+        console.error("위치 정보 에러:", error);
+        
+        let errorMsg = "위치 정보를 가져올 수 없습니다.";
+        switch(error.code) {
+          case 1: errorMsg = "위치 정보 권한이 거부되었습니다. 설정에서 권한을 허용해주세요."; break;
+          case 2: errorMsg = "위치 정보를 사용할 수 없습니다 (신호 약함)."; break;
+          case 3: errorMsg = "위치 확인 시간이 초과되었습니다."; break;
+        }
+        
+        alert(errorMsg);
+        
+        // 실패 시 기본값 (서울 시청)으로 설정하여 흐름이 끊기지 않게 함
+        setLocation({ lat: 37.5665, lon: 126.9780 });
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      {
+        enableHighAccuracy: true, // GPS 등을 사용하여 정확도 높임
+        timeout: 10000,           // 10초 대기
+        maximumAge: 0             // 캐시된 위치 대신 현재 위치 요청
+      }
     );
   };
 

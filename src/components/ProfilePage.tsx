@@ -218,9 +218,6 @@ const ProfilePage: React.FC = () => {
   return (
     <div className="profile-page">
       <div className="profile-header">
-        <button className="back-button" onClick={() => navigate('/home')}>
-          <ChevronRight className="rotate-180" size={20} />
-        </button>
         <h1>프로필</h1>
         <button className="menu-button" onClick={() => navigate('/settings')}>
           <Settings size={20} />

@@ -384,7 +384,7 @@ export default function HomePage() {
             </div>
 
             <div className="header-actions">
-              <button
+              {/* <button
                 className="notification-btn"
                 onClick={() => navigate('/notifications')}
               >
@@ -400,7 +400,7 @@ export default function HomePage() {
                     {unreadNotifications}
                   </span>
                 )}
-              </button>
+              </button> */}
               <button
                 className="search-toggle-btn"
                 onClick={() => setIsSearchExpanded(!isSearchExpanded)}

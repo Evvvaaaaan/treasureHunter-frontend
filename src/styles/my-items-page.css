@@ -21,6 +21,7 @@
   background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid #e5e7eb;
+  padding-top: calc(16px + env(safe-area-inset-top));
 }
 
 .my-items-page.dark .my-items-header {
@@ -342,11 +343,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.4) 0%,
-    transparent 50%
-  );
+  background: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.4) 0%,
+      transparent 50%);
   pointer-events: none;
 }
 
@@ -532,13 +531,17 @@
 }
 
 .type-badge.lost {
-  background-color: #ef4444; /* 진한 빨간색 배경 */
-  color: white;              /* 흰색 텍스트 */
+  background-color: #ef4444;
+  /* 진한 빨간색 배경 */
+  color: white;
+  /* 흰색 텍스트 */
 }
 
 .type-badge.found {
-  background-color: #10b981; /* 진한 초록색 배경 */
-  color: white;              /* 흰색 텍스트 */
+  background-color: #10b981;
+  /* 진한 초록색 배경 */
+  color: white;
+  /* 흰색 텍스트 */
 }
 
 /* ===== RESPONSIVE DESIGN ===== */

@@ -30,6 +30,8 @@ PODS:
     - Capacitor
   - CapacitorPushNotifications (7.0.4):
     - Capacitor
+  - CapacitorShare (7.0.3):
+    - Capacitor
   - CapacitorStatusBar (7.0.4):
     - Capacitor
   - CodetrixStudioCapacitorGoogleAuth (0.0.1):
@@ -139,6 +141,7 @@ DEPENDENCIES:
   - "CapacitorGeolocation (from `../../node_modules/@capacitor/geolocation`)"
   - "CapacitorKeyboard (from `../../node_modules/@capacitor/keyboard`)"
   - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
+  - "CapacitorShare (from `../../node_modules/@capacitor/share`)"
   - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
   - "CodetrixStudioCapacitorGoogleAuth (from `../../node_modules/@codetrix-studio/capacitor-google-auth`)"
 
@@ -178,6 +181,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/keyboard"
   CapacitorPushNotifications:
     :path: "../../node_modules/@capacitor/push-notifications"
+  CapacitorShare:
+    :path: "../../node_modules/@capacitor/share"
   CapacitorStatusBar:
     :path: "../../node_modules/@capacitor/status-bar"
   CodetrixStudioCapacitorGoogleAuth:
@@ -194,6 +199,7 @@ SPEC CHECKSUMS:
   CapacitorGeolocation: bb6f441b53393984f1c4e8b7e4a826fe3e133309
   CapacitorKeyboard: 5660c760113bfa48962817a785879373cf5339c3
   CapacitorPushNotifications: 7604512af53bbfdf1dd8fb2256b9ef1e8a69cdc2
+  CapacitorShare: a4f4f86eabd4b3ff52ba6a11b754713c6926a8d1
   CapacitorStatusBar: d0e0151c89c001a9c7125bac59ddedf76b664768
   CodetrixStudioCapacitorGoogleAuth: 9dcfabfb7dd804ad6231a1513bc6e81e620cbec6
   FirebaseAnalytics: bc9e565af9044ba8d6c6e4157e4edca8e5fdf7ec
@@ -210,6 +216,6 @@ SPEC CHECKSUMS:
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
 
-PODFILE CHECKSUM: c547b83c826872e8cf881af96245fa2d041714b4
+PODFILE CHECKSUM: 7cdb9b4f6e09402d8c758809b5ba2b98067228ad
 
 COCOAPODS: 1.16.2

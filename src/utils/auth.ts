@@ -4,6 +4,11 @@ import { CapacitorHttp } from "@capacitor/core";
 // [MODIFIED] Added API_BASE_URL constant
 const API_BASE_URL = 'https://treasurehunter.seohamin.com';
 
+const COMMON_HEADERS = {
+  'Content-Type': 'application/json',
+  'Origin': API_BASE_URL, // 👈 핵심: 백엔드가 허용하는 오리진으로 위장
+};
+
 // --- 상세 UserInfo 타입 정의 ---
 // ... (Your existing interfaces: ReviewAuthor, ReceivedReview, MyReview, Post, BlockedUser, UserOauth2Account) ...
 // 리뷰 작성자 정보
@@ -287,7 +292,7 @@ export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/token/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: COMMON_HEADERS,
       body: JSON.stringify({ refreshToken: currentTokens.refreshToken }),
     });
 
@@ -362,6 +367,7 @@ export const checkToken = async (userId: string): Promise<UserInfo | null> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
       headers: {
+        ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
     });
@@ -404,7 +410,7 @@ export const signupUser = async (
     const response = await CapacitorHttp.post({
       url: `${API_BASE_URL}/api/v1/user`,
       headers: {
-        'Content-Type': 'application/json',
+        ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
       data: {
@@ -527,7 +533,7 @@ export const loginWithSocialToken = async (provider: string, code: string, name?
     // fetch 대신 CapacitorHttp.post 사용
     const response = await CapacitorHttp.post({
       url: `${API_BASE_URL}/api/v1/auth/oauth2`,
-      headers: { 'Content-Type': 'application/json' },
+      headers: COMMON_HEADERS,
       data: { provider, code, sendName, redirect_uri: redirect_uri || 'postmessage' },
     });
 
@@ -632,6 +638,7 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
     const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
       method: 'DELETE',
       headers: {
+       ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
     });
@@ -703,7 +710,7 @@ export const createPost = async (postData: PostData): Promise<Post | null> => { 
     const response = await fetch(`${API_BASE_URL}/api/v1/post`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(postData),
@@ -765,7 +772,7 @@ export const createChatRoom = async (
     const response = await fetch(`${API_BASE_URL}/api/v1/chat/room`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({

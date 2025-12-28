@@ -20,6 +20,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  padding-top: calc(12px + env(safe-area-inset-top));
 }
 
 .other-user-profile-page.dark .profile-header-other {

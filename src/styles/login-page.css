@@ -12,6 +12,8 @@
   align-items: center;
   justify-content: center;
   padding: 3rem 1.5rem;
+  padding-top: calc(3rem + env(safe-area-inset-top));
+  /* Notch fix */
 }
 
 .login-content {

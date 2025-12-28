@@ -14,6 +14,7 @@
   position: sticky;
   top: 0;
   z-index: 50;
+  padding-top: calc(16px + env(safe-area-inset-top));
 }
 
 .header-top {
@@ -24,9 +25,12 @@
 }
 
 .header-top h1 {
+  font-weight: 600;
   margin: 0;
-  font-size: 24px;
+  font-size: 22px;
   color: #111827;
+  letter-spacing: -1.0px;
+  font-weight: 1.125em;
 }
 
 .cart-button {
@@ -73,9 +77,11 @@
   0% {
     transform: scale(0);
   }
+
   50% {
     transform: scale(1.2);
   }
+
   100% {
     transform: scale(1);
   }
@@ -235,9 +241,12 @@
 }
 
 @keyframes limitedPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
   }
+
   50% {
     box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
   }
@@ -431,6 +440,7 @@
     opacity: 0;
     transform: translateY(100%);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -471,6 +481,7 @@
     opacity: 0;
     transform: translateX(-50%) translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
@@ -482,6 +493,7 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
   to {
     opacity: 0;
     transform: translateX(-50%) translateY(-20px);

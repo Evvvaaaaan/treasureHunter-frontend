@@ -16,11 +16,14 @@
   top: 0;
   z-index: 30;
   border-bottom: 1px solid var(--border);
+  padding-top: env(safe-area-inset-top);
+  /* Notch fix */
 }
 
 .profile-header h1 {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.8px;
   color: var(--foreground);
   margin: 0;
 }

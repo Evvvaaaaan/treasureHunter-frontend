@@ -237,7 +237,7 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
               </label>
               <input
                 id="verificationCode"
-                type="text"
+                type="tel"
                 placeholder="6자리 숫자 입력"
                 value={verificationCode}
                 onChange={handleCodeChange}

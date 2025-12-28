@@ -11,6 +11,12 @@
   --sar: env(safe-area-inset-right);
   --sab: env(safe-area-inset-bottom);
   --sal: env(safe-area-inset-left);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  
+  /* [추가] 헤더용 공통 높이/패딩 계산 (원하는 기본 패딩을 여기서 조절하세요) */
+  /* 예: 기본 패딩 12px + 안전 영역 */
+  --header-padding-top: calc(20px + var(--safe-top));
 }
 
 /* Light Mode */
@@ -133,6 +139,13 @@ body {
   transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white; /* 원하는 배경색 */
+}
 
 /* Responsive container utility */
 .responsive-container {
@@ -192,4 +205,19 @@ input,
 textarea,
 select {
   font-family: inherit;
+}
+.header-class-name { /* 예: .home-header, .chat-header 등 */
+  /* 배경색은 헤더에도 지정해야 상태바 뒤가 비치지 않음 */
+  background-color: white; 
+  
+  /* [핵심] 자동으로 기기 노치 높이만큼 상단 여백 부여 */
+  padding-top: env(safe-area-inset-top); 
+  
+  /* (선택) 너무 딱 붙는 게 싫다면 약간의 여유 추가 */
+  /* padding-top: calc(env(safe-area-inset-top) + 10px); */
+  
+  /* 상단 고정 */
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }

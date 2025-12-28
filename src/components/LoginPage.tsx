@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { MapPin, Search, Star } from 'lucide-react';
 // ✅ saveTokens 추가 import 필수
-import { getOAuthUrl, loginWithSocialToken, saveTokens } from '../utils/auth';
+import { checkToken, getOAuthUrl, getUserIdFromToken, loginWithSocialToken, saveTokens } from '../utils/auth';
 import { Button } from './ui/button';
 import '../styles/login-page.css';
 import { Capacitor } from '@capacitor/core';
@@ -44,15 +44,23 @@ export default function LoginPage() {
           if (user.serverAuthCode) {
             const authData = await loginWithSocialToken('google', user.serverAuthCode);
             
-            if (authData) {
-              console.log('백엔드 응답 데이터:', authData);
-
-              // ✅ [수정됨] USER 또는 NOT_VERIFIED 상태일 때 홈으로 이동
+           if (authData) {
               if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
                 console.log(`기존/미인증 회원(${authData.role}) -> 홈으로 이동`);
                 
-                // 1. 토큰 저장 (홈 화면 API 호출용)
+                // 1. 토큰 저장
                 saveTokens(authData); 
+                
+                // ✅ [추가됨] 홈으로 가기 전, 내 정보를 확실히 서버에서 받아와 저장하기
+                try {
+                  const userId = getUserIdFromToken(authData.accessToken);
+                  if (userId) {
+                    console.log("로그인 직후 유저 정보 요청:", userId);
+                    await checkToken(userId); // 이 함수가 내부적으로 saveUserInfo()를 수행함
+                  }
+                } catch (e) {
+                  console.error("유저 정보 프리로딩 실패 (홈에서 재시도 예정):", e);
+                }
                 
                 // 2. 홈으로 이동
                 navigate('/home', { replace: true });

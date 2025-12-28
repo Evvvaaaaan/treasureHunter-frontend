@@ -19,11 +19,13 @@
   padding: 16px 20px;
   background-color: #ffffff;
   border-bottom: 1px solid #f3f4f6;
+  padding-top: calc(16px + env(safe-area-inset-top));
 }
 
 .chat-list-page-new.dark .chat-list-header-new {
   background-color: #1a1a1a;
   border-bottom-color: #2d2d2d;
+
 }
 
 .chat-list-header-new h1 {
@@ -266,7 +268,8 @@
 
 /* [NEW] Unread Item Styles - Highlighted */
 .chat-room-item-new.has-unread {
-  background-color: #fff1f2; /* Light red tint */
+  background-color: #fff1f2;
+  /* Light red tint */
 }
 
 .chat-list-page-new.dark .chat-room-item-new.has-unread {
@@ -339,6 +342,7 @@
   font-weight: 800;
   color: #000000;
 }
+
 .chat-list-page-new.dark .chat-room-item-new.has-unread .room-name-new {
   color: #ffffff;
 }
@@ -352,7 +356,8 @@
 
 /* [NEW] Accent color for time in unread */
 .chat-room-item-new.has-unread .room-time-new {
-  color: #ef4444; /* Red accent */
+  color: #ef4444;
+  /* Red accent */
   font-weight: 600;
 }
 
@@ -405,7 +410,7 @@
   height: 20px;
   padding: 0 6px;
   /* [NEW] Changed to Red for better visibility */
-  background-color: #ef4444; 
+  background-color: #ef4444;
   color: #ffffff;
   font-size: 11px;
   font-weight: 700;
@@ -444,6 +449,7 @@
 @media (max-width: 640px) {
   .chat-list-header-new {
     padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top));
   }
 
   .chat-list-header-new h1 {

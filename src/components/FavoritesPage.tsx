@@ -191,7 +191,7 @@ const FavoritesPage: React.FC = () => {
   }
 
   return (
-    <div className="favorites-page" style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px' }}>
+    <div className="favorites-page" style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px', paddingTop: '45px' }}>
       {/* Header */}
       <header className="favorites-header" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 20px' }}>
         <div className="header-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -199,7 +199,7 @@ const FavoritesPage: React.FC = () => {
             <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
               <ArrowLeft size={24} color="#111827" />
             </button>
-            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#111827' }}>관심 목록</h1>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#111827', letterSpacing: '-.8px' }}>관심 목록</h1>
           </div>
           <button
             className="filter-toggle"

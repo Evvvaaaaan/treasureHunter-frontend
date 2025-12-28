@@ -10,6 +10,8 @@
   position: sticky;
   top: 0;
   z-index: 40;
+  padding-top: env(safe-area-inset-top);
+  /* Notch fix */
 }
 
 .header-container {
@@ -549,7 +551,8 @@
 
 /* Bottom padding for navigation */
 .home-page .main-content {
-  padding-bottom: 80px; /* Space for bottom navigation */
+  padding-bottom: 80px;
+  /* Space for bottom navigation */
 }
 
 .menu-item.delete-account:hover {
@@ -763,7 +766,8 @@
 
 /* Promo Banner */
 .promo-banner {
-  grid-column: 1 / -1; /* Full width */
+  grid-column: 1 / -1;
+  /* Full width */
   background: linear-gradient(135deg, var(--primary) 0%, #047857 100%);
   border-radius: 1.5rem;
   padding: 2rem 1.5rem;
@@ -820,6 +824,7 @@
     font-size: 1rem;
   }
 }
+
 .notification-btn {
   position: relative;
   padding: 0.625rem;

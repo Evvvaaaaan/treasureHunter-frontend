@@ -19,6 +19,7 @@
   top: 0;
   z-index: 50;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding-top: calc(16px + env(safe-area-inset-top));
 }
 
 .reviews-header h1 {

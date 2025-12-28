@@ -5,6 +5,8 @@
   align-items: center;
   justify-content: center;
   padding: 3rem 1.5rem;
+  padding-top: calc(3rem + env(safe-area-inset-top));
+  /* Notch fix */
 }
 
 .signup-container {
@@ -106,6 +108,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }

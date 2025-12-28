@@ -148,6 +148,7 @@ export default function CreateLostItemPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null); // google.maps.Map 타입 사용 가능
   const [marker, setMarker] = useState<any>(null); // google.maps.Marker 타입 사용 가능
+  const [title, setTitle] = useState('분실물 등록');
 
   // [NEW] 익명 등록 상태 추가
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -175,7 +176,7 @@ export default function CreateLostItemPage() {
   // Calculate progress (필수 필드 기준)
   const calculateProgress = () => {
     let completed = 0;
-    let total = 7; // 필수 필드 개수: 종류, 이름, 카테고리, 설명(100자), 연락처, 날짜
+    let total = 6; // 필수 필드 개수: 종류, 이름, 카테고리, 설명(100자), 연락처, 날짜
 
     // 필수 필드
     // itemType은 기본값이 있으므로 항상 완료로 간주 가능
@@ -862,7 +863,7 @@ export default function CreateLostItemPage() {
         <button onClick={() => navigate(-1)} className="back-btn" aria-label="뒤로 가기">
           <ChevronLeft style={{ width: '1.5rem', height: '1.5rem' }} />
         </button>
-        <h1>분실물 등록</h1>
+        <h1>{title} 등록</h1>
         <div style={{ width: '2.5rem' }} /> {/* 간격 유지용 빈 div */}
       </header>
       <button
@@ -872,6 +873,7 @@ export default function CreateLostItemPage() {
           alert('AI 자동 입력 기능이 곧 제공될 예정입니다!');
         }}
         title="AI로 자동 작성"
+        style={{ position: 'fixed', top: '3.5rem', bottom: '1.5rem', right: '1.5rem', zIndex: 1000, backgroundColor: '#4F46E5', borderRadius: '50%', padding: '0.75rem', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)', border: 'none', cursor: 'pointer' }}
       >
         <Sparkles style={{ width: '1.25rem', height: '1.25rem' }} />
       </button>
@@ -897,7 +899,7 @@ export default function CreateLostItemPage() {
         <div className="form-section">
           {/* ... (이전과 동일) ... */}
           <div className="label-with-check">
-            <Label>분실물 종류 *</Label>
+            <Label>등록 종류</Label>
             {formData.itemType && (
               <span className="field-check completed">✓ 완료</span>
             )}
@@ -906,7 +908,7 @@ export default function CreateLostItemPage() {
             <button
               type="button"
               className={`type-btn ${formData.itemType === 'lost' ? 'active' : ''}`}
-              onClick={() => setFormData({ ...formData, itemType: 'lost' })}
+              onClick={() => { setFormData({ ...formData, itemType: 'lost' }); setTitle('분실물'); }}
               aria-pressed={formData.itemType === 'lost'}
             >
               <span className="type-icon">🔍</span>
@@ -915,7 +917,7 @@ export default function CreateLostItemPage() {
             <button
               type="button"
               className={`type-btn ${formData.itemType === 'found' ? 'active' : ''}`}
-              onClick={() => setFormData({ ...formData, itemType: 'found' })}
+              onClick={() => { setFormData({ ...formData, itemType: 'found' }); setTitle('습득물'); }}
               aria-pressed={formData.itemType === 'found'}
             >
               <span className="type-icon">✨</span>
@@ -928,7 +930,7 @@ export default function CreateLostItemPage() {
         <div className="form-section">
           {/* ... (이전과 동일) ... */}
           <div className="label-with-check">
-            <Label htmlFor="itemName">분실물 이름 *</Label>
+            <Label htmlFor="itemName">{title} 이름</Label>
             {formData.itemName.trim() && ( // 공백 제거 후 확인
               <span className="field-check completed">✓ 완료</span>
             )}
@@ -949,7 +951,7 @@ export default function CreateLostItemPage() {
         <div className="form-section">
           {/* ... (이전과 동일) ... */}
           <div className="label-with-check">
-            <Label>카테고리 선택 *</Label>
+            <Label>카테고리 선택</Label>
             {formData.category && (
               <span className="field-check completed">✓ 완료</span>
             )}
@@ -977,7 +979,7 @@ export default function CreateLostItemPage() {
           {/* ... (이전과 동일) ... */}
           <div className="label-with-check">
             <Label htmlFor="description">
-              상세 설명 * <span className="description-counter">({formData.description.trim().length}/100)</span>
+              상세 설명<span className="description-counter">({formData.description.trim().length}/100)</span>
             </Label>
             {formData.description.trim().length >= 100 && (
               <span className="field-check completed">✓ 완료</span>
@@ -985,7 +987,12 @@ export default function CreateLostItemPage() {
           </div>
           <Textarea
             id="description"
-            placeholder="물건의 발견 or 습득 지역, 특징, 브랜드, 색상, 크기 등을 자세히 설명해주세요. (최소 100자 이상)"
+            placeholder={`[경찰서 신고 접수 시 필수 작성 내용 예시]
+              
+1. 습득 일시: (정확한 날짜와 시간)
+2. 습득 장소: (구체적인 건물명, 층수, 도로명 주소 등)
+3. 물건 특징: (브랜드, 모델명, 색상, 고유번호/일련번호 등)
+4. 내용물: (현금 액수, 카드사명, 신분증 종류 등 상세히 기재)`}
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             className="form-textarea"
@@ -1000,7 +1007,7 @@ export default function CreateLostItemPage() {
         {/* Photo Upload */}
         <div className="form-section">
           <div className="label-with-check">
-            <Label htmlFor="photo-input">사진 업로드 * (최대 5장)</Label>
+            <Label htmlFor="photo-input">사진 업로드 (최대 5장)</Label>
             {formData.photos.length > 0 && (
               <span className="field-check completed">✓ {formData.photos.length}장 업로드됨</span>
             )}
@@ -1063,7 +1070,7 @@ export default function CreateLostItemPage() {
         <div className="form-section">
           {/* ... (이전과 동일, mapRef 접근 시 null 체크 강화) ... */}
           <div className="label-with-check">
-            <Label>분실 위치 (지도에서 선택)</Label>
+            <Label>{title} 위치 (지도에서 선택)</Label>
             {/* 주소가 있고 기본 서울 위치가 아니면 완료 표시 */}
             {formData.location.address && formData.location.latitude !== 37.5665 && (
               <span className="field-check completed">✓ 위치 설정됨</span>
@@ -1079,7 +1086,7 @@ export default function CreateLostItemPage() {
             disabled={isLoading} // 로딩 중 비활성화
           >
             {/* Show loader when fetching location */}
-            {isLoading && !error && <Loader2 className="spinner" size={16} />}
+            {isLoading && !error && <Loader2 className="spinner" size={12} />}
             <MapPin style={{ width: '1rem', height: '1rem' }} aria-hidden="true" />
             현재 위치 사용
           </button>
@@ -1136,7 +1143,7 @@ export default function CreateLostItemPage() {
             <span>0 P</span>
             <span>{currentUser?.point?.toLocaleString() ?? 0} P</span>
           </div>
-          <p className="input-hint">습득자에게 사례금으로 지급할 포인트를 설정할 수 있습니다.</p>
+          <p className="input-hint" style={{fontSize: '0.875rem', color: '#6b7280'}}>습득자에게 사례금으로 지급할 포인트를 설정할 수 있습니다.</p>
         </div>
 
         {/* Lost Date */}
@@ -1145,7 +1152,7 @@ export default function CreateLostItemPage() {
           <div className="label-with-check">
             <Label htmlFor="lostDate">
               <CalendarIcon style={{ width: '1rem', height: '1rem' }} aria-hidden="true" />
-              분실/습득 날짜 *
+              {title} 발견 날짜 
             </Label>
             {formData.lostDate && (
               <span className="field-check completed">✓ 완료</span>
@@ -1178,8 +1185,8 @@ export default function CreateLostItemPage() {
               className="anonymous-checkbox"
             />
           </div>
-          <p className="input-hint anonymous-hint">
-            체크 시 게시글 목록과 상세 페이지에서 작성자 정보(닉네임, 프로필 사진)가 표시되지 않습니다.
+          <p className="input-hint anonymous-hint" style={{fontSize: '0.875rem', color: '#6b7280'}}>
+            체크 시 게시글 목록과 상세 페이지에서 작성자 정보가 표시되지 않습니다.
           </p>
         </div>
 

@@ -6,6 +6,7 @@ import { getValidAuthToken, getUserInfo } from '../utils/auth';
 import { createChatRoom } from '../utils/chat';
 import '../styles/item-detail.css';
 import { API_BASE_URL } from '../config';
+import { Share } from '@capacitor/share';
 
 interface ApiPost {
   id: number;
@@ -325,20 +326,42 @@ const ItemDetailPage: React.FC = () => {
   };
 
   const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: item?.title,
-          text: item?.description,
-          url: window.location.href
-        });
-      } catch (error) { console.log('Share cancelled'); }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert('링크가 복사되었습니다!');
+    // [1번 알림] 함수 진입 확인
+    // alert('1. 공유 버튼 클릭됨 (함수 진입)');
+
+    if (!item || !id) {
+      // alert('데이터 없음 에러');
+      return;
+    }
+    const isLost = item.type === 'lost';
+  
+    const prefix = isLost ? '🚨 도와주세요!' : '📢 주인을 찾습니다!';
+    const suffix = isLost ? '혹시 보신 분 계신가요?' : '주인분은 여기서 확인하세요!';
+  
+  const shareText = `[Treasure Hunter]\n${prefix} ${item.title}\n${suffix}`;
+    const realUrl = `https://treasurehunter.seohamin.com/post/${id}`;
+    const shareData = {
+      title: 'Treasure Hunter',
+      text: `${shareText}`,
+      url: realUrl,
+      dialogTitle: '공유하기',
+    };
+
+    try {
+      // [2번 알림] 플러그인 호출 직전
+      
+      // canShare 체크 없이 바로 실행
+      await Share.share(shareData);
+      
+      // [3번 알림] 이게 안 뜨면 플러그인이 먹통인 것
+      // alert('3. 공유 창 열림 성공');
+
+    } catch (error: any) {
+      // [4번 알림] 에러 내용 출력
+      alert('4. 에러 발생: ' + JSON.stringify(error));
+      console.error('Share Error:', error);
     }
   };
-
   const handleReport = () => {
     if (confirm('이 게시물을 신고하시겠습니까?')) {
       alert('신고가 접수되었습니다. 검토 후 조치하겠습니다.');
