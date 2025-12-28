@@ -15,6 +15,7 @@ import {
   Navigation,
   Calendar,
 } from 'lucide-react';
+import { CapacitorHttp } from '@capacitor/core';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
@@ -148,9 +149,9 @@ export default function HomePage() {
   });
 
   // 1. 초기 로그인 체크
-  useEffect(() => {
-    if (!userInfo) navigate('/login');
-  }, [userInfo, navigate]);
+  // useEffect(() => {
+  //   if (!userInfo) navigate('/login');
+  // }, [userInfo, navigate]);
 
   // 2. 위치 정보 가져오기 (마운트 시 1회)
   useEffect(() => {
@@ -217,34 +218,43 @@ export default function HomePage() {
         params.append('maxDistance', '50'); // 필수: 최대 반경 50km
       }
 
-      const url = `${API_BASE_URL}/posts?${params.toString()}`;
+      // const url = `${API_BASE_URL}/posts?${params.toString()}`;
 
-      const response = await fetch(url, {
-        method: 'GET',
+      // const response = await fetch(url, {
+      //   method: 'GET',
+      //   headers: {
+      //     'Authorization': `Bearer ${token}`,
+      //     'content-type': 'application/json',
+      //     'origin': 'https://treasurehunter.seohamin.com', // 👈 핵심: 백엔드가 허용하는 오리진으로 위장
+      //   },
+      // });
+      const fullUrl = `${API_BASE_URL}/posts?${params.toString()}`;
+      const response = await CapacitorHttp.get({
+        url: fullUrl,
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          // 필요하다면 Origin 헤더 추가 (대부분 CapacitorHttp에서는 없어도 됨)
+          'Origin': 'https://treasurehunter.seohamin.com', 
         },
       });
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`HTTP 오류! 상태: ${response.status}`);
+    
       }
-
-      const data: ApiResponse = await response.json();
+      // CapacitorHttp의 response.data는 이미 파싱된 객체임
+      // const data: ApiResponse = await response.json();
+      //capacitorHttp 사용시
+      const data = response.data as ApiResponse; 
       const newPosts = data.posts || [];
-
       // 데이터 상태 업데이트 (리셋이면 덮어쓰기, 아니면 이어붙이기)
       setRawPosts((prev) => {
         if (isReset) return newPosts;
-
-        // 중복 제거 후 병합
         const existingIds = new Set(prev.map(p => p.id));
         const uniquePosts = newPosts.filter(p => !existingIds.has(p.id));
         return [...prev, ...uniquePosts];
       });
-
       // 다음 페이지 존재 여부 업데이트
       setHasNextPage(data.hasNext);
 
@@ -639,7 +649,7 @@ export default function HomePage() {
         whileTap={{ scale: 0.95 }}
         onClick={() => navigate('/create')}
         className="fab"
-        style={{ bottom: '5.5rem', right: '0.5rem' }}
+        style={{ bottom: '7.5rem', right: '0.5rem' }}
         aria-label="게시물 등록"
       >
         <Plus style={{ width: '2rem', height: '2rem', color: 'white' }} />
