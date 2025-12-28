@@ -309,7 +309,7 @@ export default function SearchPage() {
               <div
                 key={item.id}
                 className="search-result-item"
-                onClick={() => navigate(`/posts/${item.id}`)}
+                onClick={() => navigate(`/items/${item.id}`)}
               >
                 <div className="result-image" style={{ position: 'relative' }}>
                   <ImageWithFallback
