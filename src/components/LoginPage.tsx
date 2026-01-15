@@ -146,9 +146,9 @@ export default function LoginPage() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="logo-box"
             >
-              <MapPin style={{ width: '3rem', height: '3rem', color: 'white' }} />
+              <img src='https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ec/5f/ec5fe8b344d50ca3fca6c2b812eaec35a7e9e403901112476743884d1053802a.png' style={{ width: '6rem', height: '6rem', color: 'white', borderRadius: 10 }} />
             </motion.div>
-            <h1 style={{ fontSize: '1.875rem', marginBottom: '0.75rem', color: '#111827' }}>보물찾기</h1>
+            <h1 style={{ fontSize: '1.875rem', marginBottom: '0.75rem', color: '#111827', fontWeight: 600}}>Find X</h1>
             <p style={{ color: '#4b5563' }}>
               분실물과 발견물을 연결하는
               <br />

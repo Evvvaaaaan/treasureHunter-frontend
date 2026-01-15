@@ -356,9 +356,11 @@ export default function HomePage() {
         <div className="header-container">
           <div className="header-content">
             <div className="header-logo">
-              <div className="logo-icon">
-                <MapPin style={{ width: '1.5rem', height: '1.5rem', color: 'white' }} />
-              </div>
+                <img 
+                  src="https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ec/5f/ec5fe8b344d50ca3fca6c2b812eaec35a7e9e403901112476743884d1053802a.png" 
+                  alt="Logo" 
+                  style={{ width: '2.5rem', height: '2.5rem', objectFit: 'contain', justifyContent: 'center', display: 'flex', alignItems : 'center' }} 
+                />
               <div>
                 <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>Treasure Hunter</h1>
                 <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>분실물 찾기</p>

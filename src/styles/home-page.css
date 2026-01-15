@@ -42,7 +42,7 @@
 .logo-icon {
   width: 2.5rem;
   height: 2.5rem;
-  background-color: var(--primary);
+  /* background-color: var(--primary); */
   border-radius: 1rem;
   display: flex;
   align-items: center;
