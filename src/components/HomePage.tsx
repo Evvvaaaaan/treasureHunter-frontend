@@ -5,7 +5,6 @@ import {
   Search,
   MapPin,
   Plus,
-  Bell,
   User,
   LogOut,
   Trash2,
@@ -25,8 +24,8 @@ import '../styles/home-page.css';
 import { Button } from './ui/button';
 import BottomNavigation from './BottomNavigation';
 import { useInView } from 'react-intersection-observer';
-
 import { API_BASE_URL } from '../config';
+import type { Post } from '../types/post';
 
 interface AuthorInfo {
   id: number;
@@ -36,29 +35,32 @@ interface AuthorInfo {
   totalReviews: number;
 }
 
-interface ApiPost {
-  id: number;
-  title: string;
-  content: string;
-  type: 'LOST' | 'FOUND';
-  author?: AuthorInfo;
-  images: string[];
-  setPoint: number;
-  itemCategory: string;
-  lat: number;
-  lon: number;
-  lostAt: string;
-  createdAt: string;
-  updatedAt: string;
-  isAnonymous: boolean;
-  isCompleted: boolean;
-}
+// interface ApiPost extends Post {}
+
+// interface ApiPost {
+//   id: number;
+//   title: string;
+//   content: string;
+//   type: 'LOST' | 'FOUND';
+//   author?: AuthorInfo;
+//   images: string[];
+//   setPoint: number;
+//   itemCategory: string;
+//   lat: number;
+//   lon: number;
+//   distance: number;
+//   lostAt: string;
+//   createdAt: string;
+//   updatedAt: string;
+//   isAnonymous: boolean;
+//   isCompleted: boolean;
+// }
 
 interface ApiResponse {
   clientLat: number;
   clientLon: number;
   hasNext: boolean;
-  posts: ApiPost[];
+  posts: Post[];
 }
 
 interface LostItem {
@@ -73,26 +75,8 @@ interface LostItem {
   createdAt: string;
 }
 
-const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
+const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ac/f3/acf30335fd18961387089f921d866f7b430b08920762214e3b2825c035da158c.png';
 
-// Haversine 거리 계산 함수 (km 단위) - 표시용
-const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) {
-    return 0;
-  }
-  const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-    Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-  return distance;
-};
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
@@ -128,14 +112,14 @@ export default function HomePage() {
 
   const [userInfo] = useState<UserInfo | null>(getUserInfo());
   const [searchQuery, setSearchQuery] = useState('');
-  const [rawPosts, setRawPosts] = useState<ApiPost[]>([]);
+  const [rawPosts, setRawPosts] = useState<Post[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [unreadNotifications] = useState(0);
+
 
   // Pagination State
   const [hasNextPage, setHasNextPage] = useState(true);
@@ -212,10 +196,19 @@ export default function HomePage() {
 
       // [핵심 수정] 거리순 API 호출 시 파라미터 명세 준수
       if (sortOption === 'distance') {
-        params.append('searchType', 'distance'); // 기존 search_type -> searchType 으로 수정
-        params.append('lat', lat.toString());
-        params.append('lon', lon.toString());
-        params.append('maxDistance', '50'); // 필수: 최대 반경 50km
+        if(lat && lon) {
+          params.append('searchType', 'distance'); // 기존 search_type -> searchType 으로 수정
+          params.append('lat', lat.toString());
+          params.append('lon', lon.toString());
+          params.append('maxDistance', '50'); // 필수: 최대 반경 50km
+        } else {
+          console.warn('위치 정보가 없습니다.')
+        }
+      } else {
+        if (lat && lon) {
+           params.append('lat', lat.toString());
+           params.append('lon', lon.toString());
+        }
       }
 
       // const url = `${API_BASE_URL}/posts?${params.toString()}`;
@@ -309,7 +302,8 @@ export default function HomePage() {
       setIsDeleteDialogOpen(false);
       if (success) {
         alert('회원 탈퇴 완료');
-        navigate('/login', { replace: true });
+        clearTokens(); 
+        window.location.href = '/login';
       } else {
         alert('회원 탈퇴 실패');
       }
@@ -318,23 +312,14 @@ export default function HomePage() {
 
   // UI용 데이터 가공
   const lostItems: LostItem[] = useMemo(() => {
-    const items = rawPosts.map((post: ApiPost) => {
-      let distance: number | null = null;
-      if (userLocation) {
-        distance = getDistance(
-          userLocation.lat,
-          userLocation.lon,
-          post.lat,
-          post.lon
-        );
-      }
-
+    const items = rawPosts.map((post: Post) => {
+    
       return {
         id: post.id.toString(),
         title: post.title,
         content: post.content.substring(0, 10) + (post.content.length > 10 ? '...' : ''),
         points: post.setPoint,
-        distance: distance,
+        distance: post.distance !== undefined ? post.distance : null,
         image: post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
         isCompleted: post.isCompleted,
@@ -342,17 +327,14 @@ export default function HomePage() {
       };
     });
 
-    // 클라이언트 사이드 정렬 (API가 정렬해서 주더라도, 위치 거리 계산 후 재정렬 보정)
-    if (sortOption === 'distance') {
-      return items.sort((a, b) => {
-        if (a.distance === null) return 1;
-        if (b.distance === null) return -1;
-        return a.distance - b.distance;
-      });
-    } else {
-      return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (sortOption === 'latest') {
+       return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
-  }, [rawPosts, userLocation, sortOption]);
+    
+    // distance 옵션일 때는 API 순서(이미 가까운 순)를 그대로 따름
+    return items; 
+    
+  }, [rawPosts, sortOption]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -593,7 +575,9 @@ export default function HomePage() {
                         <div className="meta-item" title="내 위치로부터의 거리">
                           <Navigation style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
                           <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                            {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 미상'}
+                            {item.distance !== null && item.distance !== undefined
+                              ? `${item.distance.toFixed(1)} km` 
+                              : '위치 정보 없음'}
                           </span>
                         </div>
                         <div className="meta-item" title="게시일">

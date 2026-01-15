@@ -142,58 +142,68 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleSaveProfile = async () => {
-    if (!user) return;
-    setIsSaving(true);
+  if (!user) return;
+  setIsSaving(true);
 
-    try {
-      const token = await getValidAuthToken();
-      if (!token) throw new Error("인증 토큰이 없습니다.");
+  try {
+    const token = await getValidAuthToken();
+    if (!token) throw new Error("인증 토큰이 없습니다.");
 
-      let finalImageUrl = user.profileImage;
+    let finalImageUrl = user.profileImage;
 
-      if (editImageFile) {
-        try {
-          finalImageUrl = await uploadImage(editImageFile);
-        } catch (uploadError) {
-          console.error("이미지 업로드 실패:", uploadError);
-          alert("이미지 업로드에 실패했습니다.");
-          setIsSaving(false);
-          return;
-        }
+    // 1. 이미지 파일이 있으면 업로드
+    if (editImageFile) {
+      try {
+        finalImageUrl = await uploadImage(editImageFile);
+      } catch (uploadError) {
+        console.error("이미지 업로드 실패:", uploadError);
+        alert("이미지 업로드에 실패했습니다.");
+        setIsSaving(false);
+        return;
       }
-
-      // 프로필 수정 API 호출 (PATCH)
-      const response = await fetch(`${API_BASE_URL} /user/${user.id} `, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token} `,
-        },
-        body: JSON.stringify({
-          nickname: editNickname,
-          profileImage: finalImageUrl,
-          name: editName
-        }),
-      });
-
-      if (response.ok) {
-        const updatedUser = await response.json();
-        setUser(updatedUser);
-        // 로컬 스토리지 정보도 갱신해주면 좋음 (checkToken이 해주긴 함)
-        setIsEditing(false);
-        alert('프로필이 저장되었습니다!');
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || '프로필 수정 실패');
-      }
-
-    } catch (error) {
-      console.error('Failed to save profile:', error);
-      alert(`프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"} `);
-    } finally {
-      setIsSaving(false);
     }
-  };
+
+    // 2. 요청 본문(Body) 생성
+    // [중요] name 필드는 여기서 완전히 제외했습니다.
+    // profileImage는 항상 포함 (이미지가 안 바뀌었으면 기존 URL, 바뀌었으면 새 URL)
+    const requestBody: { profileImage: string; nickname?: string } = {
+      profileImage: finalImageUrl
+    };
+
+    // 3. 닉네임 변경 체크
+    // 입력한 닉네임이 기존 닉네임과 다를 경우에만 body에 추가
+    if (editNickname !== user.nickname) {
+      requestBody.nickname = editNickname;
+    }
+
+    // 4. API 호출
+    const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      // 구성된 객체를 JSON으로 변환하여 전송
+      body: JSON.stringify(requestBody),
+    });
+
+    if (response.ok) {
+      const updatedUser = await response.json();
+      setUser(updatedUser);
+      setIsEditing(false);
+      alert('프로필이 저장되었습니다!');
+    } else {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || '프로필 수정 실패');
+    }
+
+  } catch (error) {
+    console.error('Failed to save profile:', error);
+    alert(`프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const handleLogout = () => {
     if (confirm('로그아웃 하시겠습니까?')) {

@@ -1,3 +1,4 @@
+import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 // import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 // import { useState, useEffect } from 'react';
 // import { Loader2 } from 'lucide-react';
@@ -714,7 +715,7 @@ export default function App() {
       }
 
       const platform = Capacitor.getPlatform() === 'ios' ? 'IOS' : 'ANDROID'; // 플랫폼 감지 수정
-
+      console.log(`🚀 FCM 토큰 서버 전송 시도 (${platform}):`, fcmToken);
       const response = await fetch(`${API_BASE_URL}/notification/token`, {
         method: 'POST',
         headers: {
@@ -739,43 +740,53 @@ export default function App() {
   };
 
   useEffect(() => {
-    // ★ [중요] Google Login 초기화 (iOS Crash 방지용)
-    // if (Capacitor.isNativePlatform()) {
-    //   // GoogleAuth.initialize is not needed for @capgo/capacitor-social-login
-    // }
-
-    // 1. FCM 권한 요청 및 초기화
+    // ---------------------------------------------------------------------------
+    // 1. Firebase Cloud Messaging (FCM) 초기화 및 토큰 발급
+    // ---------------------------------------------------------------------------
     const initFcm = async () => {
       try {
-        const token = await requestPermission();
+        // 웹 브라우저 환경이면 실행하지 않음 (네이티브 앱 전용)
+        if (Capacitor.getPlatform() === 'web') return;
+
+        // (1) 권한 요청
+        const result = await FirebaseMessaging.requestPermissions();
+        if (result.receive !== 'granted') {
+          console.log("❌ 알림 권한이 거부되었습니다.");
+          return;
+        }
+
+        // (2) [핵심] FCM 토큰 가져오기
+        // * 중요: 이 함수는 iOS에서도 APNs 토큰을 자동으로 변환하여 'FCM 토큰'을 줍니다.
+        // * 아까처럼 662E... 로 시작하는 토큰이 아니라, fSI3... 형태가 나와야 정상입니다.
+        const { token } = await FirebaseMessaging.getToken();
+        console.log("🔥 진짜 FCM 토큰 획득:", token);
+
+        // (3) 서버로 토큰 전송 (sendTokenToServer 함수 호출)
         if (token) {
-          console.log("App.tsx - FCM Token:", token);
           await sendTokenToServer(token);
         }
+
+        // (4) 포그라운드 알림 수신 리스너 (앱이 켜져 있을 때 알림 도착)
+        await FirebaseMessaging.addListener('notificationReceived', (event : any) => {
+          console.log('🔔 포그라운드 알림 수신:', event.notification);
+          // 필요한 경우 Toast 메시지 등을 띄우거나 상태 업데이트
+        });
+
+        // (5) 알림 클릭 리스너 (알림을 누르고 앱을 열었을 때)
+        await FirebaseMessaging.addListener('notificationActionPerformed', (event : any) => {
+          console.log('👆 알림 클릭됨:', event.notification);
+          // 예: 채팅방으로 이동하는 로직이 필요하면 여기에 작성
+          // const chatId = event.notification.data.chatId;
+          // if (chatId) navigate(`/chat/${chatId}`);
+        });
+
       } catch (error) {
-        console.error("FCM Init Error:", error);
+        console.error("❌ Firebase 초기화 중 에러 발생:", error);
       }
     };
-    initFcm();
 
-    // 2. 포그라운드 메시지 수신 대기
-    // firebase.ts의 구현에 따라 Promise 방식일 수도 있고 callback 방식일 수도 있습니다.
-    // 여기서는 기존 코드를 유지하되 에러 처리를 추가했습니다.
-    try {
-      const messagePromise = onMessageListener();
-      if (messagePromise && typeof messagePromise.then === 'function') {
-        messagePromise
-          .then((payload: any) => {
-            if (payload) {
-              console.log("포그라운드 알림 수신:", payload);
-              // 필요한 경우 Toast 알림 표시 로직 추가
-            }
-          })
-          .catch((err: any) => console.error("FCM Message Error:", err));
-      }
-    } catch (e) {
-      console.log("Message listener setup failed", e);
-    }
+    // FCM 로직 실행
+    initFcm();
 
     // 3. Android 뒤로 가기 버튼 처리 (Hardware Back Button)
     const setupBackButton = async () => {

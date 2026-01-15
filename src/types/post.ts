@@ -19,6 +19,7 @@ export interface Post {
   itemCategory: string;
   lat: number;
   lon: number;
+  distance?: number; // ✅ [필수] 서버에서 계산된 거리 (km 단위)
   lostAt: string; // ISO Date String
   likeCount: number;
   viewCount: number;
