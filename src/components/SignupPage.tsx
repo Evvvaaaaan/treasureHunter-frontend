@@ -8,6 +8,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 // ✅ getValidAuthToken 추가
+import { Geolocation } from '@capacitor/geolocation';
 import { signupUser, saveUserInfo, getValidAuthToken } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
@@ -60,46 +61,56 @@ export default function SignupPage() {
   }, [navigate]);
 
   // 위치 정보 가져오기 핸들러
-  const handleGetLocation = () => {
-    // 1. 브라우저/기기 지원 여부 확인
-    if (!navigator.geolocation) {
-      alert("이 기기에서는 위치 정보를 사용할 수 없습니다.");
-      return;
-    }
+  const handleGetLocation = async () => {
+    setIsLocationLoading(true);
+    setLocationError(null);
 
-    // (선택) 로딩 표시가 필요하다면 여기서 state true 설정
-    // setIsLoadingLocation(true); 
+    try {
+      // 1. 플랫폼이 웹이 아닌 경우(네이티브) 권한 체크 및 요청 수행
+      if (Capacitor.isNativePlatform()) {
+        const permissionStatus = await Geolocation.checkPermissions();
 
-    // 2. 위치 요청
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        // ✅ 성공 시
-        const { latitude, longitude } = position.coords;
-        setLocation({ lat: latitude, lon: longitude });
-        console.log(`위치 갱신 완료: ${latitude}, ${longitude}`);
-      },
-      (error) => {
-        // ❌ 실패 시
-        console.error("위치 정보 에러:", error);
-        
-        let errorMsg = "위치 정보를 가져올 수 없습니다.";
-        switch(error.code) {
-          case 1: errorMsg = "위치 정보 권한이 거부되었습니다. 설정에서 권한을 허용해주세요."; break;
-          case 2: errorMsg = "위치 정보를 사용할 수 없습니다 (신호 약함)."; break;
-          case 3: errorMsg = "위치 확인 시간이 초과되었습니다."; break;
+        // 권한이 없거나 물어봐야 하는 상태라면 요청
+        if (permissionStatus.location !== 'granted') {
+          const requestStatus = await Geolocation.requestPermissions();
+          
+          if (requestStatus.location !== 'granted') {
+            throw new Error("위치 권한이 거부되었습니다. 휴대폰 설정에서 앱의 위치 권한을 허용해주세요.");
+          }
         }
-        
-        alert(errorMsg);
-        
-        // 실패 시 기본값 (서울 시청)으로 설정하여 흐름이 끊기지 않게 함
-        setLocation({ lat: 37.5665, lon: 126.9780 });
-      },
-      {
-        enableHighAccuracy: true, // GPS 등을 사용하여 정확도 높임
-        timeout: 10000,           // 10초 대기
-        maximumAge: 0             // 캐시된 위치 대신 현재 위치 요청
       }
-    );
+
+      // 2. 현재 위치 가져오기
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      // 상태 업데이트 (문자열로 변환하여 저장)
+      setLocation({ 
+        lat: latitude.toString(), 
+        lon: longitude.toString() 
+      });
+      
+      console.log(`위치 갱신 완료: ${latitude}, ${longitude}`);
+
+    } catch (err: any) {
+      console.error("위치 정보 에러:", err);
+      let msg = "위치 정보를 가져올 수 없습니다.";
+      
+      if (err.message) {
+        msg = err.message;
+      } else if (err.code === 1) { // 웹 환경에서의 권한 거부 코드
+        msg = "위치 정보 권한이 거부되었습니다. 브라우저/설정에서 권한을 허용해주세요.";
+      }
+      
+      setLocationError(msg);
+      alert(msg);
+    } finally {
+      setIsLocationLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,7 +125,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const defaultProfileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400';
+      const defaultProfileImage = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ac/f3/acf30335fd18961387089f921d866f7b430b08920762214e3b2825c035da158c.png';
       const finalProfileImage = profileImage || defaultProfileImage;
 
       // ✅ [수정] signupUser 호출 (userId 인자 제거됨)
