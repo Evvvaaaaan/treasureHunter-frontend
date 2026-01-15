@@ -277,15 +277,15 @@
   .items-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
+
   .header-container {
     padding: 1rem 1.5rem;
   }
-  
+
   .main-content {
     padding: 1.5rem 1.5rem;
   }
-  
+
   .bottom-safe-area {
     height: 0;
   }
@@ -476,6 +476,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -493,12 +494,16 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  padding-top: calc(20px + env(safe-area-inset-top));
 }
 
 .verification-header h1 {
   flex: 1;
   text-align: center;
   margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.8px;
 }
 
 .back-button {
@@ -554,9 +559,12 @@
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -595,7 +603,7 @@
 .input-with-button {
   display: flex;
   gap: 8px;
-  height: 100px;
+  height: 110px;
 }
 
 .input-with-button input {
@@ -673,6 +681,7 @@
     opacity: 0;
     transform: translateX(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -719,12 +728,16 @@
 }
 
 @keyframes shake {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0);
   }
+
   25% {
     transform: translateX(-4px);
   }
+
   75% {
     transform: translateX(4px);
   }
@@ -749,6 +762,7 @@
   justify-content: center;
   gap: 8px;
   margin-top: 8px;
+  font-size: 15px;
 }
 
 .verify-button:hover:not(:disabled) {
@@ -841,6 +855,7 @@
 
   .send-code-button {
     width: 100%;
+    font-size: 15px;
   }
 
   .verify-button {
@@ -850,6 +865,7 @@
 
 /* Touch Feedback */
 @media (hover: none) {
+
   .back-button:active,
   .skip-button:active,
   .send-code-button:active:not(:disabled),
@@ -860,6 +876,7 @@
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
+
   .phone-verification-container,
   .verification-icon,
   .verification-code-group,
@@ -941,7 +958,11 @@
 
   .verification-info {
     border-top-color: #3a3a3a;
+    color: #999;
   }
+
+  
+
 
   .info-item {
     color: #999;

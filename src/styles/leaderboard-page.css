@@ -15,6 +15,7 @@
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   z-index: 10;
+  padding-top: calc(16px + env(safe-area-inset-top));
 }
 
 .leaderboard-header h1 {
@@ -65,7 +66,7 @@
   border: 1px solid var(--border-color);
   border-radius: 12px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -132,9 +133,12 @@
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-8px);
   }
@@ -457,15 +461,15 @@
   }
 
   .podium-name {
-    font-size: 12px;
+    font-size: 10px;
   }
 
   .podium-score {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .leaderboard-tabs .tab {
-    font-size: 12px;
+    font-size: 10px;
     padding: 8px 12px;
   }
 }

@@ -16,6 +16,7 @@
   padding: 1rem 1.25rem;
   background-color: var(--card);
   border-bottom: 1px solid var(--border);
+  padding-top: calc(1rem + env(safe-area-inset-top));
 }
 
 .static-header h1 {
@@ -51,7 +52,8 @@
 .text-section h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--primary); /* 스타벅스 그린 같은 강조색 */
+  color: var(--primary);
+  /* 스타벅스 그린 같은 강조색 */
   margin-bottom: 1rem;
   line-height: 1.4;
 }
@@ -86,8 +88,10 @@
 .label-icon-box {
   width: 64px;
   height: 64px;
-  border: 2px solid var(--primary); /* 육각형 느낌의 테두리 색상 */
-  border-radius: 12px; /* 약간 둥근 사각형 (이미지는 육각형이지만 CSS로 쉽게 구현하기 위해 둥근 사각형 사용) */
+  border: 2px solid var(--primary);
+  /* 육각형 느낌의 테두리 색상 */
+  border-radius: 12px;
+  /* 약간 둥근 사각형 (이미지는 육각형이지만 CSS로 쉽게 구현하기 위해 둥근 사각형 사용) */
   display: flex;
   align-items: center;
   justify-content: center;

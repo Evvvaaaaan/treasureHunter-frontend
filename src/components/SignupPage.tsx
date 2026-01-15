@@ -1,19 +1,23 @@
+// src/components/SignupPage.tsx
+
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Camera, Loader2, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { signupUser, saveUserInfo, getUserInfo, checkToken, clearTokens } from '../utils/auth';
+// ✅ getValidAuthToken 추가
+import { Geolocation } from '@capacitor/geolocation';
+import { signupUser, saveUserInfo, getValidAuthToken } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  // const [searchParams] = useSearchParams(); // ❌ URL 파라미터 의존성 제거
 
-  const [userId, setUserId] = useState<string | null>(null);
+  // const [userId, setUserId] = useState<string | null>(null); // ❌ 불필요한 state 제거
   const [nickname, setNickname] = useState('');
   const [name, setName] = useState('');
   const [profileImage, setProfileImage] = useState('');
@@ -24,103 +28,109 @@ export default function SignupPage() {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState('');
 
+  // ✅ [수정] 페이지 로드 시 토큰 검사 및 초기 데이터 세팅
   useEffect(() => {
-    const idFromUrl = searchParams.get('userId');
-    const tempUserInfo = getUserInfo();
+    const initializePage = async () => {
+      try {
+        const token = await getValidAuthToken();
+        
+        if (!token) {
+          alert("로그인 정보가 없습니다. 다시 로그인해주세요.");
+          navigate('/login', { replace: true });
+          return;
+        }
 
-    if (!idFromUrl) {
-      setError('잘못된 접근입니다. 세션을 초기화하고 로그인 페이지로 이동합니다.');
-      clearTokens();
-      setTimeout(() => navigate('/login', { replace: true }), 2000);
-      return;
-    }
+        // 기존에 저장된(소셜 로그인 등에서 온) 정보가 있다면 미리 채워주기
+        // const tempUserInfo = getUserInfo();
+        // if (tempUserInfo) {
+        //   if (!name) setName(tempUserInfo.name || '');
+        //   if (!nickname) setNickname(tempUserInfo.nickname || tempUserInfo.name || '');
+        //   if (!profileImage) setProfileImage(tempUserInfo.profileImage || '');
+        // }
+      } catch (err) {
+        console.error("Initialization error:", err);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
 
-    setUserId(idFromUrl);
+    initializePage();
+  }, [navigate]);
 
-    if (tempUserInfo) {
-      setName(tempUserInfo.name || '');
-      setNickname(tempUserInfo.name || '');
-      setProfileImage(tempUserInfo.profileImage || '');
-    }
-  }, [navigate, searchParams]);
-
-  // [수정됨] MapPage.tsx의 handleMyLocationClick 로직을 그대로 적용
-  const handleGetLocation = () => {
+  // 위치 정보 가져오기 핸들러
+  const handleGetLocation = async () => {
     setIsLocationLoading(true);
     setLocationError(null);
 
-    if (!navigator.geolocation) {
-      setLocationError("브라우저에서 위치 정보를 지원하지 않습니다.");
-      setIsLocationLoading(false);
-      return;
-    }
+    try {
+      // 1. 플랫폼이 웹이 아닌 경우(네이티브) 권한 체크 및 요청 수행
+      if (Capacitor.isNativePlatform()) {
+        const permissionStatus = await Geolocation.checkPermissions();
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        // 성공 시 상태 업데이트
-        setLocation({
-          lat: latitude.toString(),
-          lon: longitude.toString()
-        });
-        setIsLocationLoading(false);
-      },
-      (error) => {
-        setIsLocationLoading(false);
-        console.error("Error getting location:", error);
-        
-        // MapPage.tsx의 에러 메시지 처리 로직과 동일하게 구성
-        let errorMessage = '위치 정보를 가져올 수 없습니다. ';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage += '위치 권한을 허용해주세요.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage += '현재 위치를 확인할 수 없습니다.';
-            break;
-          case error.TIMEOUT:
-            errorMessage += '위치 정보를 가져오는 데 시간이 초과되었습니다.';
-            break;
-          default:
-            errorMessage += '알 수 없는 오류가 발생했습니다.';
+        // 권한이 없거나 물어봐야 하는 상태라면 요청
+        if (permissionStatus.location !== 'granted') {
+          const requestStatus = await Geolocation.requestPermissions();
+          
+          if (requestStatus.location !== 'granted') {
+            throw new Error("위치 권한이 거부되었습니다. 휴대폰 설정에서 앱의 위치 권한을 허용해주세요.");
+          }
         }
-        setLocationError(errorMessage);
-      },
-      {
-        // MapPage.tsx와 동일한 옵션 사용
+      }
+
+      // 2. 현재 위치 가져오기
+      const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      // 상태 업데이트 (문자열로 변환하여 저장)
+      setLocation({ 
+        lat: latitude.toString(), 
+        lon: longitude.toString() 
+      });
+      
+      console.log(`위치 갱신 완료: ${latitude}, ${longitude}`);
+
+    } catch (err: any) {
+      console.error("위치 정보 에러:", err);
+      let msg = "위치 정보를 가져올 수 없습니다.";
+      
+      if (err.message) {
+        msg = err.message;
+      } else if (err.code === 1) { // 웹 환경에서의 권한 거부 코드
+        msg = "위치 정보 권한이 거부되었습니다. 브라우저/설정에서 권한을 허용해주세요.";
       }
-    );
+      
+      setLocationError(msg);
+      alert(msg);
+    } finally {
+      setIsLocationLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!userId) {
-      setError('사용자 ID가 유효하지 않습니다. 다시 로그인 해주세요.');
-      return;
-    }
-
     if (!nickname.trim() || !name.trim()) {
       setError('이름과 닉네임은 필수 항목입니다.');
       return;
     }
 
-
-
     setIsLoading(true);
 
     try {
-      const defaultProfileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400';
+      const defaultProfileImage = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ac/f3/acf30335fd18961387089f921d866f7b430b08920762214e3b2825c035da158c.png';
       const finalProfileImage = profileImage || defaultProfileImage;
 
-      const success = await signupUser(
-        userId,
+      // ✅ [수정] signupUser 호출 (userId 인자 제거됨)
+      // auth.ts에서 내부적으로 토큰을 사용하여 요청을 보냅니다.
+      const registeredUser = await signupUser(
         nickname,
         finalProfileImage,
         name,
@@ -128,22 +138,20 @@ export default function SignupPage() {
         location?.lon ? Number(location.lon) : null,
       );
 
-      if (success) {
-        const updatedUserInfo = await checkToken(userId);
-
-        if (updatedUserInfo) {
-          saveUserInfo(updatedUserInfo);
-          navigate('/verify-phone');
-        } else {
-          setError('회원가입은 되었으나 정보 갱신에 실패했습니다. 다시 로그인해주세요.');
-          setTimeout(() => navigate('/login'), 2000);
-        }
-
+      if (registeredUser) {
+        console.log("회원가입 완료, 정보 저장:", registeredUser);
+        
+        // 1. 반환된 최신 유저 정보 저장
+        saveUserInfo(registeredUser);
+        
+        // 2. 페이지 이동
+        navigate('/verify-phone', { replace: true });
       } else {
-        setError('회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        setError('회원가입 요청이 실패했습니다.');
       }
+
     } catch (err: any) {
-      const errorMessage = err.message;
+      const errorMessage = err.message || '알 수 없는 오류가 발생했습니다.';
       setError(errorMessage);
       console.error("Signup failed:", err);
     } finally {
@@ -151,6 +159,7 @@ export default function SignupPage() {
     }
   };
 
+  // ... (handleImageUpload 함수 및 UI 렌더링 부분 기존 유지) ...
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -162,12 +171,12 @@ export default function SignupPage() {
     }
   };
 
-  if (!userId && !error) {
+  if (isInitializing) {
     return (
       <div className="signup-page">
         <div className="flex flex-col items-center">
           <Loader2 className="spinner h-12 w-12 text-primary" />
-          <p className="mt-4 text-gray-600">사용자 정보를 불러오는 중...</p>
+          <p className="mt-4 text-gray-600">사용자 정보를 확인하는 중...</p>
         </div>
       </div>
     );
@@ -243,8 +252,6 @@ export default function SignupPage() {
               />
               <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>다른 사용자에게 표시되는 이름입니다</p>
             </div>
-
-            {/* 위치 등록 섹션 */}
             <div className="form-field">
               <Label>선호 위치 *</Label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

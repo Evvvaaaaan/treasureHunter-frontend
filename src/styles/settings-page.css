@@ -15,6 +15,7 @@
   border-bottom: 1px solid var(--border);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
+  padding-top: env(safe-area-inset-top);
 }
 
 .settings-header .header-container {

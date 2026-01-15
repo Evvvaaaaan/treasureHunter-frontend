@@ -265,16 +265,7 @@ const SettingsPage: React.FC = () => {
         </section>
 
         {/* User Info */}
-        {userInfo && (
-          <div className="user-info-section">
-            <p className="user-info-text">
-              {userInfo.email}
-            </p>
-            <p className="user-info-text secondary">
-              가입일: {new Date().toLocaleDateString('ko-KR')}
-            </p>
-          </div>
-        )}
+        
       </div>
 
       {/* 푸시 알림 권한 요청 Alert 컴포넌트 */}

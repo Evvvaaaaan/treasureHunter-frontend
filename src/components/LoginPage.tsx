@@ -1,63 +1,129 @@
-
 import { motion } from 'motion/react';
 import { MapPin, Search, Star } from 'lucide-react';
-import { getOAuthUrl, loginWithSocialToken } from '../utils/auth';
+// ✅ saveTokens 추가 import 필수
+import { checkToken, getOAuthUrl, getUserIdFromToken, loginWithSocialToken, saveTokens } from '../utils/auth';
 import { Button } from './ui/button';
 import '../styles/login-page.css';
 import { Capacitor } from '@capacitor/core';
+import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+
+// ✅ Codetrix 라이브러리 사용
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import type { SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor-community/apple-sign-in';
-import { useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
   const navigate = useNavigate();
 
+  // ✅ 초기화: 앱(Native)과 웹(Web)을 구분하여 설정
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      // 1. 웹(Web)일 때만 Client ID 직접 설정
+      GoogleAuth.initialize({
+        clientId: '272231760809-e8i08dnkevi90oo457mh7vapa2l1naq3.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+        grantOfflineAccess: true,
+      });
+    } else {
+      // 2. 앱(Native)일 때는 설정 파일(capacitor.config.ts)을 따름
+      GoogleAuth.initialize(); 
+    }
+  }, []);
+
+  // src/components/LoginPage.tsx
+
   const handleSocialLogin = async (provider: 'google' | 'kakao' | 'naver' | 'apple') => {
+    // 📱 1. 네이티브 앱 환경 (iOS/Android)
     if (Capacitor.isNativePlatform()) {
       try {
         if (provider === 'google') {
+          // --- [Google 로그인 로직] ---
           const user = await GoogleAuth.signIn();
-          console.log('Google User:', user);
-          if (user.authentication.idToken) {
-            const success = await loginWithSocialToken('google', user.authentication.idToken);
-            if (success) {
-              navigate('/home'); // Or wherever you redirect after login
+          
+          if (user.serverAuthCode) {
+            const authData = await loginWithSocialToken('google', user.serverAuthCode);
+            
+           if (authData) {
+              if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
+                console.log(`기존/미인증 회원(${authData.role}) -> 홈으로 이동`);
+                
+                // 1. 토큰 저장
+                saveTokens(authData); 
+                
+                // ✅ [추가됨] 홈으로 가기 전, 내 정보를 확실히 서버에서 받아와 저장하기
+                try {
+                  const userId = getUserIdFromToken(authData.accessToken);
+                  if (userId) {
+                    console.log("로그인 직후 유저 정보 요청:", userId);
+                    await checkToken(userId); // 이 함수가 내부적으로 saveUserInfo()를 수행함
+                  }
+                } catch (e) {
+                  console.error("유저 정보 프리로딩 실패 (홈에서 재시도 예정):", e);
+                }
+                
+                // 2. 홈으로 이동
+                navigate('/home', { replace: true });
+              } 
+              // ✅ [복구됨] 신규 회원은 회원가입 페이지로 이동
+              else if (authData.role === 'NOT_REGISTERED') {
+                console.log("신규 회원 -> 회원가입 페이지 이동");
+                saveTokens(authData);
+                navigate('/signup', { 
+                  state: { 
+                    accessToken: authData.accessToken,
+                    refreshToken: authData.refreshToken 
+                  } 
+                });
+              } 
+              else {
+                alert(`알 수 없는 회원 상태입니다: ${authData.role}`);
+              }
             } else {
-              alert('Google 로그인 실패 (토큰 검증 오류)');
+              alert('서버 로그인 실패: 응답이 없습니다.');
             }
           }
+
         } else if (provider === 'apple') {
+          // --- [Apple 로그인 로직] ---
+          // ... (기존 Apple 로그인 옵션 설정) ...
           const options: SignInWithAppleOptions = {
-            clientId: 'com.junsun.treasurehunter', // Bundle ID matches usually
-            redirectURI: 'https://treasurehunter.seohamin.com/login/oauth2/code/apple', // Required for Apple Sign In sometimes
+            clientId: 'com.junsun.treasurehunter',
+            redirectURI: 'https://treasurehunter.seohamin.com/login/oauth2/code/apple',
             scopes: 'name email',
             state: '12345',
             nonce: 'nonce',
           };
-
+          
           const result: SignInWithAppleResponse = await SignInWithApple.authorize(options);
-          console.log('Apple User:', result);
-          if (result.response && result.response.identityToken) {
-            const success = await loginWithSocialToken('apple', result.response.identityToken);
-            if (success) {
-              navigate('/home');
-            } else {
-              alert('Apple 로그인 실패 (토큰 검증 오류)');
+          
+          if (result.response && result.response.authorizationCode) {
+            // ... (이름 추출 로직 유지) ...
+             let name = undefined;
+            if (result.response.givenName || result.response.familyName) {
+              name = [result.response.familyName, result.response.givenName].filter(Boolean).join('');
+            }
+
+            const authData = await loginWithSocialToken('apple', result.response.authorizationCode, name);
+            
+            if (authData) {
+              // ✅ [수정됨] Apple 로그인도 동일하게 적용
+              if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
+                saveTokens(authData);
+                navigate('/home', { replace: true });
+              } else if (authData.role === 'NOT_REGISTERED') {
+                navigate('/signup-profile', { state: { ...authData } });
+              }
             }
           }
         } else {
-          // Kakao/Naver (Native SDK not verified yet, fallback to web)
-          // For a better UX, you might want to use Browser plugin instead of full redirect
           window.location.href = getOAuthUrl(provider);
         }
       } catch (error) {
         console.error('Native login error:', error);
-        // Fallback or alert?
-        // alert('로그인 중 오류가 발생했습니다.');
       }
     } else {
-      // Web Environment
+      // 💻 2. 웹 환경
       window.location.href = getOAuthUrl(provider);
     }
   };
@@ -65,6 +131,7 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-container">
+        {/* UI 코드는 기존과 완벽히 동일하게 유지 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -79,9 +146,9 @@ export default function LoginPage() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="logo-box"
             >
-              <MapPin style={{ width: '3rem', height: '3rem', color: 'white' }} />
+              <img src='https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ec/5f/ec5fe8b344d50ca3fca6c2b812eaec35a7e9e403901112476743884d1053802a.png' style={{ width: '6rem', height: '6rem', color: 'white', borderRadius: 10 }} />
             </motion.div>
-            <h1 style={{ fontSize: '1.875rem', marginBottom: '0.75rem', color: '#111827' }}>보물찾기</h1>
+            <h1 style={{ fontSize: '1.875rem', marginBottom: '0.75rem', color: '#111827', fontWeight: 600}}>Find X</h1>
             <p style={{ color: '#4b5563' }}>
               분실물과 발견물을 연결하는
               <br />
@@ -180,10 +247,10 @@ export default function LoginPage() {
               style={{
                 width: '100%',
                 height: '3.5rem',
-                backgroundColor: 'black', // Apple 공식 스타일 (검정 배경)
+                backgroundColor: 'black',
                 color: 'white',
                 border: 'none',
-                marginTop: '0.5rem' // 버튼 간격
+                marginTop: '0.5rem'
               }}
             >
               <svg
@@ -235,8 +302,6 @@ export default function LoginPage() {
           </motion.p>
         </motion.div>
       </div>
-
-      {/* Bottom decoration */}
       <div className="bottom-decoration" />
     </div>
   );

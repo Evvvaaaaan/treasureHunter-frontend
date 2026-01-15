@@ -240,7 +240,7 @@ const ReviewsPage: React.FC = () => {
   }
 
   return (
-    <div className="reviews-page" style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px' }}>
+    <div className="reviews-page" style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px', paddingTop: '50px' }}>
       {/* Header */}
       <div className="reviews-header" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button className="back-button" onClick={() => navigate(-1)} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer' }}>

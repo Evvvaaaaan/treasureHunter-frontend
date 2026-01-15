@@ -15,6 +15,7 @@
   background: white;
   border-bottom: 1px solid #e5e7eb;
   z-index: 10;
+  padding-top: calc(12px + env(safe-area-inset-top));
 }
 
 .search-bar {
@@ -26,6 +27,7 @@
   border-radius: 12px;
   background: #f3f4f6;
   color: #6b7280;
+
 }
 
 .search-bar input {
@@ -78,6 +80,7 @@
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -223,6 +226,7 @@
   flex-direction: column;
   gap: 8px;
   z-index: 5;
+  padding-top: calc(16px + env(safe-area-inset-top));
 }
 
 .map-control-btn {
@@ -261,6 +265,7 @@
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 5;
+
 }
 
 .legend-item {
@@ -307,6 +312,7 @@
     opacity: 0;
     transform: translateY(100%);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -412,7 +418,7 @@
   }
 
   .map-legend {
-    bottom: 90px;
+    bottom: 120px;
     left: 12px;
   }
 
@@ -521,7 +527,8 @@
 /* 내 위치 버튼 스타일 */
 .my-location-btn {
   position: absolute;
-  bottom: 100px; /* 정보창 위에 위치하도록 조정 */
+  bottom: 110px;
+  /* 정보창 위에 위치하도록 조정 */
   right: 16px;
   width: 48px;
   height: 48px;
@@ -533,7 +540,8 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10; /* 지도 위에 표시 */
+  z-index: 10;
+  /* 지도 위에 표시 */
   transition: all 0.2s ease;
 }
 
@@ -554,4 +562,8 @@
 
 .dark .my-location-btn:hover {
   background-color: #3a3a3a;
+}
+
+.gmnoprint {
+  display: none;
 }

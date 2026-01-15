@@ -8,6 +8,7 @@ import { getValidAuthToken } from "../utils/auth";
 import "../styles/search-page.css";
 import { API_BASE_URL } from '../config'; 
 
+
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
 interface ApiPost {
@@ -27,6 +28,7 @@ interface ApiPost {
   itemCategory: string;
   lat: number;
   lon: number;
+  distance: number;
   lostAt: string;
   likeCount: number;
   viewCount: number;
@@ -135,7 +137,7 @@ export default function SearchPage() {
         id: post.id.toString(),
         title: post.title,
         category: post.itemCategory,
-        location: '위치 정보',
+        location: post.distance,
         date: post.lostAt,
         imageUrl: post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
@@ -309,7 +311,7 @@ export default function SearchPage() {
               <div
                 key={item.id}
                 className="search-result-item"
-                onClick={() => navigate(`/posts/${item.id}`)}
+                onClick={() => navigate(`/items/${item.id}`)}
               >
                 <div className="result-image" style={{ position: 'relative' }}>
                   <ImageWithFallback
