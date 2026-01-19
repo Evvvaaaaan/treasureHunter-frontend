@@ -104,7 +104,7 @@ export default function LoginPage() {
               name = [result.response.familyName, result.response.givenName].filter(Boolean).join('');
             }
 
-            const authData = await loginWithSocialToken('apple', result.response.authorizationCode, name);
+            const authData = await loginWithSocialToken('apple', result.response.authorizationCode, name,'https://treasurehunter.seohamin.com/login/oauth2/code/apple');
             
             if (authData) {
               // ✅ [수정됨] Apple 로그인도 동일하게 적용

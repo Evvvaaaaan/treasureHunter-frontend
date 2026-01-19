@@ -19,15 +19,15 @@ export default function AppInfoPage() {
 
       <div className="static-content" style={{ alignItems: 'center', textAlign: 'center', marginTop: '3rem' }}>
         <div style={{
-          width: 96, height: 96, backgroundColor: '#10b981', borderRadius: 24,
+          width: 96, height: 96, borderRadius: 24,
           display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem',
           boxShadow: '0 10px 25px -5px rgba(16, 185, 129, 0.4)'
         }}>
-          <MapPin size={48} color="white" />
+          <img src="https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ec/5f/ec5fe8b344d50ca3fca6c2b812eaec35a7e9e403901112476743884d1053802a.png" alt="logo" style={{width : 96, height: 96}}/>
         </div>
 
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: '#111827' }}>
-          Treasure Hunter
+          Find X
         </h2>
         <p style={{ fontSize: '1rem', color: '#6b7280' }}>
           잃어버린 물건을 찾는 가장 빠른 방법
@@ -48,7 +48,7 @@ export default function AppInfoPage() {
         </div>
 
         <p style={{ marginTop: '2rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-          © 2024 Treasure Hunter Team. All rights reserved.
+          © 2026 Find X Team. All rights reserved.
         </p>
       </div>
     </div>

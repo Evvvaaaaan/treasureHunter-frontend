@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.junsun.treasurehunter',
-  appName: 'Treasure Hunter',
+  appName: 'Find X',
   webDir: 'dist',
   server: {
     url: 'http://192.168.0.208:51845',

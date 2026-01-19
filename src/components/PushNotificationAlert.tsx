@@ -51,7 +51,7 @@ export function PushNotificationAlert({
     if (alertType === 'denied') {
       // 권한이 거부된 경우 설정 화면으로 이동 유도 (직접 이동은 OS 정책상 제한될 수 있음)
       // 안드로이드는 NativeSettings 플러그인 등이 필요할 수 있으나, 여기선 안내만 처리
-      alert("휴대폰 설정 > 앱 > Treasure Hunter > 알림에서 권한을 허용해주세요.");
+      alert("휴대폰 설정 > 앱 > Find X > 알림에서 권한을 허용해주세요.");
       onOpenChange(false);
     } else {
       // 권한 요청

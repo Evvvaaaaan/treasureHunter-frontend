@@ -338,10 +338,10 @@ const ItemDetailPage: React.FC = () => {
     const prefix = isLost ? '🚨 도와주세요!' : '📢 주인을 찾습니다!';
     const suffix = isLost ? '혹시 보신 분 계신가요?' : '주인분은 여기서 확인하세요!';
   
-  const shareText = `[Treasure Hunter]\n${prefix} ${item.title}\n${suffix}`;
+  const shareText = `[Find X]\n${prefix} ${item.title}\n${suffix}`;
     const realUrl = `https://treasurehunter.seohamin.com/post/${id}`;
     const shareData = {
-      title: 'Treasure Hunter',
+      title: 'Find X',
       text: `${shareText}`,
       url: realUrl,
       dialogTitle: '공유하기',

@@ -362,7 +362,7 @@ export default function HomePage() {
                   style={{ width: '2.5rem', height: '2.5rem', objectFit: 'contain', justifyContent: 'center', display: 'flex', alignItems : 'center' }} 
                 />
               <div>
-                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>Treasure Hunter</h1>
+                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>Find X</h1>
                 <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>분실물 찾기</p>
               </div>
             </div>

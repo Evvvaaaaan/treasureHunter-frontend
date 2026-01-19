@@ -534,7 +534,7 @@ export const loginWithSocialToken = async (provider: string, code: string, name?
     const response = await CapacitorHttp.post({
       url: `${API_BASE_URL}/api/v1/auth/oauth2`,
       headers: COMMON_HEADERS,
-      data: { provider, code, sendName, redirect_uri: redirect_uri || 'postmessage' },
+      data: { provider, code, sendName, redirect_uri: redirect_uri ? redirect_uri : 'postmessage' },
     });
 
     // CapacitorHttp는 응답 데이터가 response.data에 담깁니다.

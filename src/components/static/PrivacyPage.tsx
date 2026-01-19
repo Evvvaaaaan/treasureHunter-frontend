@@ -18,9 +18,9 @@ export default function PrivacyPage() {
 
       <div className="static-content">
         <section className="text-section">
-          <h2>Treasure Hunter는 이용자 개인정보보호를 위해 최선을 다하고 있습니다.</h2>
+          <h2>Find X는 이용자 개인정보보호를 위해 최선을 다하고 있습니다.</h2>
           <p>
-            Treasure Hunter(이하 '회사')는 이용자의 개인정보를 중요시하며, 정보통신망 이용촉진 및 정보보호 등에 관한 법률 및 개인정보보호법 등 국내의 개인정보 보호에 관한 법률을 준수하고 있습니다.
+            Find X(이하 '회사')는 이용자의 개인정보를 중요시하며, 정보통신망 이용촉진 및 정보보호 등에 관한 법률 및 개인정보보호법 등 국내의 개인정보 보호에 관한 법률을 준수하고 있습니다.
           </p>
         </section>
 
