@@ -523,6 +523,16 @@ export interface SocialLoginResponse extends AuthTokens {
 // [NEW] Login with social token (native flow)
 export const loginWithSocialToken = async (provider: string, code: string, name?: string, redirect_uri?: string): Promise<SocialLoginResponse | null> => {
   const sendName = name ? name : 'null';
+  let finalRedirectUri = redirect_uri;
+  if (!finalRedirectUri) {
+    if (provider === 'apple') {
+      // Apple은 'postmessage'를 허용하지 않으므로, 백엔드 설정과 100% 일치하는 주소 강제 주입
+      finalRedirectUri = `${API_BASE_URL}/login/oauth2/code/apple`;
+    } else {
+      // Google 등은 postmessage 사용
+      finalRedirectUri = 'postmessage';
+    }
+  }
   console.log('========== [loginWithSocialToken 요청 시작] ==========');
   console.log('Provider (제공자):', provider);
   console.log('Auth Code (인증 코드):', code);
@@ -534,7 +544,7 @@ export const loginWithSocialToken = async (provider: string, code: string, name?
     const response = await CapacitorHttp.post({
       url: `${API_BASE_URL}/api/v1/auth/oauth2`,
       headers: COMMON_HEADERS,
-      data: { provider, code, sendName, redirect_uri: redirect_uri ? redirect_uri : 'postmessage' },
+      data: { provider, code, sendName, redirect_uri: finalRedirectUri},
     });
 
     // CapacitorHttp는 응답 데이터가 response.data에 담깁니다.
