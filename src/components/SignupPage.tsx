@@ -126,7 +126,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const defaultProfileImage = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ac/f3/acf30335fd18961387089f921d866f7b430b08920762214e3b2825c035da158c.png';
+      const defaultProfileImage = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png';
       const finalProfileImage = profileImage || defaultProfileImage;
 
       // ✅ [수정] signupUser 호출 (userId 인자 제거됨)

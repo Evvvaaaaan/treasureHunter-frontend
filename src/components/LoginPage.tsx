@@ -146,7 +146,7 @@ export default function LoginPage() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="logo-box"
             >
-              <img src='https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ec/5f/ec5fe8b344d50ca3fca6c2b812eaec35a7e9e403901112476743884d1053802a.png' style={{ width: '6rem', height: '6rem', color: 'white', borderRadius: 10 }} />
+              <img src='https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=2d/77/2d771d4f0ddfaf94eb77702eb0d1efeba014e9f387b3fa677d216b086b606518.png' style={{ width: '6rem', height: '6rem', color: 'white', borderRadius: 10 }} />
             </motion.div>
             <h1 style={{ fontSize: '1.875rem', marginBottom: '0.75rem', color: '#111827', fontWeight: 600}}>Find X</h1>
             <p style={{ color: '#4b5563' }}>

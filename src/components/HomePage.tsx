@@ -74,7 +74,7 @@ interface LostItem {
   createdAt: string;
 }
 
-const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ac/f3/acf30335fd18961387089f921d866f7b430b08920762214e3b2825c035da158c.png';
+const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png';
 
 
 const formatDate = (dateString: string) => {
@@ -356,7 +356,7 @@ export default function HomePage() {
           <div className="header-content">
             <div className="header-logo">
                 <img 
-                  src="https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ec/5f/ec5fe8b344d50ca3fca6c2b812eaec35a7e9e403901112476743884d1053802a.png" 
+                  src="https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=2d/77/2d771d4f0ddfaf94eb77702eb0d1efeba014e9f387b3fa677d216b086b606518.png" 
                   alt="Logo" 
                   style={{ width: '2.5rem', height: '2.5rem', objectFit: 'contain', justifyContent: 'center', display: 'flex', alignItems : 'center' }} 
                 />

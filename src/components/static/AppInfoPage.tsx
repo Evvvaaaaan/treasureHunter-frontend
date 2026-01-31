@@ -23,7 +23,7 @@ export default function AppInfoPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem',
           boxShadow: '0 10px 25px -5px rgba(16, 185, 129, 0.4)'
         }}>
-          <img src="https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ec/5f/ec5fe8b344d50ca3fca6c2b812eaec35a7e9e403901112476743884d1053802a.png" alt="logo" style={{width : 96, height: 96}}/>
+          <img src="https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=2d/77/2d771d4f0ddfaf94eb77702eb0d1efeba014e9f387b3fa677d216b086b606518.png" alt="logo" style={{width : 96, height: 96}}/>
         </div>
 
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: '#111827' }}>
