@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   Search,
-  MapPin,
   Plus,
   User,
   LogOut,
@@ -27,13 +26,13 @@ import { useInView } from 'react-intersection-observer';
 import { API_BASE_URL } from '../config';
 import type { Post } from '../types/post';
 
-interface AuthorInfo {
-  id: number;
-  nickname: string;
-  profileImage: string;
-  totalScore: number;
-  totalReviews: number;
-}
+// interface AuthorInfo {
+//   id: number;
+//   nickname: string;
+//   profileImage: string;
+//   totalScore: number;
+//   totalReviews: number;
+// }
 
 // interface ApiPost extends Post {}
 
@@ -362,7 +361,7 @@ export default function HomePage() {
                   style={{ width: '2.5rem', height: '2.5rem', objectFit: 'contain', justifyContent: 'center', display: 'flex', alignItems : 'center' }} 
                 />
               <div>
-                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>Find X</h1>
+                <h1 style={{ fontSize: '1.125rem', color: '#6b7280' }}>Find X</h1>
                 <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>분실물 찾기</p>
               </div>
             </div>

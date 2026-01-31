@@ -616,3 +616,225 @@
     right: 1rem;
   }
 }
+
+/* Dark Mode Overrides */
+.create-lost-item-page.dark {
+  background-color: #111827;
+}
+
+.create-lost-item-page.dark .create-header {
+  background-color: #1f2937;
+  border-bottom-color: #374151;
+}
+
+.create-lost-item-page.dark .create-header h1 {
+  color: #f9fafb;
+}
+
+.create-lost-item-page.dark .back-btn {
+  color: #f9fafb;
+}
+
+.create-lost-item-page.dark .back-btn:hover {
+  background-color: #374151;
+}
+
+.create-lost-item-page.dark .progress-container {
+  background-color: #1f2937;
+  border-bottom-color: #374151;
+}
+
+.create-lost-item-page.dark .progress-bar {
+  background-color: #374151;
+}
+
+.create-lost-item-page.dark .progress-text {
+  color: #9ca3af;
+}
+
+.create-lost-item-page.dark .form-section {
+  background-color: #1f2937;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.create-lost-item-page.dark .form-section label {
+  color: #e5e7eb;
+}
+
+.create-lost-item-page.dark .field-check {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+}
+
+.create-lost-item-page.dark .field-check.completed {
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  color: white;
+}
+
+.create-lost-item-page.dark .type-btn {
+  background-color: #111827;
+  border-color: #374151;
+}
+
+.create-lost-item-page.dark .type-btn:hover {
+  background-color: #374151;
+}
+
+.create-lost-item-page.dark .type-btn.active {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+}
+
+.create-lost-item-page.dark .type-btn span:last-child {
+  color: #e5e7eb;
+}
+
+.create-lost-item-page.dark .form-input,
+.create-lost-item-page.dark .form-textarea {
+  background-color: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+.create-lost-item-page.dark .form-input:focus,
+.create-lost-item-page.dark .form-textarea:focus {
+  background-color: #0f172a;
+  border-color: #10b981;
+}
+
+.create-lost-item-page.dark .category-btn {
+  background-color: #111827;
+  border-color: #374151;
+}
+
+.create-lost-item-page.dark .category-btn:hover {
+  background-color: #374151;
+}
+
+.create-lost-item-page.dark .category-btn.active {
+  background-color: color-mix(in srgb, var(--category-color) 20%, #111827);
+  border-color: var(--category-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--category-color) 20%, transparent);
+}
+
+.create-lost-item-page.dark .category-label {
+  color: #e5e7eb;
+}
+
+.create-lost-item-page.dark .photo-upload-area {
+  background-color: #111827;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+.create-lost-item-page.dark .photo-upload-area:hover {
+  background-color: #1f2937;
+  border-color: #10b981;
+}
+
+.create-lost-item-page.dark .photo-upload-area.dragging {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+}
+
+.create-lost-item-page.dark .upload-text {
+  color: #e5e7eb;
+}
+
+.create-lost-item-page.dark .upload-hint {
+  color: #9ca3af;
+}
+
+.create-lost-item-page.dark .photo-preview-item {
+  background-color: #374151;
+}
+
+.create-lost-item-page.dark .location-btn {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.create-lost-item-page.dark .location-btn:hover {
+  background-color: rgba(16, 185, 129, 0.2);
+}
+
+.create-lost-item-page.dark .map-container {
+  background-color: #374151;
+}
+
+.create-lost-item-page.dark .location-hint {
+  color: #9ca3af;
+}
+
+.create-lost-item-page.dark .location-address {
+  background-color: #111827;
+  color: #d1d5db;
+}
+
+.create-lost-item-page.dark .location-address.default {
+  background-color: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.create-lost-item-page.dark .points-balance {
+  color: #9ca3af;
+}
+
+.create-lost-item-page.dark .points-slider {
+  background: linear-gradient(to right, #064e3b, #10b981);
+}
+
+.create-lost-item-page.dark .points-labels {
+  color: #9ca3af;
+}
+
+.create-lost-item-page.dark .error-banner {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.create-lost-item-page.dark .submit-btn:disabled {
+  background-color: #374151;
+  color: #9ca3af;
+}
+
+.create-lost-item-page.dark .auto-save-hint {
+  color: #6b7280;
+}
+
+.create-lost-item-page.dark .create-success {
+  background: linear-gradient(to bottom, #064e3b, #111827);
+}
+
+.create-lost-item-page.dark .create-success h2 {
+  color: #f9fafb;
+}
+
+.create-lost-item-page.dark .create-success p {
+  color: #d1d5db;
+}
+
+.create-lost-item-page.dark .ai-auto-fill-btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.create-lost-item-page.dark .ai-auto-fill-btn:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #7e22ce 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+.create-lost-item-page.dark .ai-floating-btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+.create-lost-item-page.dark .ai-floating-btn:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #7e22ce 100%);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
+}

@@ -528,7 +528,7 @@ import { ThemeProvider } from './utils/theme';
 import { ChatProvider } from './components/ChatContext';
 
 // firebase.ts에서 함수 import
-import { requestPermission, onMessageListener } from './firebase';
+// import { requestPermission, onMessageListener } from './firebase';
 import { API_BASE_URL } from './config';
 
 /**

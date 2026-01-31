@@ -503,3 +503,111 @@
 .nav-bar-btn:active {
   transform: scale(0.98);
 }
+
+/* Dark Mode Overrides */
+.favorites-page.dark {
+  background-color: #111827;
+}
+
+.favorites-page.dark .favorites-header,
+.favorites-page.dark .bottom-nav-bar {
+  background-color: rgba(31, 41, 55, 0.95);
+  border-bottom-color: #374151;
+  border-top-color: #374151;
+}
+
+.favorites-page.dark .favorites-header h1 {
+  color: #f9fafb;
+}
+
+.favorites-page.dark .filter-toggle {
+  background-color: #374151;
+  color: #d1d5db;
+}
+
+.favorites-page.dark .filter-toggle:hover {
+  background-color: #4b5563;
+}
+
+.favorites-page.dark .filters-panel {
+  background-color: #1f2937;
+}
+
+.favorites-page.dark .filter-group label {
+  color: #d1d5db;
+}
+
+.favorites-page.dark .filter-buttons button {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #d1d5db;
+}
+
+.favorites-page.dark .filter-buttons button:hover {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.favorites-page.dark .filter-buttons button.active {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+.favorites-page.dark .favorites-count {
+  color: #9ca3af;
+}
+
+.favorites-page.dark .empty-state h2 {
+  color: #f9fafb;
+}
+
+.favorites-page.dark .empty-state p {
+  color: #9ca3af;
+}
+
+.favorites-page.dark .empty-icon {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+}
+
+.favorites-page.dark .favorite-card {
+  background-color: #1f2937;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.favorites-page.dark .card-content h3 {
+  color: #f9fafb;
+}
+
+.favorites-page.dark .card-image {
+  background-color: #374151;
+}
+
+.favorites-page.dark .category-badge {
+  background-color: #374151;
+  color: #d1d5db;
+}
+
+.favorites-page.dark .card-meta .meta-item {
+  color: #9ca3af;
+}
+
+.favorites-page.dark .remove-favorite-btn {
+  background-color: rgba(31, 41, 55, 0.9);
+  color: #f87171;
+}
+
+.favorites-page.dark .remove-favorite-btn:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+.favorites-page.dark .nav-bar-btn {
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #d1d5db;
+}
+
+.favorites-page.dark .nav-bar-btn:hover {
+  background-color: #374151;
+  border-color: #10b981;
+}

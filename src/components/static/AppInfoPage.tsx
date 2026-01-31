@@ -1,6 +1,6 @@
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import '../../styles/static-pages.css';
 
 export default function AppInfoPage() {

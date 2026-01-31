@@ -5,11 +5,10 @@ import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Badge } from './ui/badge';
 import BottomNavigation from './BottomNavigation';
-// auth 유틸리티 import
 import { getUserInfo, checkToken, getValidAuthToken } from '../utils/auth';
-import '../styles/my-items-page.css'; // 기존 스타일 재사용 (또는 favorites-page.css)
+import { useTheme } from '../utils/theme';
+import '../styles/favorites-page.css';
 import { API_BASE_URL } from '../config';
-// API 기본 URL
 
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
@@ -26,7 +25,6 @@ interface FavoriteItem {
   isCompleted: boolean;
 }
 
-// 카테고리 매핑
 const CATEGORY_MAP: { [key: string]: string } = {
   'PHONE': '휴대폰',
   'WALLET': '지갑',
@@ -40,6 +38,7 @@ const CATEGORY_MAP: { [key: string]: string } = {
 
 const FavoritesPage: React.FC = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [filteredFavorites, setFilteredFavorites] = useState<FavoriteItem[]>([]);
@@ -48,23 +47,19 @@ const FavoritesPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'recent' | 'date'>('recent');
   const [showFilters, setShowFilters] = useState(false);
 
-  // 초기 데이터 로드
   useEffect(() => {
     loadFavorites();
   }, []);
 
-  // 필터 및 정렬 적용
   useEffect(() => {
     applyFiltersAndSort();
   }, [favorites, filterType, sortBy]);
 
-  // 1. 관심 목록 데이터 불러오기 (User 정보의 likedPosts 활용)
   const loadFavorites = async () => {
     setIsLoading(true);
     try {
       const token = await getValidAuthToken();
       if (!token) {
-        // 토큰 없으면 로그인 페이지로
         alert('로그인이 필요합니다.');
         navigate('/login');
         return;
@@ -73,7 +68,6 @@ const FavoritesPage: React.FC = () => {
       const currentUser = getUserInfo();
       if (!currentUser) return;
 
-      // 최신 유저 정보 조회 (likedPosts 포함)
       const freshUserInfo = await checkToken(currentUser.id.toString());
 
       if (freshUserInfo && freshUserInfo.likedPosts) {
@@ -85,11 +79,11 @@ const FavoritesPage: React.FC = () => {
             id: post.id.toString(),
             title: post.title,
             category: category,
-            location: `위도: ${post.lat}, 경도: ${post.lon}`, // 필요시 역지오코딩 추가 가능
+            location: `위도: ${post.lat}, 경도: ${post.lon}`,
             date: post.lostAt,
             image: displayImage,
             status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
-            bookmarkedAt: new Date().toISOString(), // API에 필드가 없다면 현재 시간 대체
+            bookmarkedAt: new Date().toISOString(),
             rewardPoints: post.setPoint,
             isCompleted: post.isCompleted
           };
@@ -110,19 +104,15 @@ const FavoritesPage: React.FC = () => {
   const applyFiltersAndSort = () => {
     let filtered = [...favorites];
 
-    // Filter by type
     if (filterType !== 'all') {
       filtered = filtered.filter(item => item.status === filterType);
     }
 
-    // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'recent':
-          // bookmarkedAt 기준으로 정렬
           return new Date(b.bookmarkedAt).getTime() - new Date(a.bookmarkedAt).getTime();
         case 'date':
-          // 분실/습득 날짜 기준으로 정렬
           return new Date(b.date).getTime() - new Date(a.date).getTime();
         default:
           return 0;
@@ -132,9 +122,8 @@ const FavoritesPage: React.FC = () => {
     setFilteredFavorites(filtered);
   };
 
-  // 2. [API 연결] 관심 목록 삭제 (좋아요 해제)
   const handleRemoveFavorite = async (itemId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
+    e.stopPropagation();
 
     if (!confirm('관심 목록에서 삭제하시겠습니까?')) return;
 
@@ -145,21 +134,15 @@ const FavoritesPage: React.FC = () => {
         return;
       }
 
-      // API 호출: 좋아요 해제 (Unlike)
-      // POST /api/v1/post/{id}/unlike
       const response = await fetch(`${API_BASE_URL}/post/${itemId}/unlike`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         }
-        // Body 없음
       });
 
-      // 204 No Content 또는 200 OK 성공 처리
       if (response.status === 204 || response.ok) {
-        // 성공 시 UI에서 즉시 제거
         setFavorites(prev => prev.filter(item => item.id !== itemId));
-        // filteredFavorites는 useEffect에 의해 자동으로 업데이트됨
         alert("삭제되었습니다.");
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -182,7 +165,7 @@ const FavoritesPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f9fafb' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: theme === 'dark' ? '#111827' : '#f9fafb' }}>
         <div style={{ width: '48px', height: '48px', border: '4px solid #e5e7eb', borderTopColor: '#10b981', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
         <p style={{ marginTop: '16px', color: '#6b7280' }}>관심 목록을 불러오는 중...</p>
         <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
@@ -190,21 +173,47 @@ const FavoritesPage: React.FC = () => {
     );
   }
 
+  // 테마에 따른 색상 정의
+  const isDark = theme === 'dark';
+  const headerBg = isDark ? '#111827' : '#ffffff';
+  const headerBorder = isDark ? '#374151' : '#e5e7eb';
+  const textColor = isDark ? '#f3f4f6' : '#111827';
+  const subTextColor = isDark ? '#9ca3af' : '#6b7280';
+  const cardBg = isDark ? '#1f2937' : '#ffffff';
+
   return (
-    <div className="favorites-page" style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px', paddingTop: '45px' }}>
+    // [수정] paddingTop 제거 및 배경색 테마 적용
+    <div className={`favorites-page ${theme}`} style={{ minHeight: '100vh', backgroundColor: isDark ? '#030712' : '#f9fafb', paddingBottom: '80px' }}>
+      
       {/* Header */}
-      <header className="favorites-header" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 20px' }}>
+      <header 
+        className="favorites-header"
+        // [수정] 다이나믹 아일랜드 해결을 위한 스타일 적용
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          backgroundColor: headerBg,
+          borderBottom: `1px solid ${headerBorder}`,
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          paddingBottom: '16px',
+          // 핵심: 안전 영역만큼 패딩을 추가
+          paddingTop: 'calc(16px + env(safe-area-inset-top))',
+          color: textColor
+        }}
+      >
         <div className="header-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
-              <ArrowLeft size={24} color="#111827" />
+            <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}>
+              <ArrowLeft size={24} color={textColor} />
             </button>
-            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#111827', letterSpacing: '-.8px' }}>관심 목록</h1>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: 'inherit', letterSpacing: '-.8px' }}>관심 목록</h1>
           </div>
           <button
             className="filter-toggle"
             onClick={() => setShowFilters(!showFilters)}
-            style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280' }}
+            style={{ color: subTextColor }}
           >
             <Filter size={20} />
           </button>
@@ -217,25 +226,20 @@ const FavoritesPage: React.FC = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            style={{ overflow: 'hidden', marginTop: '16px' }}
+            style={{ marginTop: '16px' }}
           >
-            <div className="filter-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>유형</label>
-              <div className="filter-buttons" style={{ display: 'flex', gap: '8px' }}>
+            <div className="filter-group">
+              <label style={{color: textColor}}>유형</label>
+              <div className="filter-buttons">
                 {['all', 'lost', 'found'].map(type => (
                   <button
                     key={type}
                     onClick={() => setFilterType(type as any)}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '20px',
-                      border: `1px solid ${filterType === type ? '#10b981' : '#e5e7eb'}`,
-                      backgroundColor: filterType === type ? '#10b981' : 'white',
-                      color: filterType === type ? 'white' : '#6b7280',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
+                    className={filterType === type ? 'active' : ''}
+                    style={{ 
+                      backgroundColor: filterType === type ? undefined : (isDark ? '#374151' : 'white'),
+                      color: filterType === type ? undefined : subTextColor,
+                      borderColor: isDark ? '#4b5563' : undefined
                     }}
                   >
                     {type === 'all' ? '전체' : type === 'lost' ? '분실물' : '습득물'}
@@ -245,34 +249,26 @@ const FavoritesPage: React.FC = () => {
             </div>
 
             <div className="filter-group">
-              <label style={{ display: 'block', fontSize: '13px', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>정렬</label>
-              <div className="filter-buttons" style={{ display: 'flex', gap: '8px' }}>
+              <label style={{color: textColor}}>정렬</label>
+              <div className="filter-buttons">
                 <button
                   onClick={() => setSortBy('recent')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    border: `1px solid ${sortBy === 'recent' ? '#10b981' : '#e5e7eb'}`,
-                    backgroundColor: sortBy === 'recent' ? '#10b981' : 'white',
-                    color: sortBy === 'recent' ? 'white' : '#6b7280',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: 'pointer'
+                  className={sortBy === 'recent' ? 'active' : ''}
+                  style={{ 
+                    backgroundColor: sortBy === 'recent' ? undefined : (isDark ? '#374151' : 'white'),
+                    color: sortBy === 'recent' ? undefined : subTextColor,
+                    borderColor: isDark ? '#4b5563' : undefined
                   }}
                 >
                   최근 저장순
                 </button>
                 <button
                   onClick={() => setSortBy('date')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    border: `1px solid ${sortBy === 'date' ? '#10b981' : '#e5e7eb'}`,
-                    backgroundColor: sortBy === 'date' ? '#10b981' : 'white',
-                    color: sortBy === 'date' ? 'white' : '#6b7280',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: 'pointer'
+                  className={sortBy === 'date' ? 'active' : ''}
+                  style={{ 
+                    backgroundColor: sortBy === 'date' ? undefined : (isDark ? '#374151' : 'white'),
+                    color: sortBy === 'date' ? undefined : subTextColor,
+                    borderColor: isDark ? '#4b5563' : undefined
                   }}
                 >
                   날짜순
@@ -283,7 +279,7 @@ const FavoritesPage: React.FC = () => {
         )}
 
         {/* Count */}
-        <div className="favorites-count" style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#6b7280' }}>
+        <div className="favorites-count" style={{ color: subTextColor, marginTop: '16px' }}>
           <Bookmark size={14} />
           <span>총 {filteredFavorites.length}개의 아이템</span>
         </div>
@@ -292,16 +288,15 @@ const FavoritesPage: React.FC = () => {
       {/* Main Content */}
       <main className="favorites-content" style={{ padding: '20px' }}>
         {filteredFavorites.length === 0 ? (
-          <div className="empty-state" style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div className="empty-icon" style={{ marginBottom: '16px', color: '#d1d5db', display: 'flex', justifyContent: 'center' }}>
-              <Heart size={64} />
+          <div className="empty-state">
+            <div className="empty-icon">
+              <Heart size={64} color="#d1d5db" />
             </div>
-            <h2 style={{ fontSize: '18px', marginBottom: '8px', color: '#111827' }}>관심 목록이 비어있습니다</h2>
-            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>마음에 드는 아이템을 관심 목록에 추가해보세요!</p>
+            <h2 style={{color: textColor}}>관심 목록이 비어있습니다</h2>
+            <p style={{color: subTextColor}}>마음에 드는 아이템을 관심 목록에 추가해보세요!</p>
             <button
               className="browse-button"
               onClick={() => navigate('/home')}
-              style={{ padding: '12px 24px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}
             >
               아이템 둘러보기
             </button>
@@ -316,9 +311,9 @@ const FavoritesPage: React.FC = () => {
                 transition={{ duration: 0.3, delay: index * 0.05 }}
                 className="favorite-card"
                 onClick={() => navigate(`/items/${item.id}`)}
-                style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+                style={{ backgroundColor: cardBg, borderColor: headerBorder }}
               >
-                <div className="card-image" style={{ width: '100%', height: '140px', position: 'relative' }}>
+                <div className="card-image">
                   <ImageWithFallback
                     src={item.image}
                     alt={item.title}
@@ -344,26 +339,10 @@ const FavoritesPage: React.FC = () => {
                     {item.status === 'lost' ? '분실' : '습득'}
                   </Badge>
 
-                  {/* 삭제 버튼 (우측 상단) */}
+                  {/* 삭제 버튼 */}
                   <button
                     className="remove-favorite-btn"
                     onClick={(e) => handleRemoveFavorite(item.id, e)}
-                    style={{
-                      position: 'absolute',
-                      top: '8px',
-                      right: '8px',
-                      width: '28px',
-                      height: '28px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      border: 'none',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      color: '#ef4444',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -385,25 +364,25 @@ const FavoritesPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="card-content" style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="card-content">
                   <div>
-                    <h3 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 4px 0', color: '#111827', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</h3>
-                    <span style={{ fontSize: '11px', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>{item.category}</span>
+                    <h3 style={{color: textColor}}>{item.title}</h3>
+                    <span className="category-badge" style={{ backgroundColor: isDark ? '#374151' : '#f3f4f6', color: subTextColor }}>{item.category}</span>
                   </div>
 
-                  <div className="card-meta" style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#6b7280' }}>
-                    <div className="meta-item" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <MapPin size={12} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.location}</span>
+                  <div className="card-meta">
+                    <div className="meta-item">
+                      <MapPin size={12} color={subTextColor} />
+                      <span style={{color: subTextColor}}>{item.location}</span>
                     </div>
-                    <div className="meta-item" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Calendar size={12} />
-                      <span>{formatDate(item.date)}</span>
+                    <div className="meta-item">
+                      <Calendar size={12} color={subTextColor} />
+                      <span style={{color: subTextColor}}>{formatDate(item.date)}</span>
                     </div>
                   </div>
 
                   {item.rewardPoints && item.rewardPoints > 0 && (
-                    <div className="reward-badge" style={{ marginTop: 'auto', fontSize: '12px', fontWeight: 700, color: '#b45309', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div className="reward-badge">
                       <span>💰</span> {item.rewardPoints.toLocaleString()}P
                     </div>
                   )}
@@ -411,11 +390,12 @@ const FavoritesPage: React.FC = () => {
               </motion.div>
             ))}
           </div>
-        )}
-      </main>
+        )
+        }
+      </main >
 
       <BottomNavigation />
-    </div>
+    </div >
   );
 };
 

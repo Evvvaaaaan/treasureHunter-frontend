@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ThumbsUp, Award } from 'lucide-react';
 import BottomNavigation from './BottomNavigation';
 import { getUserInfo, checkToken, getValidAuthToken } from '../utils/auth';
-import '../styles/review-page.css'; // 기존 review-page.css 재활용 또는 새로 생성 필요
+import { useTheme } from '../utils/theme';
+import '../styles/reviews-page.css'; // Fixed import name
 
 // API 데이터 타입 정의 (auth.ts의 ReceivedReview 참고)
 interface ReviewAuthor {
@@ -55,6 +56,7 @@ interface RatingStats {
 
 const ReviewsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [sortBy, setSortBy] = useState<'recent' | 'rating'>('recent');
   const [filterRating, setFilterRating] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -196,17 +198,17 @@ const ReviewsPage: React.FC = () => {
   const renderRatingBar = (label: string, count: number, range: string) => {
     const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
     return (
-      <div key={label} className="rating-bar-row" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '13px' }}>
-        <div className="rating-bar-label" style={{ width: '60px', color: '#6b7280' }}>
+      <div key={label} className="rating-bar-row">
+        <div className="rating-bar-label">
           <span className="range-text">{range}</span>
         </div>
-        <div className="rating-bar-container" style={{ flex: 1, height: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', margin: '0 12px', overflow: 'hidden' }}>
+        <div className="rating-bar-container">
           <div
             className="rating-bar-fill"
-            style={{ width: `${percentage}%`, height: '100%', backgroundColor: '#10b981', borderRadius: '4px' }}
+            style={{ width: `${percentage}%`, backgroundColor: '#10b981' }}
           />
         </div>
-        <span className="rating-bar-count" style={{ width: '30px', textAlign: 'right', color: '#374151', fontWeight: 500 }}>{count}</span>
+        <span className="rating-bar-count">{count}</span>
       </div>
     );
   };
@@ -240,28 +242,28 @@ const ReviewsPage: React.FC = () => {
   }
 
   return (
-    <div className="reviews-page" style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px', paddingTop: '50px' }}>
+    <div className={`reviews-page ${theme}`}>
       {/* Header */}
-      <div className="reviews-header" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button className="back-button" onClick={() => navigate(-1)} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer' }}>
-          <ArrowLeft size={24} color="#111827" />
+      <div className="reviews-header">
+        <button className="back-button" onClick={() => navigate(-1)}>
+          <ArrowLeft size={24} />
         </button>
-        <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color: '#111827' }}>받은 후기</h1>
-        <div className="header-spacer" style={{ width: '24px' }} />
+        <h1>받은 후기</h1>
+        <div className="header-spacer" />
       </div>
 
       {/* Rating Summary */}
-      <div className="rating-summary" style={{ backgroundColor: 'white', padding: '24px 20px', marginBottom: '12px' }}>
-        <div className="rating-overview" style={{ display: 'flex', gap: '32px' }}>
-          <div className="rating-score" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '100px' }}>
-            <h2 style={{ fontSize: '48px', fontWeight: 'bold', margin: 0, color: '#111827', lineHeight: 1 }}>
-              {stats.average.toFixed(1)}<span className="score-unit" style={{ fontSize: '16px', color: '#9ca3af', fontWeight: 'normal', marginLeft: '4px' }}>점</span>
+      <div className="rating-summary">
+        <div className="rating-overview">
+          <div className="rating-score">
+            <h2>
+              {stats.average.toFixed(1)}<span className="score-unit">점</span>
             </h2>
-            <p className="rating-grade" style={{ fontSize: '16px', fontWeight: 600, color: getScoreColor(stats.average), margin: '8px 0 4px' }}>{getScoreGrade(stats.average)}</p>
-            <p className="rating-count" style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>{stats.total}개의 후기</p>
+            <p className="rating-grade">{getScoreGrade(stats.average)}</p>
+            <p className="rating-count">{stats.total}개의 후기</p>
           </div>
 
-          <div className="rating-distribution" style={{ flex: 1 }}>
+          <div className="rating-distribution">
             {renderRatingBar('excellent', stats.distribution.excellent, '90-100')}
             {renderRatingBar('good', stats.distribution.good, '80-89')}
             {renderRatingBar('average', stats.distribution.average, '70-79')}
@@ -272,8 +274,8 @@ const ReviewsPage: React.FC = () => {
       </div>
 
       {/* Filter & Sort */}
-      <div className="reviews-controls" style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb' }}>
-        <div className="filter-buttons" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
+      <div className="reviews-controls">
+        <div className="filter-buttons">
           {[
             { key: null, label: '전체' },
             { key: 'excellent', label: '90-100점' },
@@ -286,18 +288,6 @@ const ReviewsPage: React.FC = () => {
               key={filter.label}
               className={`filter-chip ${filterRating === filter.key ? 'active' : ''}`}
               onClick={() => setFilterRating(filter.key as any)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '20px',
-                border: `1px solid ${filterRating === filter.key ? '#10b981' : '#e5e7eb'}`,
-                backgroundColor: filterRating === filter.key ? '#10b981' : 'white',
-                color: filterRating === filter.key ? 'white' : '#6b7280',
-                fontSize: '13px',
-                fontWeight: 500,
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
             >
               {filter.label}
             </button>
@@ -309,15 +299,6 @@ const ReviewsPage: React.FC = () => {
             className="sort-select"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'recent' | 'rating')}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb',
-              fontSize: '13px',
-              color: '#374151',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
           >
             <option value="recent">최신순</option>
             <option value="rating">높은 점수순</option>
@@ -326,10 +307,10 @@ const ReviewsPage: React.FC = () => {
       </div>
 
       {/* Reviews List */}
-      <div className="reviews-list" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="reviews-list">
         {filteredReviews.length > 0 ? (
           filteredReviews.map(review => (
-            <div key={review.id} className="review-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            <div key={review.id} className="review-card">
               <div className="review-header" style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
                 <img
                   src={review.reviewerImage}
@@ -337,43 +318,38 @@ const ReviewsPage: React.FC = () => {
                   className="reviewer-image"
                   style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e5e7eb' }}
                 />
-                <div className="reviewer-info" style={{ flex: 1 }}>
-                  <div className="reviewer-name-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span className="reviewer-name" style={{ fontSize: '15px', fontWeight: 600, color: '#111827' }}>{review.reviewerName}</span>
+                <div className="reviewer-info">
+                  <div className="reviewer-name-row">
+                    <span className="reviewer-name">{review.reviewerName}</span>
                     {/* 카테고리 정보가 있다면 표시, 없다면 생략하거나 기본값 */}
-                    {/* <span className={`item-category`} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: '#f3f4f6', color: '#6b7280' }}>
-                      {review.category === 'lost' ? '분실물' : '습득물'}
-                    </span> */}
+                    {/* <span className={`item-category`} >
+                        {review.category === 'lost' ? '분실물' : '습득물'}
+                      </span> */}
                   </div>
-                  <div className="review-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="review-meta">
                     <div
                       className="review-score-badge"
                       style={{
                         backgroundColor: getScoreColor(review.rating),
-                        color: 'white',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        padding: '2px 6px',
-                        borderRadius: '4px'
                       }}
                     >
                       {review.rating}점
                     </div>
-                    <span className="review-date" style={{ fontSize: '12px', color: '#9ca3af' }}>{formatDate(review.createdAt)}</span>
+                    <span className="review-date">{formatDate(review.createdAt)}</span>
                   </div>
                 </div>
               </div>
 
               <div className="review-content">
-                <p className="review-item-name" style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', fontWeight: 500 }}>
+                <p className="review-item-name">
                   <span style={{ marginRight: '4px' }}>📦</span>
                   {review.title}
                 </p>
-                <p className="review-text" style={{ fontSize: '15px', color: '#374151', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{review.content}</p>
+                <p className="review-text">{review.content}</p>
 
                 {/* 이미지 렌더링 추가 */}
                 {review.images && review.images.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto' }}>
+                  <div className="review-images" style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto' }}>
                     {review.images.map((img, idx) => (
                       <img key={idx} src={img} alt={`review-img-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
                     ))}
@@ -381,8 +357,8 @@ const ReviewsPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="review-footer" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'flex-end' }}>
-                <button className="helpful-button" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>
+              <div className="review-footer">
+                <button className="helpful-button">
                   <ThumbsUp size={14} />
                   <span>도움돼요 {review.helpful}</span>
                 </button>

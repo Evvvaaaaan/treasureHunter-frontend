@@ -53,6 +53,7 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.4.4",
     "@eslint/js": "^9.36.0",
     "@types/google.maps": "^3.58.1",

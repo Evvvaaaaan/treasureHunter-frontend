@@ -12,6 +12,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { signupUser, saveUserInfo, getValidAuthToken } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
+import { Capacitor } from '@capacitor/core';
 
 export default function SignupPage() {
   const navigate = useNavigate();

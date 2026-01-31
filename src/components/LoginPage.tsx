@@ -222,7 +222,7 @@ export default function LoginPage() {
               Google로 시작하기
             </Button>
 
-            <Button
+            {/* <Button
               onClick={() => handleSocialLogin('kakao')}
               className="social-btn kakao-btn"
               style={{
@@ -240,7 +240,7 @@ export default function LoginPage() {
                 />
               </svg>
               카카오로 시작하기
-            </Button>
+            </Button> */}
             <Button
               onClick={() => handleSocialLogin('apple')}
               className="social-btn apple-btn"
@@ -262,7 +262,7 @@ export default function LoginPage() {
               </svg>
               Apple로 시작하기
             </Button>
-            <Button
+            {/* <Button
               onClick={() => handleSocialLogin('naver')}
               className="social-btn naver-btn"
               style={{
@@ -280,7 +280,7 @@ export default function LoginPage() {
                 />
               </svg>
               네이버로 시작하기
-            </Button>
+            </Button> */}
           </motion.div>
 
           {/* Footer Text */}

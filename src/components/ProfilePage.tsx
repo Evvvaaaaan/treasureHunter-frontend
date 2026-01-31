@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,6 +7,7 @@ import {
 import { getUserInfo, checkToken, getValidAuthToken, type UserInfo } from '../utils/auth';
 import BottomNavigation from './BottomNavigation';
 import { uploadImage } from '../utils/file';
+import { useTheme } from '../utils/theme'; // ✅ useTheme 추가
 import '../styles/profile-page.css';
 import { API_BASE_URL } from '../config';
 
@@ -38,14 +38,14 @@ interface Activity {
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme(); // ✅ 테마 훅 사용
+  const isDark = theme === 'dark'; // ✅ 다크 모드 여부 확인
 
   const [user, setUser] = useState<UserInfo | null>(getUserInfo());
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState('');
   const [editNickname, setEditNickname] = useState('');
-  // API에 bio 필드가 없으므로 로컬 상태로만 관리하거나 제외 (여기서는 제외하고 닉네임/이름 수정에 집중)
-
+  
   const [profileImage, setProfileImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
@@ -59,8 +59,6 @@ const ProfilePage: React.FC = () => {
   });
 
   const [_activities, setActivities] = useState<Activity[]>([]);
-
-  // 뱃지 데이터는 API에서 상세 정보를 주지 않으므로 더미 또는 badgeCount 기반 생성
   const [badges, setBadges] = useState<Badge[]>([]);
 
   useEffect(() => {
@@ -71,16 +69,13 @@ const ProfilePage: React.FC = () => {
         return;
       }
 
-      // 최신 정보 로드
       const freshData = await checkToken(currentUser.id.toString());
 
       if (freshData) {
         setUser(freshData);
         setEditNickname(freshData.nickname);
-        setEditName(freshData.name);
         setProfileImage(freshData.profileImage);
 
-        // 통계 계산
         setStats({
           totalItems: freshData.posts?.length || 0,
           successfulMatches: freshData.returnedItemsCount || 0,
@@ -89,10 +84,8 @@ const ProfilePage: React.FC = () => {
             ? Math.round(parseFloat((freshData.totalScore / freshData.totalReviews).toFixed(1)))
             : 0,
           trustScore: freshData.totalScore,
-
         });
 
-        // 활동 내역 생성 (게시글 등록 + 리뷰 받음)
         const postActivities: Activity[] = (freshData.posts || []).map(post => ({
           id: `post - ${post.id} `,
           type: 'item_posted',
@@ -104,7 +97,7 @@ const ProfilePage: React.FC = () => {
           id: `review - ${review.id} `,
           type: 'review_received',
           description: `후기 도착: "${review.content.substring(0, 10)}..."`,
-          timestamp: new Date().toISOString() // 리뷰 생성일이 없다면 현재 시간 임시 사용
+          timestamp: new Date().toISOString()
         }));
 
         const combinedActivities = [...postActivities, ...reviewActivities]
@@ -113,7 +106,6 @@ const ProfilePage: React.FC = () => {
 
         setActivities(combinedActivities);
 
-        // 뱃지 생성 (badgeCount 기반 더미)
         const earnedBadges: Badge[] = Array.from({ length: freshData.badgeCount || 0 }).map((_, idx) => ({
           id: `badge - ${idx} `,
           name: `뱃지 ${idx + 1} `,
@@ -142,68 +134,60 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleSaveProfile = async () => {
-  if (!user) return;
-  setIsSaving(true);
+    if (!user) return;
+    setIsSaving(true);
 
-  try {
-    const token = await getValidAuthToken();
-    if (!token) throw new Error("인증 토큰이 없습니다.");
+    try {
+      const token = await getValidAuthToken();
+      if (!token) throw new Error("인증 토큰이 없습니다.");
 
-    let finalImageUrl = user.profileImage;
+      let finalImageUrl = user.profileImage;
 
-    // 1. 이미지 파일이 있으면 업로드
-    if (editImageFile) {
-      try {
-        finalImageUrl = await uploadImage(editImageFile);
-      } catch (uploadError) {
-        console.error("이미지 업로드 실패:", uploadError);
-        alert("이미지 업로드에 실패했습니다.");
-        setIsSaving(false);
-        return;
+      if (editImageFile) {
+        try {
+          finalImageUrl = await uploadImage(editImageFile);
+        } catch (uploadError) {
+          console.error("이미지 업로드 실패:", uploadError);
+          alert("이미지 업로드에 실패했습니다.");
+          setIsSaving(false);
+          return;
+        }
       }
+
+      const requestBody: { profileImage: string; nickname?: string } = {
+        profileImage: finalImageUrl
+      };
+
+      if (editNickname !== user.nickname) {
+        requestBody.nickname = editNickname;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUser(updatedUser);
+        setIsEditing(false);
+        alert('프로필이 저장되었습니다!');
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || '프로필 수정 실패');
+      }
+
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      alert(`프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+    } finally {
+      setIsSaving(false);
     }
-
-    // 2. 요청 본문(Body) 생성
-    // [중요] name 필드는 여기서 완전히 제외했습니다.
-    // profileImage는 항상 포함 (이미지가 안 바뀌었으면 기존 URL, 바뀌었으면 새 URL)
-    const requestBody: { profileImage: string; nickname?: string } = {
-      profileImage: finalImageUrl
-    };
-
-    // 3. 닉네임 변경 체크
-    // 입력한 닉네임이 기존 닉네임과 다를 경우에만 body에 추가
-    if (editNickname !== user.nickname) {
-      requestBody.nickname = editNickname;
-    }
-
-    // 4. API 호출
-    const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      // 구성된 객체를 JSON으로 변환하여 전송
-      body: JSON.stringify(requestBody),
-    });
-
-    if (response.ok) {
-      const updatedUser = await response.json();
-      setUser(updatedUser);
-      setIsEditing(false);
-      alert('프로필이 저장되었습니다!');
-    } else {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || '프로필 수정 실패');
-    }
-
-  } catch (error) {
-    console.error('Failed to save profile:', error);
-    alert(`프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   const handleLogout = () => {
     if (confirm('로그아웃 하시겠습니까?')) {
@@ -221,21 +205,58 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-
+  // ✅ 테마 색상 변수 정의
+  const bgColor = isDark ? '#030712' : '#f9fafb';
+  const textColor = isDark ? '#f9fafb' : '#111827';
+  const subTextColor = isDark ? '#9ca3af' : '#6b7280';
+  const cardBg = isDark ? '#1f2937' : '#ffffff';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
 
   if (!user) return null;
 
   return (
-    <div className="profile-page">
-      <div className="profile-header">
-        <h1>프로필</h1>
-        <button className="menu-button" onClick={() => navigate('/settings')}>
-          <Settings size={20} />
+    // ✅ 전체 페이지 배경색 동적 적용
+    <div className={`profile-page ${theme}`} style={{ backgroundColor: bgColor, paddingBottom: '80px', minHeight: '100vh', color: textColor }}>
+      
+      {/* Header */}
+      <div 
+        className="profile-header"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          backgroundColor: bgColor, // ✅ 헤더 배경도 다크모드 적용
+          paddingTop: 'calc(16px + env(safe-area-inset-top))',
+          paddingBottom: '16px',
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid transparent' 
+        }}
+      >
+        {/* ✅ 요청하신 폰트 스타일 적용 */}
+        <h1 style={{ 
+          fontSize: '28px', 
+          fontWeight: 800, 
+          margin: 0, 
+          color: textColor, // 다크모드일 때는 흰색, 라이트모드일 때는 #111827
+          letterSpacing: '-0.8px' 
+        }}>
+          프로필
+        </h1>
+        <button 
+          className="menu-button" 
+          onClick={() => navigate('/settings')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+        >
+          <Settings size={24} color={textColor} />
         </button>
       </div>
 
-      <div className="profile-content">
-        <div className="profile-card">
+      <div className="profile-content" style={{ padding: '0 20px 20px 20px' }}>
+        <div className="profile-card" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
           <div className="profile-top">
             <div className="profile-image-wrapper">
               <img src={profileImage || user.profileImage} alt="Profile" className="profile-image" />
@@ -261,24 +282,24 @@ const ProfilePage: React.FC = () => {
                     onChange={(e) => setEditNickname(e.target.value)}
                     className="edit-input"
                     placeholder="닉네임"
+                    style={{ backgroundColor: isDark ? '#374151' : 'white', color: textColor, border: `1px solid ${borderColor}` }}
                   />
                 </div>
               ) : (
                 <div className="profile-info">
-                  <h2>{user.nickname}</h2>
-                  {/* Bio가 없으므로 이메일이나 이름 표시 */}
-                  <p className="profile-bio">{user.email}</p>
+                  <h2 style={{ color: textColor }}>{user.nickname}</h2>
+                  <p className="profile-bio" style={{ color: subTextColor }}>{user.email}</p>
                 </div>
               )}
             </div>
 
             {!isEditing ? (
-              <button className="edit-profile-btn" onClick={() => setIsEditing(true)}>
+              <button className="edit-profile-btn" onClick={() => setIsEditing(true)} style={{ color: textColor, borderColor: borderColor }}>
                 편집
               </button>
             ) : (
               <div className="edit-actions">
-                <button className="cancel-btn" onClick={() => setIsEditing(false)}>
+                <button className="cancel-btn" onClick={() => setIsEditing(false)} style={{ color: subTextColor }}>
                   취소
                 </button>
                 <button className="save-btn" onClick={handleSaveProfile} disabled={isSaving}>
@@ -289,28 +310,28 @@ const ProfilePage: React.FC = () => {
           </div>
 
           {/* Stats Row */}
-          <div className="stats-row">
+          <div className="stats-row" style={{ borderColor: borderColor }}>
             <div className="stat-item" style={{ display: 'block' }}>
-              <p className="stat-value">{stats.totalItems}</p>
-              <p className="stat-label text-[10px]">등록 아이템</p>
+              <p className="stat-value" style={{ color: textColor }}>{stats.totalItems}</p>
+              <p className="stat-label text-[10px]" style={{ color: subTextColor }}>등록 아이템</p>
             </div>
-            <div className="stat-divider"></div>
+            <div className="stat-divider" style={{ backgroundColor: borderColor }}></div>
             <div className="stat-item" style={{ display: 'block' }}>
-              <p className="stat-value">{stats.successfulMatches}</p>
-              <p className="stat-label">성공 매칭</p>
+              <p className="stat-value" style={{ color: textColor }}>{stats.successfulMatches}</p>
+              <p className="stat-label" style={{ color: subTextColor }}>성공 매칭</p>
             </div>
-            <div className="stat-divider"></div>
+            <div className="stat-divider" style={{ backgroundColor: borderColor }}></div>
             <div className="stat-item" style={{ display: 'block' }}>
-              <p className="stat-value">{stats.averageRating.toFixed(0)}</p>
-              <p className="stat-label">평균 평점</p>
+              <p className="stat-value" style={{ color: textColor }}>{stats.averageRating.toFixed(0)}</p>
+              <p className="stat-label" style={{ color: subTextColor }}>평균 평점</p>
             </div>
           </div>
         </div>
 
-        {/* 획득한 뱃지 섹션 (있는 경우만 표시) */}
+        {/* 획득한 뱃지 섹션 */}
         {badges.length > 0 && (
           <div className="menu-section">
-            <h3 className="section-title">획득한 뱃지</h3>
+            <h3 className="section-title" style={{ color: textColor }}>획득한 뱃지</h3>
             <div className="badges-grid" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
               {badges.map((badge) => (
                 <div
@@ -322,11 +343,11 @@ const ProfilePage: React.FC = () => {
                     padding: '8px',
                     minWidth: '80px',
                     textAlign: 'center',
-                    backgroundColor: '#fff'
+                    backgroundColor: cardBg
                   }}
                 >
                   <div className="badge-icon" style={{ fontSize: '24px' }}>{badge.icon}</div>
-                  <p className="badge-name" style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '4px' }}>{badge.name}</p>
+                  <p className="badge-name" style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '4px', color: textColor }}>{badge.name}</p>
                 </div>
               ))}
             </div>
@@ -335,109 +356,109 @@ const ProfilePage: React.FC = () => {
 
         {/* Account Section */}
         <div className="menu-section">
-          <h3 className="section-title">계정</h3>
-          <div className="menu-card">
+          <h3 className="section-title" style={{ color: textColor }}>계정</h3>
+          <div className="menu-card" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
             <button className="menu-item" onClick={() => navigate('/my-items')}>
               <div className="menu-left">
                 <div className="menu-icon primary">
                   <Package size={20} />
                 </div>
-                <span>내 등록 아이템</span>
+                <span style={{ color: textColor }}>내 등록 아이템</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
             <button className="menu-item" onClick={() => navigate('/reviews')}>
               <div className="menu-left">
                 <div className="menu-icon success">
                   <Trophy size={20} />
                 </div>
-                <span>받은 후기</span>
+                <span style={{ color: textColor }}>받은 후기</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
             <button className="menu-item" onClick={() => navigate('/favorites')}>
               <div className="menu-left">
                 <div className="menu-icon warning">
                   <ActivityIcon size={20} />
                 </div>
-                <span>관심 목록 ({user.likedPosts?.length || 0})</span>
+                <span style={{ color: textColor }}>관심 목록 ({user.likedPosts?.length || 0})</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
             <button className="menu-item" onClick={() => navigate('/store')}>
               <div className="menu-left">
                 <div className="menu-icon info">
                   <TrendingUp size={20} />
                 </div>
-                <span>포인트 스토어</span>
+                <span style={{ color: textColor }}>포인트 스토어</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
             <button className="menu-item" onClick={() => navigate('/leaderboard')}>
               <div className="menu-left">
                 <div className="menu-icon success">
                   <Trophy size={20} />
                 </div>
-                <span>리더보드</span>
+                <span style={{ color: textColor }}>리더보드</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
           </div>
         </div>
 
         {/* Notification Section */}
         <div className="menu-section">
-          <h3 className="section-title">알림</h3>
-          <div className="menu-card">
-            <button className="menu-item" onClick={() => navigate('/notifications')}>
+          <h3 className="section-title" style={{ color: textColor }}>알림</h3>
+          <div className="menu-card" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
+            <button className="menu-item" onClick={() => navigate('/home')}>
               <div className="menu-left">
                 <div className="menu-icon primary">
                   <Bell size={20} />
                 </div>
-                <span>알림 설정</span>
+                <span style={{ color: textColor }}>알림 설정</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
           </div>
         </div>
 
         {/* Other Section */}
         <div className="menu-section">
-          <h3 className="section-title">기타</h3>
-          <div className="menu-card">
+          <h3 className="section-title" style={{ color: textColor }}>기타</h3>
+          <div className="menu-card" style={{ backgroundColor: cardBg, borderColor: borderColor }}>
             <button className="menu-item">
               <div className="menu-left">
                 <div className="menu-icon success">
                   <Mail size={20} />
                 </div>
-                <span>문의하기</span>
+                <span style={{ color: textColor }}>문의하기</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
-            <button className="menu-item">
+            <button className="menu-item"  onClick={() => navigate('/privacy')}>
               <div className="menu-left">
                 <div className="menu-icon warning">
                   <Shield size={20} />
                 </div>
-                <span>개인정보 처리방침</span>
+                <span style={{ color: textColor }}>개인정보 처리방침</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
             <button className="menu-item" onClick={() => navigate('/settings')}>
               <div className="menu-left">
                 <div className="menu-icon info">
                   <Settings size={20} />
                 </div>
-                <span>설정</span>
+                <span style={{ color: textColor }}>설정</span>
               </div>
-              <ChevronRight size={20} className="chevron" />
+              <ChevronRight size={20} className="chevron" color={subTextColor} />
             </button>
           </div>
         </div>
 
         {/* Logout Button */}
         <div className="logout-section">
-          <button className="logout-btn" onClick={handleLogout}>
+          <button className="logout-btn" onClick={handleLogout} style={{ backgroundColor: cardBg, borderColor: borderColor, color: '#ef4444' }}>
             <LogOut size={20} />
             <span>로그아웃</span>
           </button>

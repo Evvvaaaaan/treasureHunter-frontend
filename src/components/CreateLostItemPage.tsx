@@ -23,6 +23,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 // [MODIFIED] createPost, PostData, getValidAuthToken 추가
 import { getUserInfo, type UserInfo, createPost, type PostData, getValidAuthToken } from '../utils/auth';
+import { useTheme } from '../utils/theme';
 import '../styles/create-lost-item.css';
 import { API_BASE_URL } from '../config';
 // FormData 인터페이스는 그대로 사용
@@ -137,6 +138,7 @@ const uploadImages = async (files: File[], token: string): Promise<string[]> => 
 export default function CreateLostItemPage() {
   const [currentUser] = useState<UserInfo | null>(getUserInfo());
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const userInfo = getUserInfo(); // 이메일 등 초기값 설정에 사용
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -856,8 +858,7 @@ export default function CreateLostItemPage() {
 
   // --- JSX 렌더링 ---
   return (
-    // page-container 추가
-    <div className="page-container create-lost-item-page">
+    <div className={`create-lost-item-page ${theme}`}>
       {/* Header */}
       <header className="create-header">
         <button onClick={() => navigate(-1)} className="back-btn" aria-label="뒤로 가기">
@@ -1143,7 +1144,7 @@ export default function CreateLostItemPage() {
             <span>0 P</span>
             <span>{currentUser?.point?.toLocaleString() ?? 0} P</span>
           </div>
-          <p className="input-hint" style={{fontSize: '0.875rem', color: '#6b7280'}}>습득자에게 사례금으로 지급할 포인트를 설정할 수 있습니다.</p>
+          <p className="input-hint" style={{ fontSize: '0.875rem', color: '#6b7280' }}>습득자에게 사례금으로 지급할 포인트를 설정할 수 있습니다.</p>
         </div>
 
         {/* Lost Date */}
@@ -1152,7 +1153,7 @@ export default function CreateLostItemPage() {
           <div className="label-with-check">
             <Label htmlFor="lostDate">
               <CalendarIcon style={{ width: '1rem', height: '1rem' }} aria-hidden="true" />
-              {title} 발견 날짜 
+              {title} 발견 날짜
             </Label>
             {formData.lostDate && (
               <span className="field-check completed">✓ 완료</span>
@@ -1185,7 +1186,7 @@ export default function CreateLostItemPage() {
               className="anonymous-checkbox"
             />
           </div>
-          <p className="input-hint anonymous-hint" style={{fontSize: '0.875rem', color: '#6b7280'}}>
+          <p className="input-hint anonymous-hint" style={{ fontSize: '0.875rem', color: '#6b7280' }}>
             체크 시 게시글 목록과 상세 페이지에서 작성자 정보가 표시되지 않습니다.
           </p>
         </div>

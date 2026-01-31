@@ -137,7 +137,7 @@ export default function SearchPage() {
         id: post.id.toString(),
         title: post.title,
         category: post.itemCategory,
-        location: post.distance,
+        location: `${post.distance.toFixed(1)}km`,
         date: post.lostAt,
         imageUrl: post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
