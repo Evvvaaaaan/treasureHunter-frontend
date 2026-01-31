@@ -4,11 +4,11 @@ const config: CapacitorConfig = {
   appId: 'com.junsun.treasurehunter',
   appName: 'Find X',
   webDir: 'dist',
-  // server: {
-  //   // url: 'http://192.168.0.208:51845',
-  //   // cleartext: true,
-  //   androidScheme: 'https'
-  // },
+  server: {
+    url: 'http://192.168.0.208:51845',
+    cleartext: true,
+    androidScheme: 'https'
+  },
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],

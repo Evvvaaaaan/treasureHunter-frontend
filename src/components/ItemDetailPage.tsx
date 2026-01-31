@@ -358,7 +358,7 @@ const ItemDetailPage: React.FC = () => {
 
     } catch (error: any) {
       // [4번 알림] 에러 내용 출력
-      alert('4. 에러 발생: ' + JSON.stringify(error));
+      // alert('4. 에러 발생: ' + JSON.stringify(error));
       console.error('Share Error:', error);
     }
   };
