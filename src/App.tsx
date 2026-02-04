@@ -491,7 +491,7 @@ import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core'; // 플랫폼 확인용
-// import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth'; // ★ Google Auth Removed
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth'; 
 
 // ... (기존 컴포넌트 import 들은 그대로 유지) ...
 import LoginPage from './components/LoginPage';
@@ -705,6 +705,15 @@ function RootRedirect() {
 }
 
 export default function App() {
+  useEffect(() => {
+    GoogleAuth.initialize({
+      // ⚠️ 따옴표(') 안에 복사한 ID를 넣으세요. 끝에 콤마(,)도 지우지 마세요.
+      clientId: '272231760809-e8i08dnkevi90oo457mh7vapa2l1naq3.apps.googleusercontent.com', 
+      scopes: ['profile', 'email'],
+      grantOfflineAccess: true,
+    });
+    console.log('✅ GoogleAuth initialized');
+  }, []);
   // FCM 토큰 서버 전송 함수
   const sendTokenToServer = async (fcmToken: string) => {
     try {

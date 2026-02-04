@@ -1,12 +1,13 @@
 import { motion } from 'motion/react';
 import { MapPin, Search, Star } from 'lucide-react';
 // ✅ saveTokens 추가 import 필수
-import { checkToken, getOAuthUrl, getUserIdFromToken, loginWithSocialToken, saveTokens } from '../utils/auth';
+import { checkToken, getOAuthUrl, getUserIdFromToken, loginWithSocialToken, loginReviewerForReview, saveTokens } from '../utils/auth';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import '../styles/login-page.css';
 import { Capacitor } from '@capacitor/core';
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // ✅ Codetrix 라이브러리 사용
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
@@ -15,6 +16,11 @@ import type { SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor
 
 export default function LoginPage() {
   const navigate = useNavigate();
+
+  // 앱스토어 심사용(리뷰어) 계정 입력 필드 상태
+  const [reviewerId, setReviewerId] = useState('');
+  const [reviewerPassword, setReviewerPassword] = useState('');
+  const [isReviewerLoading, setIsReviewerLoading] = useState(false);
 
   // ✅ 초기화: 앱(Native)과 웹(Web)을 구분하여 설정
   useEffect(() => {
@@ -36,13 +42,27 @@ export default function LoginPage() {
   const handleSocialLogin = async (provider: 'google' | 'kakao' | 'naver' | 'apple') => {
     // 📱 1. 네이티브 앱 환경 (iOS/Android)
     if (Capacitor.isNativePlatform()) {
+      console.log('[Login] Native platform detected. Provider:', provider);
       try {
         if (provider === 'google') {
           // --- [Google 로그인 로직] ---
+          console.log('[Login][Google] signIn() 호출 시작');
           const user = await GoogleAuth.signIn();
-          
-          if (user.serverAuthCode) {
-            const authData = await loginWithSocialToken('google', user.serverAuthCode);
+          console.log('[Login][Google] signIn() 결과:', JSON.stringify(user));
+
+          // ✅ Android 환경에서 serverAuthCode가 비어있는 경우가 있어,
+          //    authentication.idToken도 fallback으로 사용하도록 처리
+          const authCode =
+            (user as any).serverAuthCode ||
+            (user as any).authentication?.idToken ||
+            (user as any).idToken;
+
+          console.log('[Login][Google] 추출된 authCode 존재 여부:', !!authCode);
+
+          if (authCode) {
+            console.log('[Login][Google] loginWithSocialToken 호출 시작');
+            const authData = await loginWithSocialToken('google', authCode);
+            console.log('[Login][Google] loginWithSocialToken 응답:', authData);
             
            if (authData) {
               if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
@@ -63,6 +83,7 @@ export default function LoginPage() {
                 }
                 
                 // 2. 홈으로 이동
+                console.log('[Login][Google] navigate(/home) 호출');
                 navigate('/home', { replace: true });
               } 
               // ✅ [복구됨] 신규 회원은 회원가입 페이지로 이동
@@ -77,11 +98,16 @@ export default function LoginPage() {
                 });
               } 
               else {
+                console.error('[Login][Google] 알 수 없는 회원 상태:', authData.role);
                 alert(`알 수 없는 회원 상태입니다: ${authData.role}`);
               }
             } else {
+              console.error('[Login][Google] 서버 로그인 실패: authData 없음');
               alert('서버 로그인 실패: 응답이 없습니다.');
             }
+          } else {
+            console.error('[Login][Google] authCode 추출 실패 (serverAuthCode / idToken 모두 없음)');
+            alert('구글 로그인 중 인증 코드(authCode)를 받지 못했습니다. 다시 시도해주세요.');
           }
 
         } else if (provider === 'apple') {
@@ -120,11 +146,73 @@ export default function LoginPage() {
           window.location.href = getOAuthUrl(provider);
         }
       } catch (error) {
+        // ✅ 네이티브 로그인 중 발생한 실제 오류를 최대한 상세하게 로깅/표시
         console.error('Native login error:', error);
+
+        const anyError = error as any;
+        const code = anyError?.code || anyError?.error || 'NO_CODE';
+        const message =
+          anyError?.message ||
+          (typeof error === 'string' ? error : '') ||
+          '알 수 없는 오류';
+        const raw =
+          !anyError?.message && typeof error !== 'string'
+            ? JSON.stringify(error)
+            : undefined;
+
+        console.error('[Login][Native] Error code:', code);
+        console.error('[Login][Native] Error message:', message);
+        if (raw) {
+          console.error('[Login][Native] Raw error:', raw);
+        }
+
+        alert(
+          [
+            '네이티브 로그인 중 오류가 발생했습니다.',
+            `code: ${code}`,
+            `message: ${message}`,
+          ].join('\n'),
+        );
       }
     } else {
       // 💻 2. 웹 환경
       window.location.href = getOAuthUrl(provider);
+    }
+  };
+
+  // App Store 심사용(리뷰어) 전용 로그인 버튼 핸들러
+  const handleReviewerLogin = async () => {
+    if (!reviewerId || !reviewerPassword) {
+      alert('리뷰어 아이디와 비밀번호를 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      setIsReviewerLoading(true);
+      const tokens = await loginReviewerForReview(reviewerId, reviewerPassword);
+
+      if (!tokens || !tokens.accessToken) {
+        alert('리뷰어 로그인에 실패했습니다. 아이디/비밀번호를 확인해주세요.');
+        return;
+      }
+
+      // 로그인 직후 유저 정보 프리로딩 (기존 Google 로직과 동일하게 처리)
+      try {
+        const userId = getUserIdFromToken(tokens.accessToken);
+        if (userId) {
+          console.log('리뷰어 로그인 직후 유저 정보 요청:', userId);
+          await checkToken(userId);
+        }
+      } catch (e) {
+        console.error('리뷰어 유저 정보 프리로딩 실패 (홈에서 재시도 예정):', e);
+      }
+
+      navigate('/home', { replace: true });
+    } catch (error) {
+      console.error('Reviewer login error:', error);
+      alert('리뷰어 로그인 중 오류가 발생했습니다.');
+    } finally {
+      setIsReviewerLoading(false);
     }
   };
 
@@ -221,6 +309,36 @@ export default function LoginPage() {
               </svg>
               Google로 시작하기
             </Button>
+
+            {/* --- App Store 심사용(리뷰어) 전용 로그인 영역 (기존 디자인/로직과 분리) --- */}
+            <div style={{ marginTop: '0.75rem', padding: '0.75rem 0', borderTop: '1px dashed #e5e7eb' }}>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.5rem' }}>
+                App Store 심사용 로그인 (리뷰어용)
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <Input
+                  placeholder="Reviewer ID"
+                  value={reviewerId}
+                  onChange={(e) => setReviewerId(e.target.value)}
+                  className="social-btn"
+                />
+                <Input
+                  placeholder="Reviewer Password"
+                  type="password"
+                  value={reviewerPassword}
+                  onChange={(e) => setReviewerPassword(e.target.value)}
+                  className="social-btn"
+                />
+                <Button
+                  onClick={handleReviewerLogin}
+                  disabled={isReviewerLoading}
+                  className="social-btn"
+                  variant="outline"
+                >
+                  {isReviewerLoading ? '로그인 중...' : '리뷰어 로그인 확인'}
+                </Button>
+              </div>
+            </div>
 
             {/* <Button
               onClick={() => handleSocialLogin('kakao')}

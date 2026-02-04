@@ -592,6 +592,38 @@ export const loginWithSocialToken = async (provider: string, code: string, name?
     return null;
   }
 };
+
+// [NEW] App Store Reviewer login (TestFlight / 심사용 계정 전용)
+// 로그인 화면에서 입력받은 id / password를 사용해 심사용 계정으로 로그인
+export const loginReviewerForReview = async (id: string, password: string): Promise<AuthTokens | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/reviewer/login`, {
+      method: 'POST',
+      headers: COMMON_HEADERS,
+      body: JSON.stringify({ id, password }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      console.error(`Reviewer login failed. Status: ${response.status}`, errorBody);
+      return null;
+    }
+
+    const data: AuthTokens = await response.json();
+
+    if (data.accessToken && data.refreshToken) {
+      // 토큰 및 만료 시간 저장
+      saveTokens(data);
+      return data;
+    } else {
+      console.error('Reviewer login response missing tokens:', data);
+      return null;
+    }
+  } catch (error) {
+    console.error('Reviewer login request failed:', error);
+    return null;
+  }
+};
 // 배포 시, 현재 주석된 코드 사용
 // export const loginWithSocialToken = async (provider: string, code: string, name?: string): Promise<boolean> => {
 //   try {

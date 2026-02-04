@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Find X',
   webDir: 'dist',
   server: {
-    url: 'http://192.168.0.208:51845',
-    cleartext: true,
+  //   url: 'http://192.168.0.208:51845',
+  //   cleartext: true,
     androidScheme: 'https'
   },
   plugins: {
