@@ -150,7 +150,7 @@ export default function CreateLostItemPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null); // google.maps.Map 타입 사용 가능
   const [marker, setMarker] = useState<any>(null); // google.maps.Marker 타입 사용 가능
-  const [title, setTitle] = useState('분실물 등록');
+  const [title, setTitle] = useState('분실물');
 
   // [NEW] 익명 등록 상태 추가
   const [isAnonymous, setIsAnonymous] = useState(false);
