@@ -24,9 +24,14 @@ const ChatListPage: React.FC = () => {
   const subscriptions = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
+    const user = getUserInfo();
+    if (user?.role === 'NOT_VERIFIED') {
+      navigate('/verify-phone');
+      return;
+    }
     loadChatRooms();
     updateUnreadCount();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (!searchQuery.trim()) {

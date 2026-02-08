@@ -115,6 +115,14 @@ const ChatPage: React.FC = () => {
   const readUpdateTimerRef = useRef<any | null>(null);
 
   useEffect(() => {
+    const user = getUserInfo();
+    if (user?.role === 'NOT_VERIFIED') {
+      navigate('/verify-phone');
+      return;
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     myUserTypeRef.current = myUserType;
   }, [myUserType]);
 

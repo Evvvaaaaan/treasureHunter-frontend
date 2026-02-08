@@ -657,6 +657,13 @@ export default function CreateLostItemPage() {
     }
     console.log('✓ 클라이언트 유효성 검사 통과');
 
+    // 문자 인증 미완료 사용자 차단
+    const user = getUserInfo();
+    if (user?.role === 'NOT_VERIFIED') {
+      navigate('/verify-phone');
+      return;
+    }
+
     setIsLoading(true); // Start loading
     setError('');       // Clear previous error message
 

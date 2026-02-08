@@ -376,6 +376,10 @@ const ItemDetailPage: React.FC = () => {
       }
       return;
     }
+    if (currentUser.role === 'NOT_VERIFIED') {
+      navigate('/verify-phone');
+      return;
+    }
     if (isMyPost) {
       alert("자신의 게시물에는 채팅을 걸 수 없습니다.");
       return;
