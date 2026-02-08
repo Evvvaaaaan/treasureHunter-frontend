@@ -622,26 +622,37 @@ const ItemDetailPage: React.FC = () => {
 
       {isImageViewerOpen && (
         <div className="image-viewer-modal" onClick={() => setIsImageViewerOpen(false)}>
-          <button className="close-viewer">
-            <X size={32} />
-          </button>
-          <img
-            src={item.images[currentImageIndex]}
-            alt={item.title}
-            onClick={(e) => e.stopPropagation()}
-          />
-          {item.images.length > 1 && (
-            <>
-              <button className="viewer-nav prev" onClick={(e) => { e.stopPropagation(); prevImage(); }}>
-                <ChevronLeft size={32} />
-              </button>
-              <button className="viewer-nav next" onClick={(e) => { e.stopPropagation(); nextImage(); }}>
-                <ChevronRight size={32} />
-              </button>
-            </>
-          )}
-          <div className="viewer-counter">
-            {currentImageIndex + 1} / {item.images.length}
+          <div className="viewer-header" onClick={(e) => e.stopPropagation()}>
+            <button className="close-viewer" onClick={() => setIsImageViewerOpen(false)} aria-label="닫기">
+              <X size={28} />
+            </button>
+          </div>
+          <div className="viewer-content" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={item.images[currentImageIndex]}
+              alt={item.title}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="viewer-footer" onClick={(e) => e.stopPropagation()}>
+            {item.images.length > 1 && (
+              <>
+                <button className="viewer-nav prev" onClick={(e) => { e.stopPropagation(); prevImage(); }}>
+                  <ChevronLeft size={28} />
+                </button>
+                <div className="viewer-counter">
+                  {currentImageIndex + 1} / {item.images.length}
+                </div>
+                <button className="viewer-nav next" onClick={(e) => { e.stopPropagation(); nextImage(); }}>
+                  <ChevronRight size={28} />
+                </button>
+              </>
+            )}
+            {item.images.length === 1 && (
+              <div className="viewer-counter viewer-counter-single">
+                {currentImageIndex + 1} / {item.images.length}
+              </div>
+            )}
           </div>
         </div>
       )}

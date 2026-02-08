@@ -42,27 +42,13 @@ export default function LoginPage() {
   const handleSocialLogin = async (provider: 'google' | 'kakao' | 'naver' | 'apple') => {
     // 📱 1. 네이티브 앱 환경 (iOS/Android)
     if (Capacitor.isNativePlatform()) {
-      console.log('[Login] Native platform detected. Provider:', provider);
       try {
         if (provider === 'google') {
           // --- [Google 로그인 로직] ---
-          console.log('[Login][Google] signIn() 호출 시작');
           const user = await GoogleAuth.signIn();
-          console.log('[Login][Google] signIn() 결과:', JSON.stringify(user));
-
-          // ✅ Android 환경에서 serverAuthCode가 비어있는 경우가 있어,
-          //    authentication.idToken도 fallback으로 사용하도록 처리
-          const authCode =
-            (user as any).serverAuthCode ||
-            (user as any).authentication?.idToken ||
-            (user as any).idToken;
-
-          console.log('[Login][Google] 추출된 authCode 존재 여부:', !!authCode);
-
-          if (authCode) {
-            console.log('[Login][Google] loginWithSocialToken 호출 시작');
-            const authData = await loginWithSocialToken('google', authCode);
-            console.log('[Login][Google] loginWithSocialToken 응답:', authData);
+          
+          if (user.serverAuthCode) {
+            const authData = await loginWithSocialToken('google', user.serverAuthCode);
             
            if (authData) {
               if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
@@ -83,7 +69,6 @@ export default function LoginPage() {
                 }
                 
                 // 2. 홈으로 이동
-                console.log('[Login][Google] navigate(/home) 호출');
                 navigate('/home', { replace: true });
               } 
               // ✅ [복구됨] 신규 회원은 회원가입 페이지로 이동
@@ -98,16 +83,11 @@ export default function LoginPage() {
                 });
               } 
               else {
-                console.error('[Login][Google] 알 수 없는 회원 상태:', authData.role);
                 alert(`알 수 없는 회원 상태입니다: ${authData.role}`);
               }
             } else {
-              console.error('[Login][Google] 서버 로그인 실패: authData 없음');
               alert('서버 로그인 실패: 응답이 없습니다.');
             }
-          } else {
-            console.error('[Login][Google] authCode 추출 실패 (serverAuthCode / idToken 모두 없음)');
-            alert('구글 로그인 중 인증 코드(authCode)를 받지 못했습니다. 다시 시도해주세요.');
           }
 
         } else if (provider === 'apple') {
@@ -146,25 +126,7 @@ export default function LoginPage() {
           window.location.href = getOAuthUrl(provider);
         }
       } catch (error) {
-        // ✅ 네이티브 로그인 중 발생한 실제 오류를 최대한 상세하게 로깅/표시
         console.error('Native login error:', error);
-
-        const anyError = error as any;
-        const code = anyError?.code || anyError?.error || 'NO_CODE';
-        const message =
-          anyError?.message ||
-          (typeof error === 'string' ? error : '') ||
-          '알 수 없는 오류';
-        const raw =
-          !anyError?.message && typeof error !== 'string'
-            ? JSON.stringify(error)
-            : undefined;
-
-        console.error('[Login][Native] Error code:', code);
-        console.error('[Login][Native] Error message:', message);
-        if (raw) {
-          console.error('[Login][Native] Raw error:', raw);
-        }
       }
     } else {
       // 💻 2. 웹 환경
