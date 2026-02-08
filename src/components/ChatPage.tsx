@@ -420,7 +420,9 @@ const ChatPage: React.FC = () => {
           <input type="text" className="message-input-new" placeholder="메시지를 입력하세요..." value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} onFocus={() => setShowEmojiPicker(false)} />
           <button className={`input-emoji-btn ${showEmojiPicker ? 'text-primary' : ''}`} onClick={() => setShowEmojiPicker(!showEmojiPicker)}> {showEmojiPicker ? <X size={20} /> : <Smile size={20} />} </button>
         </div>
-        <button className="send-btn-new" onClick={handleSendMessage} disabled={isSending || (!inputMessage.trim() && !selectedFile)}> <Send size={20} /> </button>
+        <button className="send-btn-new" onClick={handleSendMessage} disabled={isSending || (!inputMessage.trim() && !selectedFile)}>
+          {isSending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+        </button>
       </div>
     </div>
   );
