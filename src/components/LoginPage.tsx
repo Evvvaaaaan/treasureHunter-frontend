@@ -165,14 +165,6 @@ export default function LoginPage() {
         if (raw) {
           console.error('[Login][Native] Raw error:', raw);
         }
-
-        alert(
-          [
-            '네이티브 로그인 중 오류가 발생했습니다.',
-            `code: ${code}`,
-            `message: ${message}`,
-          ].join('\n'),
-        );
       }
     } else {
       // 💻 2. 웹 환경
