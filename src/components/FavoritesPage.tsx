@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, MapPin, Calendar, Filter, Bookmark, Trash2, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -17,6 +17,8 @@ interface FavoriteItem {
   title: string;
   category: string;
   location: string;
+  lat: number;
+  lon: number;
   date: string;
   image: string;
   status: 'lost' | 'found';
@@ -46,6 +48,13 @@ const FavoritesPage: React.FC = () => {
   const [filterType, setFilterType] = useState<'all' | 'lost' | 'found'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'date'>('recent');
   const [showFilters, setShowFilters] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     loadFavorites();
@@ -54,6 +63,48 @@ const FavoritesPage: React.FC = () => {
   useEffect(() => {
     applyFiltersAndSort();
   }, [favorites, filterType, sortBy]);
+
+  const formatLatLon = (lat: number, lon: number) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return '위치 정보 없음';
+    }
+    return `위도: ${lat.toFixed(4)}, 경도: ${lon.toFixed(4)}`;
+  };
+
+  const resolveAddresses = async (items: FavoriteItem[], retry: number = 0) => {
+    if (!items.length) return;
+    if (typeof google === 'undefined' || !google.maps?.Geocoder) {
+      if (retry < 5 && isMountedRef.current) {
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          resolveAddresses(items, retry + 1);
+        }, 500);
+      }
+      return;
+    }
+
+    const geocoder = new google.maps.Geocoder();
+
+    for (const item of items) {
+      if (!Number.isFinite(item.lat) || !Number.isFinite(item.lon)) continue;
+      const address = await new Promise<string>((resolve) => {
+        geocoder.geocode({ location: { lat: item.lat, lng: item.lon } }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+            resolve(results[0].formatted_address);
+          } else {
+            resolve(formatLatLon(item.lat, item.lon));
+          }
+        });
+      });
+
+      if (!isMountedRef.current) return;
+      setFavorites((prev) =>
+        prev.map((favorite) =>
+          favorite.id === item.id ? { ...favorite, location: address } : favorite
+        )
+      );
+    }
+  };
 
   const loadFavorites = async () => {
     setIsLoading(true);
@@ -74,12 +125,17 @@ const FavoritesPage: React.FC = () => {
         const mappedItems: FavoriteItem[] = freshUserInfo.likedPosts.map((post) => {
           const displayImage = post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE;
           const category = CATEGORY_MAP[post.itemCategory] || post.itemCategory;
+          const lat = Number(post.lat);
+          const lon = Number(post.lon);
+          const fallbackLocation = formatLatLon(lat, lon);
 
           return {
             id: post.id.toString(),
             title: post.title,
             category: category,
-            location: `위도: ${post.lat}, 경도: ${post.lon}`,
+            location: fallbackLocation,
+            lat,
+            lon,
             date: post.lostAt,
             image: displayImage,
             status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
@@ -89,6 +145,7 @@ const FavoritesPage: React.FC = () => {
           };
         });
         setFavorites(mappedItems);
+        resolveAddresses(mappedItems);
       } else {
         setFavorites([]);
       }
@@ -302,7 +359,7 @@ const FavoritesPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="favorites-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '16px' }}>
+          <div className="favorites-grid">
             {filteredFavorites.map((item, index) => (
               <motion.div
                 key={item.id}
@@ -365,27 +422,21 @@ const FavoritesPage: React.FC = () => {
                 </div>
 
                 <div className="card-content">
-                  <div>
+                  <div className="card-header">
                     <h3 style={{color: textColor}}>{item.title}</h3>
                     <span className="category-badge" style={{ backgroundColor: isDark ? '#374151' : '#f3f4f6', color: subTextColor }}>{item.category}</span>
                   </div>
 
                   <div className="card-meta">
-                    <div className="meta-item">
+                    <div className="meta-item address">
                       <MapPin size={12} color={subTextColor} />
-                      <span style={{color: subTextColor}}>{item.location}</span>
+                      <span style={{color: subTextColor}} title={item.location}>{item.location}</span>
                     </div>
                     <div className="meta-item">
                       <Calendar size={12} color={subTextColor} />
                       <span style={{color: subTextColor}}>{formatDate(item.date)}</span>
                     </div>
                   </div>
-
-                  {item.rewardPoints && item.rewardPoints > 0 && (
-                    <div className="reward-badge">
-                      <span>💰</span> {item.rewardPoints.toLocaleString()}P
-                    </div>
-                  )}
                 </div>
               </motion.div>
             ))}
