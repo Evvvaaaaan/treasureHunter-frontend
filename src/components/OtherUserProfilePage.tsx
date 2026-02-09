@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  MessageCircle,
   Star,
   MapPin,
   Calendar,
@@ -102,10 +101,6 @@ const OtherUserProfilePage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleStartChat = () => {
-    navigate(`/chat/${id}`); // 채팅방 생성 로직이 있는 페이지나 채팅방으로 이동
   };
 
   const handleReport = () => {
@@ -233,13 +228,6 @@ const OtherUserProfilePage: React.FC = () => {
           </div>
 
           <div className="profile-actions-other">
-            <button
-              className="chat-btn-other primary"
-              onClick={handleStartChat}
-            >
-              <MessageCircle size={20} />
-              메시지
-            </button>
             {/* [수정] 후기 작성 버튼 연결 */}
             <button
               className="chat-btn-other secondary" // 스타일 조정 필요시 chat-btn-other 재사용
