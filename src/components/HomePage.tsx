@@ -146,15 +146,6 @@ export default function HomePage() {
             lon: position.coords.longitude,
           };
           setUserLocation(newLoc);
-
-          // 만약 현재 거리순 탭에 있다면, 위치 정보를 얻자마자 새로고침
-          if (sortOption === 'distance') {
-            setTimeout(() => {
-              setPage(0);
-              setHasNextPage(true);
-              fetchPosts(0, true, newLoc.lat, newLoc.lon);
-            }, 100);
-          }
         },
         (error) => console.error("Location error:", error),
         { enableHighAccuracy: true, timeout: 10000 }
@@ -184,8 +175,8 @@ export default function HomePage() {
     }
 
     // 인자로 받은 좌표가 있으면 최우선 사용, 없으면 userLocation 사용, 그것도 없으면 기본값
-    const lat = overrideLat || userLocation?.lat || 37.5665;
-    const lon = overrideLon || userLocation?.lon || 126.9780;
+    const lat = overrideLat ?? userLocation?.lat ?? 37.5665;
+    const lon = overrideLon ?? userLocation?.lon ?? 126.9780;
 
     try {
       // URL 파라미터 구성 (page, size 추가)
@@ -193,21 +184,14 @@ export default function HomePage() {
       params.append('page', pageNum.toString());
       params.append('size', '10'); // 한 번에 가져올 개수
 
+      // 최신/거리순 공통: 거리 계산을 위해 lat/lon 항상 포함
+      params.append('lat', lat.toString());
+      params.append('lon', lon.toString());
+
       // [핵심 수정] 거리순 API 호출 시 파라미터 명세 준수
       if (sortOption === 'distance') {
-        if(lat && lon) {
-          params.append('searchType', 'distance'); // 기존 search_type -> searchType 으로 수정
-          params.append('lat', lat.toString());
-          params.append('lon', lon.toString());
-          params.append('maxDistance', '50'); // 필수: 최대 반경 50km
-        } else {
-          console.warn('위치 정보가 없습니다.')
-        }
-      } else {
-        if (lat && lon) {
-           params.append('lat', lat.toString());
-           params.append('lon', lon.toString());
-        }
+        params.append('searchType', 'distance'); // 기존 search_type -> searchType 으로 수정
+        params.append('maxDistance', '50'); // 필수: 최대 반경 50km
       }
 
       // const url = `${API_BASE_URL}/posts?${params.toString()}`;
@@ -266,7 +250,7 @@ export default function HomePage() {
       fetchPosts(0, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortOption, userInfo]);
+  }, [sortOption, userInfo, userLocation]);
 
   // 5. 무한 스크롤 트리거: 화면 바닥 감지 시 페이지 증가
   useEffect(() => {
