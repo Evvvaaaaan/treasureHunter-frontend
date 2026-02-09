@@ -226,7 +226,7 @@ export default function MapPage() {
           scale: 1, // 핀 크기 (조절 가능)
           anchor: new google.maps.Point(12, 22), // [중요] 핀의 뾰족한 끝(바닥)을 좌표 중심으로 설정
         },
-        zIndex: 2,
+        zIndex: 999,
       });
 
       // 마커 클릭 시 해당 게시글 정보 표시

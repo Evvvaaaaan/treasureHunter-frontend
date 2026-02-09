@@ -117,6 +117,7 @@ export default function HomePage() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
 
 
@@ -165,20 +166,19 @@ export default function HomePage() {
 
     setIsLoading(true);
 
-    const token = await getValidAuthToken();
-
-    if (!token) {
-      // setError('로그인이 필요합니다. 다시 로그인해주세요.');
-      setIsLoading(false);
-      navigate('/login');
-      return;
-    }
-
-    // 인자로 받은 좌표가 있으면 최우선 사용, 없으면 userLocation 사용, 그것도 없으면 기본값
-    const lat = overrideLat ?? userLocation?.lat ?? 37.5665;
-    const lon = overrideLon ?? userLocation?.lon ?? 126.9780;
-
     try {
+      const token = await getValidAuthToken();
+
+      if (!token) {
+        // setError('로그인이 필요합니다. 다시 로그인해주세요.');
+        navigate('/login');
+        return;
+      }
+
+      // 인자로 받은 좌표가 있으면 최우선 사용, 없으면 userLocation 사용, 그것도 없으면 기본값
+      const lat = overrideLat ?? userLocation?.lat ?? 37.5665;
+      const lon = overrideLon ?? userLocation?.lon ?? 126.9780;
+
       // URL 파라미터 구성 (page, size 추가)
       const params = new URLSearchParams();
       params.append('page', pageNum.toString());
@@ -239,18 +239,19 @@ export default function HomePage() {
       // setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
+      if (pageNum === 0) {
+        setHasLoadedOnce(true);
+      }
     }
   }, [userLocation, sortOption, hasNextPage, navigate]);
 
   // 4. 초기 로드 및 정렬 변경 시
   useEffect(() => {
-    if (userInfo) {
-      setPage(0);
-      setHasNextPage(true);
-      fetchPosts(0, true);
-    }
+    setPage(0);
+    setHasNextPage(true);
+    fetchPosts(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortOption, userInfo, userLocation]);
+  }, [sortOption, userLocation]);
 
   // 5. 무한 스크롤 트리거: 화면 바닥 감지 시 페이지 증가
   useEffect(() => {
@@ -332,6 +333,12 @@ export default function HomePage() {
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const emptyMessage = searchQuery
+    ? '검색 결과가 없습니다'
+    : sortOption === 'distance'
+      ? '50km 이내 등록된 게시글이 없습니다'
+      : '등록된 게시물이 없습니다.';
+  const showInitialLoader = !hasLoadedOnce;
 
   return (
     <div className="home-page">
@@ -591,15 +598,18 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="no-results">
-              {isLoading && page === 0 ? (
-                <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
+              {showInitialLoader || (isLoading && page === 0) ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                  <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>게시글을 불러오는 중...</p>
+                </div>
               ) : (
                 <>
                   <div className="no-results-icon">
                     <Search style={{ width: '2rem', height: '2rem', color: '#9ca3af' }} />
                   </div>
                   <p style={{ color: '#4b5563' }}>
-                    {searchQuery ? '검색 결과가 없습니다' : '등록된 게시물이 없습니다.'}
+                    {emptyMessage}
                   </p>
                   {!searchQuery && (
                     <Button onClick={() => navigate('/create')} style={{ marginTop: '1rem' }}>
