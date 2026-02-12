@@ -118,6 +118,7 @@ export default function HomePage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
 
 
@@ -451,6 +452,7 @@ export default function HomePage() {
                   placeholder="분실물 검색 (예: 지갑, 휴대폰, 강남역...)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => {
                     if (!searchQuery) {
                       setTimeout(() => setIsSearchExpanded(false), 200);
@@ -651,7 +653,7 @@ export default function HomePage() {
         </div>
       )}
 
-      <BottomNavigation />
+      {!isSearchFocused && <BottomNavigation />}
     </div>
   );
 }
