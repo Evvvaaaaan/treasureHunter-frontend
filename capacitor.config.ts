@@ -3,6 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.junsun.treasurehunter',
   appName: 'Find X',
+  // Firebase test 시, build, 이외 dist 사용. 
   webDir: 'dist',
   server: {
   //   url: 'http://192.168.0.208:51845',

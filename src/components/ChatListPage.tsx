@@ -230,7 +230,8 @@ const ChatListPage: React.FC = () => {
       </div>
       <div className="chat-list-content-new">
         {isLoading ? (
-          <div className="loading-container-new"><Loader2 className="loading-spinner-new animate-spin" /><p>채팅 목록을 불러오는 중...</p></div>
+          <div className="loading-container-new"><Loader2 className="animate-spin" size={48} 
+              style={{ color: '#10b981', marginBottom: '20px' }} /><p>채팅 목록을 불러오는 중...</p></div>
         ) : filteredRooms.length === 0 ? (
           <div className="empty-state-new">
             <MessageCircle size={64} className="empty-icon-new" />

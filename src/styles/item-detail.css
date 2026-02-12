@@ -551,7 +551,7 @@
   min-height: 44px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.2);
+  /* background: rgba(255, 255, 255, 0.2); */
   color: white;
   display: flex;
   align-items: center;
