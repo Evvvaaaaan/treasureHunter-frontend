@@ -17,7 +17,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useTheme } from '../utils/theme';
-import { clearTokens } from '../utils/auth';
+import { deleteUser, getUserInfo,clearTokens } from '../utils/auth';
 import BottomNavigation from './BottomNavigation';
 // 👇 이 컴포넌트가 반드시 같은 폴더(src/components/)에 있어야 합니다.
 import PushNotificationAlert from './PushNotificationAlert'; 
@@ -73,14 +73,35 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (window.confirm('정말 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-      // TODO: 서버에 회원 탈퇴 API 호출 필요
-      clearTokens();
-      navigate('/login');
+      try {
+        // 1. 현재 사용자 정보 가져오기 (ID 필요)
+        const userInfo = getUserInfo();
+        
+        if (!userInfo) {
+          alert('사용자 정보를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 2. 회원 탈퇴 API 호출 (ID는 문자열로 변환하여 전달)
+        // deleteUser 함수는 auth.ts에 이미 정의되어 있습니다.
+        const success = await deleteUser(String(userInfo.id));
+
+        if (success) {
+          alert('회원 탈퇴가 완료되었습니다.');
+          // 3. 토큰 삭제 및 로그인 페이지로 이동
+          clearTokens();
+          navigate('/login');
+        } else {
+          alert('회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        }
+      } catch (error) {
+        console.error('회원 탈퇴 중 오류 발생:', error);
+        alert('알 수 없는 오류가 발생했습니다.');
+      }
     }
   };
-
   return (
     <div className={`settings-page ${theme}`}>
       {/* Header */}
