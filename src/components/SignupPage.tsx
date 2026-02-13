@@ -31,7 +31,6 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState('');
-
   // ✅ [수정] 페이지 로드 시 토큰 검사 및 초기 데이터 세팅
   useEffect(() => {
     const initializePage = async () => {
@@ -225,6 +224,7 @@ export default function SignupPage() {
                 </label>
               </div>
               <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.75rem' }}>프로필 사진 (선택)</p>
+              
             </div>
 
             <div className="form-field">
