@@ -1,4 +1,9 @@
-/* Profile Page - Figma Inspired Design */
+
+/* 오류 발생 시, 아래 코드 사용할 것 */
+
+
+/* 
+/* /* Profile Page - Figma Inspired Design
 .profile-page {
   min-height: 100vh;
   background: #fafbfd;
@@ -430,4 +435,434 @@
     max-width: 800px;
     padding: 2rem;
   }
+}  
+
+/* 오류 발생 시, 위의 코드 사용할 것  */
+
+/* Profile Page - Modern Dark Header Design */
+.profile-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  /* ✅ [수정됨] 80px -> 120px + safe-area로 변경하여 충분한 여백 확보 */
+  padding-bottom: calc(120px + env(safe-area-inset-bottom));
+}
+
+/* ... (나머지 CSS 코드 유지) ... */
+
+/* =========================================
+   1. Dark Header Section (프로필 카드 영역)
+   ========================================= */
+.profile-dark-header {
+  background: linear-gradient(180deg, #1f2937 0%, #2d3748 100%);
+  padding-bottom: 32px;
+  border-radius: 0 0 28px 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  margin-bottom: 24px; /* 본문과의 간격 */
+}
+
+.profile-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 8px;
+  padding-top: max(16px, env(safe-area-inset-top)); 
+}
+
+.profile-header-top h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+}
+
+.header-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.header-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+/* Hero Section */
+.profile-hero-section {
+  text-align: center;
+  padding: 24px 20px 28px;
+}
+
+.profile-avatar-large {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 20px;
+  position: relative;
+}
+
+.profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.edit-avatar-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  background: #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s;
+  border: 3px solid #1f2937;
+}
+
+.profile-name-large {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 8px 0;
+}
+
+.profile-email {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+}
+
+.edit-profile-btn-hero {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+}
+
+/* Edit Mode Styles (Hero) */
+.profile-edit-hero {
+  max-width: 320px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-input-hero,
+.edit-textarea-hero {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.edit-actions-hero {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.cancel-btn-hero,
+.save-btn-hero {
+  flex: 1;
+  padding: 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.cancel-btn-hero { background: rgba(255, 255, 255, 0.1); color: white; }
+.save-btn-hero { background: #10b981; color: white; }
+
+/* Quick Stats */
+.quick-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 20px 20px;
+  padding: 16px;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quick-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.quick-stat-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.quick-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Action Cards Grid */
+.action-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 0 20px;
+}
+
+.action-card-dark {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.action-card-dark span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* =========================================
+   2. Body Content Section (하단 메뉴 영역) - [수정됨]
+   ========================================= */
+
+.profile-content-body {
+  padding: 0 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.content-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b7280;
+  margin: 0 0 12px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 메뉴 리스트 컨테이너 */
+.menu-list {
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f3f4f6;
+}
+
+/* 메뉴 아이템 (버튼) */
+.menu-list-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: white;
+  border: none;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.menu-list-item:last-child {
+  border-bottom: none;
+}
+
+.menu-list-item:active {
+  background-color: #f9fafb;
+}
+
+/* 메뉴 아이콘 배경 (둥근 사각형) */
+.menu-icon-bg {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+
+/* 아이콘 배경 색상별 스타일 */
+.menu-icon-bg.primary { background-color: #eff6ff; color: #3b82f6; } /* 파랑 */
+.menu-icon-bg.success { background-color: #f0fdf4; color: #22c55e; } /* 초록 */
+.menu-icon-bg.warning { background-color: #fefce8; color: #eab308; } /* 노랑 */
+.menu-icon-bg.info { background-color: #f5f3ff; color: #8b5cf6; }    /* 보라 */
+.menu-icon-bg.gray { background-color: #f3f4f6; color: #6b7280; }    /* 회색 */
+
+/* 메뉴 텍스트 */
+.menu-text {
+  flex: 1;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+/* 화살표 아이콘 */
+.menu-arrow {
+  color: #d1d5db;
+  display: flex;
+  align-items: center;
+}
+
+/* 뱃지 스크롤 영역 */
+.badges-scroll-container {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none; /* Firefox */
+}
+.badges-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+  background: white;
+  padding: 12px 8px;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  border: 1px solid #f3f4f6;
+}
+
+.badge-icon-wrapper {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.badge-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+  text-align: center;
+}
+
+/* 로그아웃 버튼 */
+.logout-section {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}
+
+.logout-btn-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+
+.logout-btn-text:hover {
+  background-color: #fef2f2;
+}
+
+/* =========================================
+   3. Dark Mode Overrides
+   ========================================= */
+:root.dark .profile-page {
+  background: #0f1419;
+}
+
+/* 헤더는 그라데이션이라 다크모드에서 자동 처리됨 (위에서 정의함) */
+
+/* 본문 영역 다크모드 */
+:root.dark .section-title {
+  color: #9ca3af;
+}
+
+:root.dark .menu-list {
+  background: #1a1f2e;
+  border-color: #2d3748;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+:root.dark .menu-list-item {
+  background: #1a1f2e;
+  border-bottom-color: #2d3748;
+}
+
+:root.dark .menu-list-item:active {
+  background-color: #252b3b;
+}
+
+:root.dark .menu-text {
+  color: #e5e7eb;
+}
+
+:root.dark .menu-arrow {
+  color: #4b5563;
+}
+
+/* 아이콘 배경 다크모드 (투명도 조절) */
+:root.dark .menu-icon-bg.primary { background-color: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+:root.dark .menu-icon-bg.success { background-color: rgba(34, 197, 94, 0.15); color: #4ade80; }
+:root.dark .menu-icon-bg.warning { background-color: rgba(234, 179, 8, 0.15); color: #facc15; }
+:root.dark .menu-icon-bg.info { background-color: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+:root.dark .menu-icon-bg.gray { background-color: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+
+/* 뱃지 다크모드 */
+:root.dark .badge-item {
+  background: #1a1f2e;
+  border-color: #2d3748;
+}
+:root.dark .badge-name {
+  color: #d1d5db;
 }
