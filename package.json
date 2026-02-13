@@ -2,7 +2,7 @@
   "name": "treasure",
   "private": true,
   "version": "0.0.0",
-  "homepage": ".", 
+  "homepage": ".",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -25,6 +25,7 @@
     "@capacitor/share": "^7.0.3",
     "@capacitor/status-bar": "^7.0.4",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
+    "@react-google-maps/api": "^2.20.8",
     "@stomp/stompjs": "^7.2.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

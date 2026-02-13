@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  //  상대경로로 수정함. 
   base: './',
   define: {
     global: 'window',

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Loader2, Crosshair, HelpCircle, Shield } from 'lucide-react'; // Loader2 추가
+import { ChevronDown, Loader2, Crosshair, HelpCircle, Shield } from 'lucide-react';
 import BottomNavigation from './BottomNavigation';
 import { useTheme } from '../utils/theme';
 import { getValidAuthToken } from '../utils/auth';
@@ -11,9 +11,89 @@ import { API_BASE_URL } from '../config';
 
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
-// [Snazzy Maps Style: Becomeadinosaur]
+// [Snazzy Maps Style: Becomeadinosaur] - 다크 모드 스타일 정의
+const googleMapDarkMode = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#263c3f" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#6b9a76" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#38414e" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#212a37" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9ca5b3" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#746855" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1f2835" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#f3d19c" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#2f3948" }],
+  },
+  {
+    featureType: "transit.station",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#17263c" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#515c6d" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#17263c" }],
+  },
+];
 
-// [수정] API 응답 데이터 타입 정의 (HomePage와 일치)
+// API 응답 데이터 타입 정의
 interface MapPost {
   id: number;
   title: string;
@@ -24,7 +104,6 @@ interface MapPost {
   itemCategory: string;
   images: string[];
   setPoint: number;
-  // 필요한 경우 matchProbability 등 추가
 }
 
 interface ApiResponse {
@@ -33,23 +112,23 @@ interface ApiResponse {
 
 export default function MapPage() {
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  const { theme } = useTheme(); // 테마 훅 사용
   const mapRef = useRef<HTMLDivElement>(null);
 
   // 상태 관리
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [posts, setPosts] = useState<MapPost[]>([]); // 게시글 데이터 (마커용)
+  const [posts, setPosts] = useState<MapPost[]>([]);
   const [selectedPost, setSelectedPost] = useState<MapPost | null>(null);
   const [_isLoading, setIsLoading] = useState(true);
   const [_myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [myLocationMarker, setMyLocationMarker] = useState<google.maps.Marker | null>(null); // 내 위치 마커 상태 추가
-  const [isLocating, setIsLocating] = useState(false); // 위치 찾는 중 상태 추가
-  const [showLegend, setShowLegend] = useState(false); // 마커 범례 표시 상태
+  const [myLocationMarker, setMyLocationMarker] = useState<google.maps.Marker | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
   const [showSafeZones, setShowSafeZones] = useState(false);
-  const safeMarkersRef = useRef<google.maps.Marker[]>([]); // 안심 마커 관리
-  // 마커 인스턴스 관리를 위한 Ref (지도에서 제거할 때 필요)
+  const safeMarkersRef = useRef<google.maps.Marker[]>([]);
   const markersRef = useRef<google.maps.Marker[]>([]);
 
+  // 안심 거래 존 토글
   const toggleSafeZones = () => {
     const nextState = !showSafeZones;
     setShowSafeZones(nextState);
@@ -73,20 +152,17 @@ export default function MapPage() {
     const center = map.getCenter();
     if (!center) return;
 
-    // 검색 요청 옵션 (반경 1.5km)
     const requestCommon = {
       location: center,
       radius: 1500,
     };
 
-    // 1. 경찰서/지구대 검색
     service.nearbySearch({ ...requestCommon, type: 'police' }, (results, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK && results) {
         results.forEach(place => createSafeMarker(place, 'POLICE'));
       }
     });
 
-    // 2. 편의점 검색 (Google Maps 데이터상 편의점)
     service.nearbySearch({ ...requestCommon, type: 'convenience_store' }, (results, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK && results) {
         results.forEach(place => createSafeMarker(place, 'STORE'));
@@ -97,8 +173,6 @@ export default function MapPage() {
   const createSafeMarker = (place: google.maps.places.PlaceResult, type: 'POLICE' | 'STORE') => {
     if (!map || !place.geometry?.location) return;
 
-    // 아이콘 설정 (파출소: 파란 방패, 편의점: 노란 방패 느낌)
-    // 구글 기본 심볼 경로를 사용하여 커스텀 아이콘 생성
     const iconColor = type === 'POLICE' ? '#1E88E5' : '#FBC02D';
     const shieldPath = "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z";
     const marker = new google.maps.Marker({
@@ -106,18 +180,17 @@ export default function MapPage() {
       position: place.geometry.location,
       title: place.name,
       icon: {
-        path: shieldPath, // 여기에 SVG 경로 문자열을 직접 넣습니다.
+        path: shieldPath,
         fillColor: iconColor,
         fillOpacity: 1,
         strokeWeight: 1,
         strokeColor: '#ffffff',
-        scale: 1, // SVG 경로 크기에 맞춰 스케일 조정 (기존 10 -> 1.5 정도가 적당)
-        anchor: new google.maps.Point(12, 12), // 아이콘 중심점 설정 (24x24 기준 중앙)
+        scale: 1,
+        anchor: new google.maps.Point(12, 12),
       },
       zIndex: 1,
     });
 
-    // 클릭 시 정보창 (선택 사항)
     const infoWindow = new google.maps.InfoWindow({
       content: `<div style="padding:5px; color:black;"><strong>${place.name}</strong><br/>안심 거래 장소</div>`,
     });
@@ -128,12 +201,11 @@ export default function MapPage() {
 
     safeMarkersRef.current.push(marker);
   };
-  // 1. 게시글 데이터 불러오기 (API 연결)
+
+  // 게시글 데이터 불러오기
   const fetchPosts = async () => {
     try {
       const token = await getValidAuthToken();
-      // 토큰이 없어도 지도는 볼 수 있도록 처리 (필요 시 로그인 페이지 리다이렉트)
-
       const headers: HeadersInit = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -145,7 +217,6 @@ export default function MapPage() {
 
       if (response.ok) {
         const data: ApiResponse = await response.json();
-        // API에서 받아온 리스트를 상태에 저장
         setPosts(data.posts || []);
       }
     } catch (error) {
@@ -159,9 +230,8 @@ export default function MapPage() {
     fetchPosts();
   }, []);
 
-  // 2. 지도 초기화
+  // 지도 초기화
   useEffect(() => {
-    // Google Maps API가 로드될 때까지 대기하는 로직 추가 (CreateLostItemPage 참고)
     if (typeof window.google === 'undefined' || typeof window.google.maps === 'undefined') {
       const checkGoogleMapsInterval = setInterval(() => {
         if (typeof window.google !== 'undefined' && typeof window.google.maps !== 'undefined') {
@@ -177,37 +247,45 @@ export default function MapPage() {
     function initMap() {
       if (!mapRef.current) return;
 
-      const initialCenter = { lat: 37.5665, lng: 126.9780 }; // 서울 시청
+      const initialCenter = { lat: 37.5665, lng: 126.9780 };
       const googleMap = new google.maps.Map(mapRef.current, {
         center: initialCenter,
         zoom: 14,
         disableDefaultUI: true,
         zoomControl: true,
-        styles: [ /* ...styles... */
-            { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
-          ],
+        // 초기 스타일 설정 (현재 테마 반영)
+        styles: theme === 'dark' ? googleMapDarkMode : [
+          { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+        ],
       });
 
       setMap(googleMap);
-
-      // 초기 로딩 시 한 번 내 위치 가져오기 시도 (선택 사항)
-      // getCurrentLocation(googleMap); 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // theme을 의존성 배열에서 제외하여 지도 재초기화 방지
 
-  // 3. 마커 렌더링 (posts 데이터가 변경될 때 실행)
+  // [추가] 테마 변경 감지하여 지도 스타일 업데이트
+  useEffect(() => {
+    if (map) {
+      const newStyles = theme === 'dark' 
+        ? googleMapDarkMode 
+        : [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }];
+      
+      map.setOptions({ styles: newStyles });
+    }
+  }, [theme, map]);
+
+
+  // 마커 렌더링
   useEffect(() => {
     if (!map || posts.length === 0) return;
 
-    // 기존 마커들 지도에서 제거
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
 
     const pinPath = "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z";
-    // 새로운 마커 생성
+    
     posts.forEach((post) => {
-      // 좌표 데이터가 유효한지 확인
       if (!post.lat || !post.lon) return;
 
       const markerColor = post.type === 'LOST' ? '#E53935' : '#43A047';
@@ -216,20 +294,18 @@ export default function MapPage() {
         position: { lat: post.lat, lng: post.lon },
         map: map,
         title: post.title,
-        // 게시글 타입에 따라 마커 색상 구분 (빨강: 분실, 초록: 습득)
         icon: {
-          path: pinPath, // 핀 모양 경로 적용
-          fillColor: markerColor, // 빨강 or 초록
+          path: pinPath,
+          fillColor: markerColor,
           fillOpacity: 1,
           strokeWeight: .5,
-          strokeColor: '#ffffff', // 흰색 테두리
-          scale: 1, // 핀 크기 (조절 가능)
-          anchor: new google.maps.Point(12, 22), // [중요] 핀의 뾰족한 끝(바닥)을 좌표 중심으로 설정
+          strokeColor: '#ffffff',
+          scale: 1,
+          anchor: new google.maps.Point(12, 22),
         },
         zIndex: 999,
       });
 
-      // 마커 클릭 시 해당 게시글 정보 표시
       marker.addListener("click", () => {
         setSelectedPost(post);
         map.panTo(marker.getPosition() as google.maps.LatLng);
@@ -239,11 +315,11 @@ export default function MapPage() {
     });
   }, [map, posts]);
 
-  // [수정] 내 위치 가져오기 함수 (CreateLostItemPage 참고)
+  // 내 위치 가져오기
   const handleMyLocationClick = async () => {
     if (!map) return;
 
-    setIsLocating(true); // 로딩 시작
+    setIsLocating(true);
 
     try {
       if (Capacitor.isNativePlatform()) {
@@ -269,12 +345,10 @@ export default function MapPage() {
       map.setCenter(pos);
       map.setZoom(15);
 
-      // 기존 내 위치 마커가 있으면 제거
       if (myLocationMarker) {
         myLocationMarker.setMap(null);
       }
 
-      // 내 위치 표시 마커 생성
       const newMarker = new google.maps.Marker({
         position: pos,
         map: map,
@@ -287,7 +361,7 @@ export default function MapPage() {
           strokeWeight: 2,
         },
         title: "내 위치",
-        zIndex: 999, // 다른 마커보다 위에 표시
+        zIndex: 999,
       });
 
       setMyLocationMarker(newMarker);
@@ -308,7 +382,8 @@ export default function MapPage() {
     <div className={`map-page ${theme}`}>
       {/* 지도 컨테이너 */}
       <div ref={mapRef} className="map-container" />
-      {/* [추가] 맵 컨트롤 영역 (물음표 버튼) */}
+      
+      {/* 맵 컨트롤 영역 */}
       <div className="map-controls">
         <button
           className="map-control-btn"
@@ -327,16 +402,14 @@ export default function MapPage() {
         </button>
       </div>
 
-      {/* [추가] 범례 (Legend) 표시 */}
+      {/* 범례 (Legend) */}
       {showLegend && (
         <div className="map-legend">
           <div className="legend-item">
-            {/* found 클래스는 초록색 (습득물) */}
             <div className="legend-marker found" />
             <span>습득물</span>
           </div>
           <div className="legend-item">
-            {/* lost 클래스는 빨간색 (분실물) */}
             <div className="legend-marker lost" />
             <span>분실물</span>
           </div>
@@ -350,7 +423,8 @@ export default function MapPage() {
           </div>
         </div>
       )}
-      {/* 내 위치로 이동 버튼 */}
+      
+      {/* 내 위치 버튼 */}
       <button
         className="my-location-btn"
         onClick={handleMyLocationClick}
@@ -364,7 +438,7 @@ export default function MapPage() {
         )}
       </button>
 
-      {/* 마커 정보 카드 (선택된 게시글이 있을 때 표시) */}
+      {/* 마커 정보 카드 */}
       {selectedPost && (
         <div className="marker-info-card" onClick={() => navigate(`/items/${selectedPost.id}`)}>
           <button
@@ -378,7 +452,6 @@ export default function MapPage() {
           </button>
 
           <div className="info-content">
-            {/* 이미지 */}
             <img
               src={selectedPost.images && selectedPost.images.length > 0
                 ? selectedPost.images[0]
@@ -386,7 +459,6 @@ export default function MapPage() {
               alt={selectedPost.title}
             />
 
-            {/* 상세 정보 */}
             <div className="info-details">
               <span className={`info-type ${selectedPost.type.toLowerCase()}`}>
                 {selectedPost.type === 'LOST' ? '분실물' : '습득물'}
@@ -394,7 +466,6 @@ export default function MapPage() {
               <h3>{selectedPost.title}</h3>
               <p className="info-desc">{selectedPost.content}</p>
 
-              {/* 포인트 정보 (있을 경우만 표시) */}
               {selectedPost.setPoint > 0 && (
                 <div className="reward-info">
                   💰 {selectedPost.setPoint.toLocaleString()} 포인트
@@ -404,8 +475,6 @@ export default function MapPage() {
           </div>
         </div>
       )}
-
-
 
       <BottomNavigation />
     </div>
