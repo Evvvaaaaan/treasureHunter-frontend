@@ -13,7 +13,8 @@ import {
   Navigation,
   Calendar,
 } from 'lucide-react';
-import { CapacitorHttp } from '@capacitor/core';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { Keyboard } from '@capacitor/keyboard';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
@@ -137,6 +138,28 @@ export default function HomePage() {
   // useEffect(() => {
   //   if (!userInfo) navigate('/login');
   // }, [userInfo, navigate]);
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // addListener는 Promise<PluginListenerHandle>를 반환합니다.
+      const showListener = Keyboard.addListener('keyboardWillShow', () => {
+        setIsSearchFocused(true);
+      });
+
+      const hideListener = Keyboard.addListener('keyboardWillHide', () => {
+        setIsSearchFocused(false);
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      });
+
+      return () => {
+        // Promise가 완료된 후(then) 내부의 remove()를 호출합니다.
+        showListener.then(handle => handle.remove());
+        hideListener.then(handle => handle.remove());
+      };
+    }
+  }, []);
 
   // 2. 위치 정보 가져오기 (마운트 시 1회)
   useEffect(() => {
@@ -456,6 +479,9 @@ export default function HomePage() {
                   onBlur={() => {
                     if (!searchQuery) {
                       setTimeout(() => setIsSearchExpanded(false), 200);
+                    }
+                    if (!Capacitor.isNativePlatform()) {
+                       setIsSearchFocused(false);
                     }
                   }}
                   autoFocus
