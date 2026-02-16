@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "97393197228-htn0tsssrv41opce08m2ffdcehn2q0b5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.junsun.treasurehunter",
+            "certificate_hash": "58421f4a404589de11139a9f7670b089c5ab319c"
+          }
+        },
+        {
           "client_id": "97393197228-9no3bd5cbdntkrg2r3dgjnku8434tfh1.apps.googleusercontent.com",
           "client_type": 3
         }

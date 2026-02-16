@@ -512,7 +512,7 @@ export const signupUser = async (
 
 // [NEW] Login with social token (native flow)
 export interface SocialLoginResponse extends AuthTokens {
-  role: 'USER' | 'NOT_REGISTERED' | 'NOT_VERIFIED';
+  role: 'USER' | 'NOT_REGISTERED' | 'NOT_VERIFIED' | 'ADMIN';
   // UserInfo fields might be included
   id?: number;
   nickname?: string;

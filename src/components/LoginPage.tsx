@@ -51,7 +51,8 @@ export default function LoginPage() {
             const authData = await loginWithSocialToken('google', user.serverAuthCode);
             
            if (authData) {
-              if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
+            // admin 추가할 것
+              if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED' || authData.role === 'ADMIN') {
                 console.log(`기존/미인증 회원(${authData.role}) -> 홈으로 이동`);
                 
                 // 1. 토큰 저장
@@ -114,7 +115,7 @@ export default function LoginPage() {
             
             if (authData) {
               // ✅ [수정됨] Apple 로그인도 동일하게 적용
-              if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED') {
+              if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED' || authData.role === 'ADMIN') {
                 saveTokens(authData);
                 navigate('/home', { replace: true });
               } else if (authData.role === 'NOT_REGISTERED') {
