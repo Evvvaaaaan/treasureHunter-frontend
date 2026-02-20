@@ -38,9 +38,14 @@ export default function LoginPage() {
       } as any); // serverClientId 타입을 무시하기 위해 as any 사용
     } 
     else if (platform === 'android') {
-      // 안드로이드는 strings.xml 및 json 파일 설정을 따르도록 빈 값으로 호출
-      await GoogleAuth.initialize();
-    } 
+      // 🚨 안드로이드 픽스: 여기서도 반드시 '웹 클라이언트 ID'를 serverClientId로 넘겨야 합니다!
+      await GoogleAuth.initialize({
+        clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', // 웹 클라이언트 ID
+        serverClientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', // 웹 클라이언트 ID
+        scopes: ['profile', 'email'],
+        grantOfflineAccess: true,
+      } as any);
+    }
     else {
       // 웹(Web) 환경 설정
       await GoogleAuth.initialize({
