@@ -3,6 +3,8 @@ import { MapPin, Search, Star } from 'lucide-react';
 // ✅ saveTokens 추가 import 필수
 import { checkToken, getOAuthUrl, getUserIdFromToken, loginWithSocialToken, loginReviewerForReview, saveTokens } from '../utils/auth';
 import { Button } from './ui/button';
+import { auth } from '../../src/firebase'; 
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { Input } from './ui/input';
 import '../styles/login-page.css';
 import { Capacitor } from '@capacitor/core';
@@ -27,13 +29,13 @@ export default function LoginPage() {
     if (!Capacitor.isNativePlatform()) {
       // 1. 웹(Web)일 때만 Client ID 직접 설정
       GoogleAuth.initialize({
-        clientId: '272231760809-e8i08dnkevi90oo457mh7vapa2l1naq3.apps.googleusercontent.com',
+        clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
         scopes: ['profile', 'email'],
         grantOfflineAccess: true,
       });
     } else {
       // 2. 앱(Native)일 때는 설정 파일(capacitor.config.ts)을 따름
-      GoogleAuth.initialize(); 
+      GoogleAuth.initialize();
     }
   }, []);
 
@@ -45,19 +47,25 @@ export default function LoginPage() {
       try {
         if (provider === 'google') {
           // --- [Google 로그인 로직] ---
+          await GoogleAuth.initialize({
+            clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', // (json에서 찾은 client_type 3의 ID를 넣으세요)
+            scopes: ['profile', 'email'],
+            grantOfflineAccess: true,
+          });
+          alert('1. 구글 로그인 시도 중...');
           const user = await GoogleAuth.signIn();
-          
+          alert(`2. 구글 응답 도착!\nCode: ${user.serverAuthCode}\nID Token: ${user.authentication?.idToken?.substring(0, 10)}...`);
           if (user.serverAuthCode) {
             const authData = await loginWithSocialToken('google', user.serverAuthCode);
-            
-           if (authData) {
-            // admin 추가할 것
+
+            if (authData) {
+              // admin 추가할 것
               if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED' || authData.role === 'ADMIN') {
                 console.log(`기존/미인증 회원(${authData.role}) -> 홈으로 이동`);
-                
+
                 // 1. 토큰 저장
-                saveTokens(authData); 
-                
+                saveTokens(authData);
+
                 // ✅ [추가됨] 홈으로 가기 전, 내 정보를 확실히 서버에서 받아와 저장하기
                 try {
                   const userId = getUserIdFromToken(authData.accessToken);
@@ -68,29 +76,42 @@ export default function LoginPage() {
                 } catch (e) {
                   console.error("유저 정보 프리로딩 실패 (홈에서 재시도 예정):", e);
                 }
-                
+
                 // 2. 홈으로 이동
                 navigate('/home', { replace: true });
-              } 
+              }
               // ✅ [복구됨] 신규 회원은 회원가입 페이지로 이동
               else if (authData.role === 'NOT_REGISTERED') {
                 console.log("신규 회원 -> 회원가입 페이지 이동");
                 saveTokens(authData);
-                navigate('/signup', { 
-                  state: { 
+                navigate('/signup', {
+                  state: {
                     accessToken: authData.accessToken,
-                    refreshToken: authData.refreshToken 
-                  } 
+                    refreshToken: authData.refreshToken
+                  }
                 });
-              } 
+              }
               else {
                 alert(`알 수 없는 회원 상태입니다: ${authData.role}`);
               }
             } else {
               alert('서버 로그인 실패: 응답이 없습니다.');
             }
+          } else {
+            alert(`서버 코드가 없습니다!\nID토큰: ${user.authentication?.idToken ? '있음' : '없음'}`);
           }
-
+          if (user.authentication?.idToken) {
+            try {
+              const credential = GoogleAuthProvider.credential(user.authentication.idToken);
+              const firebaseResult = await signInWithCredential(auth, credential);
+              console.log("🔥 Firebase 로그인 성공! Firebase UID:", firebaseResult.user.uid);
+            } catch (firebaseErr) {
+              console.error("❌ Firebase 유저 등록 실패:", firebaseErr);
+              // alert(`Firebase 연결 실패: ${firebaseErr}`); // 개발 중 에러 확인용 (나중엔 주석처리)
+            }
+          } else {
+            console.error("❌ 구글 ID Token이 없습니다. Firebase 로그인을 건너뜁니다.");
+          }
         } else if (provider === 'apple') {
           // --- [Apple 로그인 로직] ---
           // ... (기존 Apple 로그인 옵션 설정) ...
@@ -101,18 +122,18 @@ export default function LoginPage() {
             state: '12345',
             nonce: 'nonce',
           };
-          
+
           const result: SignInWithAppleResponse = await SignInWithApple.authorize(options);
-          
+
           if (result.response && result.response.authorizationCode) {
             // ... (이름 추출 로직 유지) ...
-             let name = undefined;
+            let name = undefined;
             if (result.response.givenName || result.response.familyName) {
               name = [result.response.familyName, result.response.givenName].filter(Boolean).join('');
             }
 
-            const authData = await loginWithSocialToken('apple', result.response.authorizationCode, name,'https://treasurehunter.seohamin.com/login/oauth2/code/apple');
-            
+            const authData = await loginWithSocialToken('apple', result.response.authorizationCode, name, 'https://treasurehunter.seohamin.com/login/oauth2/code/apple');
+
             if (authData) {
               // ✅ [수정됨] Apple 로그인도 동일하게 적용
               if (authData.role === 'USER' || authData.role === 'NOT_VERIFIED' || authData.role === 'ADMIN') {
@@ -128,6 +149,7 @@ export default function LoginPage() {
         }
       } catch (error) {
         console.error('Native login error:', error);
+        alert(`구글 로그인 실패: ${JSON.stringify(error)}`);
       }
     } else {
       // 💻 2. 웹 환경
@@ -191,7 +213,7 @@ export default function LoginPage() {
             >
               <img src='https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=2d/77/2d771d4f0ddfaf94eb77702eb0d1efeba014e9f387b3fa677d216b086b606518.png' style={{ width: '6rem', height: '6rem', color: 'white', borderRadius: 10 }} />
             </motion.div>
-            <h1 style={{ fontSize: '1.875rem', marginBottom: '0.75rem', color: '#111827', fontWeight: 600}}>Find X</h1>
+            <h1 style={{ fontSize: '1.875rem', marginBottom: '0.75rem', color: '#111827', fontWeight: 600 }}>Find X</h1>
             <p style={{ color: '#4b5563' }}>
               분실물과 발견물을 연결하는
               <br />

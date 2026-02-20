@@ -708,7 +708,7 @@ export default function App() {
   useEffect(() => {
     GoogleAuth.initialize({
       // ⚠️ 따옴표(') 안에 복사한 ID를 넣으세요. 끝에 콤마(,)도 지우지 마세요.
-      clientId: '272231760809-e8i08dnkevi90oo457mh7vapa2l1naq3.apps.googleusercontent.com', 
+      clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', 
       scopes: ['profile', 'email'],
       grantOfflineAccess: true,
     });

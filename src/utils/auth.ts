@@ -521,77 +521,77 @@ export interface SocialLoginResponse extends AuthTokens {
 }
 
 // [NEW] Login with social token (native flow)
-export const loginWithSocialToken = async (provider: string, code: string, name?: string, redirect_uri?: string): Promise<SocialLoginResponse | null> => {
-  const sendName = name ? name : 'null';
-  let finalRedirectUri = redirect_uri;
-  if (!finalRedirectUri) {
-    if (provider === 'apple') {
-      // Apple은 'postmessage'를 허용하지 않으므로, 백엔드 설정과 100% 일치하는 주소 강제 주입
-      finalRedirectUri = `${API_BASE_URL}/login/oauth2/code/apple`;
-    } else {
-      // Google 등은 postmessage 사용
-      finalRedirectUri = 'postmessage';
-    }
-  }
-  console.log('========== [loginWithSocialToken 요청 시작] ==========');
-  console.log('Provider (제공자):', provider);
-  console.log('Auth Code (인증 코드):', code);
-  console.log('User Name (이름):', name || '이름 없음');
-  console.log('Redirect URI:', redirect_uri || 'postmessage');
-  console.log('===================================================');
-  try {
-    // fetch 대신 CapacitorHttp.post 사용
-    const response = await CapacitorHttp.post({
-      url: `${API_BASE_URL}/api/v1/auth/oauth2`,
-      headers: COMMON_HEADERS,
-      data: { provider, code, sendName, redirect_uri: finalRedirectUri},
-    });
+// export const loginWithSocialToken = async (provider: string, code: string, name?: string, redirect_uri?: string): Promise<SocialLoginResponse | null> => {
+//   const sendName = name ? name : 'null';
+//   let finalRedirectUri = redirect_uri;
+//   if (!finalRedirectUri) {
+//     if (provider === 'apple') {
+//       // Apple은 'postmessage'를 허용하지 않으므로, 백엔드 설정과 100% 일치하는 주소 강제 주입
+//       finalRedirectUri = `${API_BASE_URL}/login/oauth2/code/apple`;
+//     } else {
+//       // Google 등은 postmessage 사용
+//       finalRedirectUri = 'postmessage';
+//     }
+//   }
+//   console.log('========== [loginWithSocialToken 요청 시작] ==========');
+//   console.log('Provider (제공자):', provider);
+//   console.log('Auth Code (인증 코드):', code);
+//   console.log('User Name (이름):', name || '이름 없음');
+//   console.log('Redirect URI:', redirect_uri || 'postmessage');
+//   console.log('===================================================');
+//   try {
+//     // fetch 대신 CapacitorHttp.post 사용
+//     const response = await CapacitorHttp.post({
+//       url: `${API_BASE_URL}/api/v1/auth/oauth2`,
+//       headers: COMMON_HEADERS,
+//       data: { provider, code, sendName, redirect_uri: finalRedirectUri},
+//     });
 
-    // CapacitorHttp는 응답 데이터가 response.data에 담깁니다.
-    console.log('CapacitorHttp Response Status:', response.status);
-    console.log('CapacitorHttp Response Data:', JSON.stringify(response.data));
+//     // CapacitorHttp는 응답 데이터가 response.data에 담깁니다.
+//     console.log('CapacitorHttp Response Status:', response.status);
+//     console.log('CapacitorHttp Response Data:', JSON.stringify(response.data));
 
-    if (response.status === 200 || response.status === 201) {
-      const data = response.data;
-      if (data.accessToken && data.refreshToken) {
-        // [CRITICAL] 토큰 저장
-        saveTokens(data);
+//     if (response.status === 200 || response.status === 201) {
+//       const data = response.data;
+//       if (data.accessToken && data.refreshToken) {
+//         // [CRITICAL] 토큰 저장
+//         saveTokens(data);
 
-        // [CRITICAL] UserInfo 저장 (응답에 포함되어 있다면)
-        // 만약 응답이 UserInfo 구조를 일부 가지고 있다면 저장 시도
-        if (data.id && data.nickname) {
-          saveUserInfo(data as UserInfo);
-          console.log("UserInfo saved from login response.");
-        } else {
-          // 정보가 없다면 최소한의 정보라도 저장하거나, 이후 fetch 필요
-          console.warn("Login response missing UserInfo fields. HomePage might need fetch.");
-          // 임시로 role 저장 (필요하다면)
-          // 하지만 HomePage는 full UserInfo를 기대함.
-          // 여기서는 data를 그대로 리턴하여 LoginPage나 후속 로직에서 처리하도록 함.
-        }
+//         // [CRITICAL] UserInfo 저장 (응답에 포함되어 있다면)
+//         // 만약 응답이 UserInfo 구조를 일부 가지고 있다면 저장 시도
+//         if (data.id && data.nickname) {
+//           saveUserInfo(data as UserInfo);
+//           console.log("UserInfo saved from login response.");
+//         } else {
+//           // 정보가 없다면 최소한의 정보라도 저장하거나, 이후 fetch 필요
+//           console.warn("Login response missing UserInfo fields. HomePage might need fetch.");
+//           // 임시로 role 저장 (필요하다면)
+//           // 하지만 HomePage는 full UserInfo를 기대함.
+//           // 여기서는 data를 그대로 리턴하여 LoginPage나 후속 로직에서 처리하도록 함.
+//         }
 
-        return data as SocialLoginResponse;
-      } else {
-        console.error('Missing tokens in response data:', data);
-      }
-    } else {
-      console.error('Unexpected status code:', response.status);
-    }
-    return null;
-  } catch (error) {
-    console.error('네이티브 통신 실패:', error);
-    if (error instanceof TypeError && error.message === 'Load failed') {
-      console.error('🚨 원인: 네트워크 차단 (CORS 문제이거나 인터넷 연결 없음)');
-      console.error('👉 백엔드 개발자에게 "capacitor://localhost" 오리진을 허용해달라고 요청하세요.');
-    } else if (error instanceof Error) {
-      console.error('메시지:', error.message);
-      console.error('스택:', error.stack);
-    } else {
-      console.error('알 수 없는 오류:', JSON.stringify(error));
-    }
-    return null;
-  }
-};
+//         return data as SocialLoginResponse;
+//       } else {
+//         console.error('Missing tokens in response data:', data);
+//       }
+//     } else {
+//       console.error('Unexpected status code:', response.status);
+//     }
+//     return null;
+//   } catch (error) {
+//     console.error('네이티브 통신 실패:', error);
+//     if (error instanceof TypeError && error.message === 'Load failed') {
+//       console.error('🚨 원인: 네트워크 차단 (CORS 문제이거나 인터넷 연결 없음)');
+//       console.error('👉 백엔드 개발자에게 "capacitor://localhost" 오리진을 허용해달라고 요청하세요.');
+//     } else if (error instanceof Error) {
+//       console.error('메시지:', error.message);
+//       console.error('스택:', error.stack);
+//     } else {
+//       console.error('알 수 없는 오류:', JSON.stringify(error));
+//     }
+//     return null;
+//   }
+// };
 
 // [NEW] App Store Reviewer login (TestFlight / 심사용 계정 전용)
 // 로그인 화면에서 입력받은 id / password를 사용해 심사용 계정으로 로그인
@@ -849,6 +849,84 @@ export const createChatRoom = async (
   } catch (error) {
     console.error('Error creating chat room:', error);
     alert(error instanceof Error ? error.message : "채팅방을 만들 수 없습니다.");
+    return null;
+  }
+};
+
+// utils/auth.ts (또는 해당 함수가 있는 파일)
+// utils/auth.ts
+
+export const loginWithSocialToken = async (
+  provider: 'google' | 'apple' | 'kakao' | 'naver', 
+  token: string, 
+  name?: string, 
+  _redirectUri?: string
+) => {
+  // ✅ 1. [수정됨] 명세서에 따른 정확한 엔드포인트 URL
+  const BACKEND_URL = `https://treasurehunter.seohamin.com/api/v1/auth/oauth2`; 
+  
+  // ✅ 2. [수정됨] 명세서에 따른 Request Body 구성
+  // code: 인증 코드
+  // provider: 'google', 'apple' 등
+  // name: 애플 로그인일 경우에만 필요 (그 외엔 undefined여도 무방할 듯하나 명세에 따름)
+  const payload = {
+    code: token, 
+    provider: provider, // 예: 'google'
+    name: name // 애플 로그인 시 필요
+  };
+
+  console.log(`🚀 [DEBUG] 백엔드 요청 시작: ${BACKEND_URL}`);
+  console.log(`📦 [DEBUG] 보낼 데이터:`, JSON.stringify(payload));
+  
+  // 폰에서 확인용 Alert (테스트 후 주석 처리)
+  alert(`1. 백엔드 전송 시도\nURL: .../auth/oauth2\nProvider: ${provider}\nToken: ${token.substring(0, 10)}...`);
+
+  try {
+    const response = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    // 3. [응답 상태] 확인
+    console.log(`📡 [DEBUG] 응답 상태 코드: ${response.status}`);
+    
+    // 4. [응답 본문] 읽기
+    const responseText = await response.text();
+    console.log(`📄 [DEBUG] 응답 본문(Raw): ${responseText}`);
+
+    if (!response.ok) {
+      // 백엔드가 400, 500 에러를 뱉은 경우
+      alert(`🚨 [서버 거절] Code: ${response.status}\n에러내용: ${responseText.substring(0, 150)}`);
+      throw new Error(`Server Error (${response.status}): ${responseText}`);
+    }
+
+    // 5. [성공] JSON 파싱 및 데이터 반환
+    try {
+      const data = JSON.parse(responseText);
+      
+      // 명세서에 따르면 data = { role, accessToken, tokenType, exprTime, refreshToken }
+      alert(`3. 로그인 성공! 🎉\nAccess Token: ${data.accessToken?.substring(0, 15)}...`);
+      
+      return data; 
+    } catch (parseError) {
+      console.error("JSON 파싱 에러 발생:", parseError);
+      alert(`🚨 [파싱 실패] 서버 응답이 JSON이 아닙니다.\n내용: ${responseText.substring(0, 100)}`);
+      return null;
+    }
+
+  } catch (error: any) {
+    // 6. [네트워크 에러] 아예 요청이 실패한 경우
+    console.error('❌ [DEBUG] 통신 실패:', error);
+    
+    let errorMsg = error.message;
+    if (error.name === 'TypeError' && errorMsg === 'Failed to fetch') {
+      errorMsg = '서버에 닿지 못했습니다. (인터넷 연결, CORS, 또는 SSL 문제)';
+    }
+
+    alert(`💀 [통신 에러]\n${errorMsg}`);
     return null;
   }
 };

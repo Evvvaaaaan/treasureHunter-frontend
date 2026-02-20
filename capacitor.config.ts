@@ -15,11 +15,13 @@ const config: CapacitorConfig = {
       scopes: ['profile', 'email'],
       
       // 👇 [중요 1] 여기에 "Web Client ID"를 넣어야 합니다. (e8i0...naq3)
-      serverClientId: '272231760809-e8i08dnkevi90oo457mh7vapa2l1naq3.apps.googleusercontent.com',
-      
+      serverClientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
+
       // 👇 [중요 2] 여기에 "iOS Client ID"를 넣어야 합니다. (2o2f...gf87o)
       iosClientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com',
       
+      androidClientId: '272231760809-dersr8o6inp390l8d3n4fu3viga3nq5e.apps.googleusercontent.com',
+
       // ⭐ [가장 중요] 이 줄이 없으면 serverAuthCode가 절대 안 옵니다!
       forceCodeForRefreshToken: true, 
     },
@@ -30,3 +32,5 @@ const config: CapacitorConfig = {
 };
 
 export default config;
+
+
