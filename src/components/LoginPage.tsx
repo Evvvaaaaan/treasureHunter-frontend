@@ -26,18 +26,33 @@ export default function LoginPage() {
 
   // ✅ 초기화: 앱(Native)과 웹(Web)을 구분하여 설정
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) {
-      // 1. 웹(Web)일 때만 Client ID 직접 설정
-      GoogleAuth.initialize({
+  const initGoogle = async () => {
+    const platform = Capacitor.getPlatform();
+
+    if (platform === 'ios') {
+      // 🚨 iOS 핵심 설정: clientId(iOS용), serverClientId(웹용)
+      await GoogleAuth.initialize({
+        clientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com',
+        serverClientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+      } as any); // serverClientId 타입을 무시하기 위해 as any 사용
+    } 
+    else if (platform === 'android') {
+      // 안드로이드는 strings.xml 및 json 파일 설정을 따르도록 빈 값으로 호출
+      await GoogleAuth.initialize();
+    } 
+    else {
+      // 웹(Web) 환경 설정
+      await GoogleAuth.initialize({
         clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
         scopes: ['profile', 'email'],
         grantOfflineAccess: true,
       });
-    } else {
-      // 2. 앱(Native)일 때는 설정 파일(capacitor.config.ts)을 따름
-      GoogleAuth.initialize();
     }
-  }, []);
+  };
+
+  initGoogle();
+}, []);
 
   // src/components/LoginPage.tsx
 
@@ -47,14 +62,8 @@ export default function LoginPage() {
       try {
         if (provider === 'google') {
           // --- [Google 로그인 로직] ---
-          await GoogleAuth.initialize({
-            clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', // (json에서 찾은 client_type 3의 ID를 넣으세요)
-            scopes: ['profile', 'email'],
-            grantOfflineAccess: true,
-          });
-          alert('1. 구글 로그인 시도 중...');
           const user = await GoogleAuth.signIn();
-          alert(`2. 구글 응답 도착!\nCode: ${user.serverAuthCode}\nID Token: ${user.authentication?.idToken?.substring(0, 10)}...`);
+
           if (user.serverAuthCode) {
             const authData = await loginWithSocialToken('google', user.serverAuthCode);
 

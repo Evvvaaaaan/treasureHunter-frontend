@@ -879,7 +879,7 @@ export const loginWithSocialToken = async (
   console.log(`📦 [DEBUG] 보낼 데이터:`, JSON.stringify(payload));
   
   // 폰에서 확인용 Alert (테스트 후 주석 처리)
-  alert(`1. 백엔드 전송 시도\nURL: .../auth/oauth2\nProvider: ${provider}\nToken: ${token.substring(0, 10)}...`);
+  // alert(`1. 백엔드 전송 시도\nURL: .../auth/oauth2\nProvider: ${provider}\nToken: ${token.substring(0, 10)}...`);
 
   try {
     const response = await fetch(BACKEND_URL, {
@@ -908,7 +908,7 @@ export const loginWithSocialToken = async (
       const data = JSON.parse(responseText);
       
       // 명세서에 따르면 data = { role, accessToken, tokenType, exprTime, refreshToken }
-      alert(`3. 로그인 성공! 🎉\nAccess Token: ${data.accessToken?.substring(0, 15)}...`);
+      // alert(`3. 로그인 성공! 🎉\nAccess Token: ${data.accessToken?.substring(0, 15)}...`);
       
       return data; 
     } catch (parseError) {
