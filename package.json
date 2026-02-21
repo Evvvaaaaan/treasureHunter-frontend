@@ -36,6 +36,7 @@
     "firebase": "^11.10.0",
     "firebase-admin": "^13.6.0",
     "input-otp": "^1.4.2",
+    "ionicons": "^8.0.13",
     "lucide": "^0.545.0",
     "lucide-react": "^0.545.0",
     "motion": "^12.23.24",
