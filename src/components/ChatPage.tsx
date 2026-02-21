@@ -753,7 +753,7 @@ const ChatPage: React.FC = () => {
   };
 
   // [오류 해결] TypeScript 'setPoint' 에러를 피하기 위해 as any 사용
-  const hasPoint = (roomInfo?.post as any)?.setPoint && (roomInfo?.post as any).setPoint > 0;
+  const hasPoint = ((roomInfo?.post as any)?.setPoint || 0) > 0;
 
   if (isLoading || !myUserType) {
     return (
