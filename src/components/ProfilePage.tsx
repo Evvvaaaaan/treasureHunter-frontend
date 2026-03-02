@@ -510,7 +510,7 @@ const ProfilePage: React.FC = () => {
   const [user, setUser] = useState<UserInfo | null>(getUserInfo());
   const [isEditing, setIsEditing] = useState(false);
   const [editNickname, setEditNickname] = useState('');
-  const [editBio, setEditBio] = useState(''); // 자기소개용 state 추가 (API 확장에 대비)
+
   
   const [profileImage, setProfileImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -678,13 +678,6 @@ const ProfilePage: React.FC = () => {
                 onChange={(e) => setEditNickname(e.target.value)}
                 className="edit-input-hero"
                 placeholder="닉네임"
-              />
-              <textarea
-                value={editBio}
-                onChange={(e) => setEditBio(e.target.value)}
-                className="edit-textarea-hero"
-                placeholder="자기소개 (100자 이내)"
-                maxLength={100}
               />
               <div className="edit-actions-hero">
                 <button className="cancel-btn-hero" onClick={() => setIsEditing(false)}>
