@@ -817,8 +817,9 @@
 /* =========================================
    3. Dark Mode Overrides
    ========================================= */
-:root.dark .profile-page {
-  background: #0f1419;
+:root.dark .profile-page, profile-page.dark {
+  background: #111827; /* 주변 다크모드 카드색과 자연스럽게 어우러지는 배경색 */
+  min-height: 100vh;
 }
 
 /* 헤더는 그라데이션이라 다크모드에서 자동 처리됨 (위에서 정의함) */

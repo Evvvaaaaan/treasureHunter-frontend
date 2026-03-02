@@ -635,7 +635,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     // ✅ [수정됨] paddingBottom을 늘려서 바텀 네비게이션과 겹치지 않도록 함
-    <div className={`profile-page-container ${theme}`} style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom))' }}>
+    <div className={`profile-page ${theme}`} style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom))' }}>
       {/* 1. Dark Header Section */}
       <div className="profile-dark-header rounded-[0px]">
         {/* Header Top */}
@@ -740,7 +740,7 @@ const ProfilePage: React.FC = () => {
       </div>
 
       {/* 2. White Body Content Section */}
-      <div className="profile-content-body">
+      <div className="profile-content-body ">
         
         {/* Badges Section */}
         {badges.length > 0 && (
