@@ -787,7 +787,7 @@ const ProfilePage: React.FC = () => {
         <div className="content-section">
           <h3 className="section-title">고객 지원</h3>
           <div className="menu-list">
-            <button className="menu-list-item">
+            <button className="menu-list-item" onClick={() => navigate('/ai-support')}>
               <div className="menu-icon-bg gray"><Mail size={20} /></div>
               <span className="menu-text">문의하기</span>
               <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>

@@ -530,6 +530,7 @@ import { ChatProvider } from './components/ChatContext';
 // firebase.ts에서 함수 import
 // import { requestPermission, onMessageListener } from './firebase';
 import { API_BASE_URL } from './config';
+import AiSupportPage from './components/AiSupportPage';
 
 /**
  * 앱 로딩 시 전체 화면 스피너
@@ -859,6 +860,7 @@ export default function App() {
             <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
             <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+            <Route path="/ai-support" element={<AiSupportPage />} />
 
             <Route path="/about" element={<AppInfoPage />} />
             <Route path="/help" element={<HelpPage />} />

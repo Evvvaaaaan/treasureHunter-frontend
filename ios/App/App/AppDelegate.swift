@@ -36,6 +36,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         
         application.registerForRemoteNotifications()
+
+        DispatchQueue.main.async {
+            if let bridgeVC = self.window?.rootViewController as? CAPBridgeViewController {
+                bridgeVC.webView?.allowsBackForwardNavigationGestures = true
+            }
+        }
         
         return true
     }

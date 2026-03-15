@@ -7,7 +7,7 @@ PODS:
     - AppAuth/Core
   - Capacitor (7.4.4):
     - CapacitorCordova
-  - CapacitorApp (7.1.1):
+  - CapacitorApp (7.1.2):
     - Capacitor
   - CapacitorCamera (7.0.3):
     - Capacitor
@@ -31,7 +31,9 @@ PODS:
     - IONGeolocationLib (= 1.0.1)
   - CapacitorKeyboard (7.0.4):
     - Capacitor
-  - CapacitorPushNotifications (7.0.4):
+  - CapacitorNativeSettings (7.0.2):
+    - Capacitor
+  - CapacitorPushNotifications (7.0.6):
     - Capacitor
   - CapacitorShare (7.0.3):
     - Capacitor
@@ -164,6 +166,7 @@ DEPENDENCIES:
   - "CapacitorFirebaseMessaging (from `../../node_modules/@capacitor-firebase/messaging`)"
   - "CapacitorGeolocation (from `../../node_modules/@capacitor/geolocation`)"
   - "CapacitorKeyboard (from `../../node_modules/@capacitor/keyboard`)"
+  - CapacitorNativeSettings (from `../../node_modules/capacitor-native-settings`)
   - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
   - "CapacitorShare (from `../../node_modules/@capacitor/share`)"
   - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
@@ -210,6 +213,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/geolocation"
   CapacitorKeyboard:
     :path: "../../node_modules/@capacitor/keyboard"
+  CapacitorNativeSettings:
+    :path: "../../node_modules/capacitor-native-settings"
   CapacitorPushNotifications:
     :path: "../../node_modules/@capacitor/push-notifications"
   CapacitorShare:
@@ -222,7 +227,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
   Capacitor: 358dd1c3fdd71d969547b17e159fd8a7736cb45f
-  CapacitorApp: 63b237168fc869e758481dba283315a85743ee78
+  CapacitorApp: f01a913211780e0718dae9750442c3e23f96e106
   CapacitorCamera: 6746827d82376f31cea9224945c0458c9fd0b0b2
   CapacitorCommunityAppleSignIn: 271cb2860576fd2961508bbfa7a82117d93eadca
   CapacitorCordova: bf648a636f3c153f652d312ae145fb508b6ffced
@@ -230,7 +235,8 @@ SPEC CHECKSUMS:
   CapacitorFirebaseMessaging: 1ac12c0dab16d1e4edcf9cb878620507ac868a4e
   CapacitorGeolocation: bb6f441b53393984f1c4e8b7e4a826fe3e133309
   CapacitorKeyboard: 5660c760113bfa48962817a785879373cf5339c3
-  CapacitorPushNotifications: 7604512af53bbfdf1dd8fb2256b9ef1e8a69cdc2
+  CapacitorNativeSettings: 3cd2e2ef431fe471674f381609cfb29154ddfcfa
+  CapacitorPushNotifications: b8e30637549ce91468b8c4dddbef2657be831f4c
   CapacitorShare: a4f4f86eabd4b3ff52ba6a11b754713c6926a8d1
   CapacitorStatusBar: d0e0151c89c001a9c7125bac59ddedf76b664768
   CodetrixStudioCapacitorGoogleAuth: 9dcfabfb7dd804ad6231a1513bc6e81e620cbec6
@@ -251,6 +257,6 @@ SPEC CHECKSUMS:
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
 
-PODFILE CHECKSUM: ba1e555e94af4eb62471fde5f4b6aa92465aae10
+PODFILE CHECKSUM: cf5b4b29b8a308e617fb29a79c4c3a73840b19be
 
 COCOAPODS: 1.16.2
