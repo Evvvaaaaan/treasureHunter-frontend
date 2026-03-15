@@ -485,6 +485,7 @@ import { uploadImage } from '../utils/file';
 import { useTheme } from '../utils/theme';
 import '../styles/profile-page.css';
 import { API_BASE_URL } from '../config';
+import ContactModal from './ContactModal';
 
 interface UserStats {
   totalItems: number;
@@ -514,7 +515,7 @@ const ProfilePage: React.FC = () => {
   
   const [profileImage, setProfileImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [stats, setStats] = useState<UserStats>({
     totalItems: 0,
     successfulMatches: 0,
@@ -727,7 +728,7 @@ const ProfilePage: React.FC = () => {
               <Bell size={24} />
               <span>알림</span>
             </button>
-            <button className="action-card-dark" onClick={() => navigate('/store')}>
+            <button className="action-card-dark" onClick={() => alert("포인트 스토어 기능은 준비 중입니다.")}>
               <Ticket size={24} />
               <span>포인트 스토어</span>
             </button>
@@ -787,15 +788,21 @@ const ProfilePage: React.FC = () => {
         <div className="content-section">
           <h3 className="section-title">고객 지원</h3>
           <div className="menu-list">
-            <button className="menu-list-item" onClick={() => navigate('/ai-support')}>
+            <button className="menu-list-item" onClick={() => setIsContactModalOpen(true)}>
               <div className="menu-icon-bg gray"><Mail size={20} /></div>
               <span className="menu-text">문의하기</span>
               <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>
             </button>
+            <ContactModal 
+              isOpen={isContactModalOpen} 
+              onClose={() => setIsContactModalOpen(false)} 
+              email="vmfhrmfoald36@gmail.com"
+            />
             <button className="menu-list-item" onClick={() => navigate('/privacy')}>
               <div className="menu-icon-bg gray"><Shield size={20} /></div>
               <span className="menu-text">개인정보 처리방침</span>
               <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>
+
             </button>
           </div>
         </div>
