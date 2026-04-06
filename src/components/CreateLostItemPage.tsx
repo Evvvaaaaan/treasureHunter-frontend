@@ -1427,7 +1427,7 @@ import {
   Coins,
   AlertCircle,
   ShieldQuestion, // 익명 아이콘 추가
-  Sparkles, // AI 자동 작성 아이콘 추가
+
 } from 'lucide-react';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Geolocation } from '@capacitor/geolocation';
@@ -2280,7 +2280,7 @@ export default function CreateLostItemPage() {
         <h1>{title} 등록</h1>
         <div style={{ width: '2.5rem' }} /> {/* 간격 유지용 빈 div */}
       </header>
-      <button
+      {/* <button
         type="button"
         className="ai-floating-btn"
         onClick={() => {
@@ -2290,7 +2290,7 @@ export default function CreateLostItemPage() {
         style={{ position: 'fixed', top: '3.5rem', bottom: '1.5rem', right: '1.5rem', zIndex: 1000, backgroundColor: '#4F46E5', borderRadius: '50%', padding: '0.75rem', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)', border: 'none', cursor: 'pointer' }}
       >
         <Sparkles style={{ width: '1.25rem', height: '1.25rem' }} />
-      </button>
+      </button> */}
 
       {/* Progress Bar */}
       <div className="progress-container">

@@ -34,10 +34,17 @@ const ChatListPage: React.FC = () => {
   }, [navigate]);
 
   useEffect(() => {
+    // 1. 여기서도 차단된 유저 목록을 다시 한 번 불러옵니다.
+    const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
+    
+    // 2. chatRooms 원본에서 일단 차단된 유저를 뺍니다.
+    const validRooms = chatRooms.filter(room => !blockedUsers.includes(String(room.userId)));
+
+    // 3. 남은 방들을 대상으로 검색어 필터링을 진행합니다.
     if (!searchQuery.trim()) {
-      setFilteredRooms(chatRooms);
+      setFilteredRooms(validRooms);
     } else {
-      setFilteredRooms(chatRooms.filter(room =>
+      setFilteredRooms(validRooms.filter(room =>
         room.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         room.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
       ));
@@ -178,10 +185,16 @@ const ChatListPage: React.FC = () => {
       });
 
       const uiRooms = await Promise.all(uiRoomsPromises);
-      uiRooms.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      // 차단 유저 필터링 추가
+      const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
+      const nonBlockedRooms = uiRooms.filter(room => !blockedUsers.includes(String(room.userId)));
+      
+      nonBlockedRooms.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      setChatRooms(uiRooms);
-      setFilteredRooms(uiRooms);
+      setChatRooms(nonBlockedRooms);
+      setFilteredRooms(nonBlockedRooms);
+
     } catch (error) {
       console.error('Failed to load chat rooms:', error);
     } finally {

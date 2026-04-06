@@ -8,7 +8,8 @@ import {
   Shield,
   Award,
   AlertCircle,
-  Edit3 // 리뷰 아이콘 추가
+  Edit3,
+  ShieldAlert,
 } from "lucide-react";
 import { useTheme } from "../utils/theme";
 import { getUserProfile, type UserInfo } from "../utils/auth";
@@ -114,7 +115,17 @@ const OtherUserProfilePage: React.FC = () => {
       // /review/:userId 경로로 이동
       navigate(`/review/${id}`);
   };
-
+const handleBlock = () => {
+    if (confirm("이 사용자를 차단하시겠습니까?\n차단 시 더 이상 이 사용자의 게시글과 메시지가 보이지 않습니다.")) {
+      const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
+      if (id && !blockedUsers.includes(id)) {
+        blockedUsers.push(id);
+        localStorage.setItem('blockedUsers', JSON.stringify(blockedUsers));
+      }
+      alert("사용자가 차단되었습니다.");
+      navigate(-1); // 이전 화면으로 돌아가기
+    }
+  };
   const getTrustScoreColor = (score: number) => {
     if (score >= 100) return "#10b981";
     if (score >= 50) return "#f59e0b";
@@ -236,6 +247,14 @@ const OtherUserProfilePage: React.FC = () => {
             >
               <Edit3 size={20} />
               후기 작성
+            </button>
+            <button
+              className="chat-btn-other secondary"
+              style={{ backgroundColor: '#fee2e2', color: '#ef4444', boxShadow: 'none', border: '1px solid #fca5a5' }}
+              onClick={handleBlock}
+            >
+              <ShieldAlert size={20} />
+              차단
             </button>
           </div>
         </div>

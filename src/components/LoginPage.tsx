@@ -3,7 +3,7 @@ import { MapPin, Search, Star } from 'lucide-react';
 // ✅ saveTokens 추가 import 필수
 import { checkToken, getOAuthUrl, getUserIdFromToken, loginWithSocialToken, loginReviewerForReview, saveTokens } from '../utils/auth';
 import { Button } from './ui/button';
-import { auth } from '../../src/firebase'; 
+import { auth } from '../../src/firebase';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { Input } from './ui/input';
 import '../styles/login-page.css';
@@ -23,45 +23,49 @@ export default function LoginPage() {
   const [reviewerId, setReviewerId] = useState('');
   const [reviewerPassword, setReviewerPassword] = useState('');
   const [isReviewerLoading, setIsReviewerLoading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // ✅ 초기화: 앱(Native)과 웹(Web)을 구분하여 설정
   useEffect(() => {
-  const initGoogle = async () => {
-    const platform = Capacitor.getPlatform();
+    const initGoogle = async () => {
+      const platform = Capacitor.getPlatform();
 
-    if (platform === 'ios') {
-      // 🚨 iOS 핵심 설정: clientId(iOS용), serverClientId(웹용)
-      await GoogleAuth.initialize({
-        clientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com',
-        serverClientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
-        scopes: ['profile', 'email'],
-      } as any); // serverClientId 타입을 무시하기 위해 as any 사용
-    } 
-    else if (platform === 'android') {
-      // 🚨 안드로이드 픽스: 여기서도 반드시 '웹 클라이언트 ID'를 serverClientId로 넘겨야 합니다!
-      await GoogleAuth.initialize({
-        clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', // 웹 클라이언트 ID
-        serverClientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', // 웹 클라이언트 ID
-        scopes: ['profile', 'email'],
-        grantOfflineAccess: true,
-      } as any);
-    }
-    else {
-      // 웹(Web) 환경 설정
-      await GoogleAuth.initialize({
-        clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
-        scopes: ['profile', 'email'],
-        grantOfflineAccess: true,
-      });
-    }
-  };
+      if (platform === 'ios') {
+        // 🚨 iOS 핵심 설정: clientId(iOS용), serverClientId(웹용)
+        await GoogleAuth.initialize({
+          clientId: '272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com',
+          serverClientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+        } as any); // serverClientId 타입을 무시하기 위해 as any 사용
+      }
+      else if (platform === 'android') {
+        // 🚨 안드로이드 픽스: 여기서도 반드시 '웹 클라이언트 ID'를 serverClientId로 넘겨야 합니다!
+        await GoogleAuth.initialize({
+          clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', // 웹 클라이언트 ID
+          serverClientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', // 웹 클라이언트 ID
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: true,
+        } as any);
+      }
+      else {
+        // 웹(Web) 환경 설정
+        await GoogleAuth.initialize({
+          clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: true,
+        });
+      }
+    };
 
-  initGoogle();
-}, []);
+    initGoogle();
+  }, []);
 
   // src/components/LoginPage.tsx
 
   const handleSocialLogin = async (provider: 'google' | 'kakao' | 'naver' | 'apple') => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+
     // 📱 1. 네이티브 앱 환경 (iOS/Android)
     if (Capacitor.isNativePlatform()) {
       try {
@@ -163,11 +167,13 @@ export default function LoginPage() {
         }
       } catch (error) {
         console.error('Native login error:', error);
-        alert(`구글 로그인 실패: ${JSON.stringify(error)}`);
+      } finally {
+        setIsLoggingIn(false);
       }
     } else {
       // 💻 2. 웹 환경
       window.location.href = getOAuthUrl(provider);
+      setTimeout(() => setIsLoggingIn(false), 3000); // UI 응답성 리셋 방어코드
     }
   };
 
@@ -271,6 +277,7 @@ export default function LoginPage() {
           >
             <Button
               onClick={() => handleSocialLogin('google')}
+              disabled={isLoggingIn}
               className="social-btn google-btn"
               style={{
                 width: '100%',
@@ -352,6 +359,7 @@ export default function LoginPage() {
             </Button> */}
             <Button
               onClick={() => handleSocialLogin('apple')}
+              disabled={isLoggingIn}
               className="social-btn apple-btn"
               style={{
                 width: '100%',
@@ -400,13 +408,13 @@ export default function LoginPage() {
             className="login-footer"
           >
             로그인하면{' '}
-            <a href="#" style={{ color: 'var(--primary)' }}>
+            <p style={{ color: 'var(--primary)' }}>
               서비스 약관
-            </a>
+            </p>
             과{' '}
-            <a href="#" style={{ color: 'var(--primary)' }}>
+            <p style={{ color: 'var(--primary)' }}>
               개인정보 보호정책
-            </a>
+            </p>
             에 동의하는 것으로 간주됩니다.
           </motion.p>
         </motion.div>

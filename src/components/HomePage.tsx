@@ -319,8 +319,17 @@ export default function HomePage() {
   };
 
   // UI용 데이터 가공
-  const lostItems: LostItem[] = useMemo(() => {
-    const items = rawPosts.map((post: Post) => {
+ const lostItems: LostItem[] = useMemo(() => {
+    // 1. 로컬스토리지에서 차단 유저 목록 가져오기
+    const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
+
+    // 2. 차단되지 않은 유저의 글만 남기고 map 실행
+    const items = rawPosts
+      .filter((post: Post) => {
+        const authorId = String(post.author?.id || '');
+        return !blockedUsers.includes(authorId);
+      })
+      .map((post: Post) => {
     
       return {
         id: post.id.toString(),

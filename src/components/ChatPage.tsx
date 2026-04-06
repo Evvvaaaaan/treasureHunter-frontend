@@ -435,8 +435,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Send, MoreVertical, Phone, Video,
-  Paperclip, Smile, Loader2, X, Coins, LogOut
+  ArrowLeft, Send, MoreVertical,
+  Paperclip, Smile, Loader2, X, Coins, LogOut, ShieldAlert
 } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -515,6 +515,21 @@ const ChatPage: React.FC = () => {
     } catch (error) {
       alert("채팅방 삭제에 실패했습니다.");
     }
+  };
+  const handleBlockUser = () => {
+    if (!confirm("이 사용자를 차단하시겠습니까?\n차단 시 더 이상 이 사용자의 메시지와 게시글이 보이지 않습니다.")) return;
+    
+    const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
+    const partnerId = roomInfo?.participants.find(p => String(p.id) !== String(currentUser?.id))?.id;
+    const pIdStr = String(partnerId);
+    
+    if (partnerId && !blockedUsers.includes(pIdStr)) {
+      blockedUsers.push(pIdStr);
+      localStorage.setItem('blockedUsers', JSON.stringify(blockedUsers));
+    }
+    
+    alert("사용자가 차단되었습니다.");
+    navigate('/home', { replace: true });
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -772,8 +787,6 @@ const ChatPage: React.FC = () => {
           <div className="header-user-details"> <h3>{partnerInfo.name}</h3> {roomInfo?.post && <p className="text-xs text-gray-500">{roomInfo.post.title}</p>} </div>
         </div>
         <div className="header-actions-new">
-          <button className="header-icon-btn"><Phone size={20} /></button>
-          <button className="header-icon-btn"><Video size={20} /></button>
           
           <button 
             className="header-icon-btn transition-colors hover:bg-gray-100 rounded-full p-2 outline-none focus:ring-2 focus:ring-primary/20 active:bg-gray-200"
@@ -799,6 +812,10 @@ const ChatPage: React.FC = () => {
         
         <button className="action-sheet-btn destructive" onClick={() => { setShowActionSheet(false); handleDeleteChat(); }}>
           <LogOut size={20} /> <span>채팅방 나가기</span>
+        </button>
+
+        <button className="action-sheet-btn" onClick={() => { setShowActionSheet(false); handleBlockUser(); }}>
+          <ShieldAlert size={20} /> <span>이 사용자 차단하기</span>
         </button>
         
         <div className="action-sheet-divider" />
