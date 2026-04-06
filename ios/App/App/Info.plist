@@ -48,19 +48,11 @@
 	<string>272231760809-2o2f5jbkhvj9kcqor4mihkpch70gf87o.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-	</dict>
+
 	<key>NSCameraUsageDescription</key>
 	<string>게시물 사진 촬영 및 업로드를 위해 카메라 권한이 필요합니다.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>백그라운드에서도 위치 기반 알림을 받기 위해 위치 권한이 필요합니다.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>백그라운드에서도 위치 기반 알림을 받기 위해 위치 권한이 필요합니다.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>현재 위치 기반으로 주변 분실물을 찾기 위해 위치 권한이 필요합니다.</string>
+	<string>앱 사용 중 현재 위치 기반으로 주변 분실물/습득물을 표시하기 위해 위치 권한이 필요합니다.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>이미지 저장을 위해 앨범 접근 권한이 필요합니다.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -68,7 +60,6 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-		<string>bluetooth-central</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>

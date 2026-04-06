@@ -88,13 +88,13 @@
 
 //   const messagesEndRef = useRef<HTMLDivElement>(null);
 //   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
 //   // 현재 로그인한 사용자 정보 가져오기
 //   const currentUser = getUserInfo();
 
 //   const [roomInfo, setRoomInfo] = useState<ChatRoom | null>(null);
 //   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  
+
 //   // 상대방이 읽은 위치 (이 값이 내 메시지 ID보다 크면 1이 사라짐)
 //   const [opponentLastReadId, setOpponentLastReadId] = useState<number>(0);
 
@@ -102,7 +102,7 @@
 //   const [isSending, setIsSending] = useState(false);
 //   const [isLoading, setIsLoading] = useState(true);
 //   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  
+
 //   // 내 역할 (AUTHOR / CALLER)
 //   const [myUserType, setMyUserType] = useState<'AUTHOR' | 'CALLER' | null>(null);
 //   const myUserTypeRef = useRef<'AUTHOR' | 'CALLER' | null>(null);
@@ -143,7 +143,7 @@
 //         setRoomInfo(roomData);
 //         setMessages(syncData.chats || []);
 //         console.log("syncData : ",syncData)
-        
+
 //         // 내 정체성(UserType) 확인
 //         const myIdStr = String(currentUser.id);
 //         let determinedRole: 'AUTHOR' | 'CALLER' | null = null;
@@ -153,7 +153,7 @@
 //         if (me && me.userType) {
 //            determinedRole = me.userType;
 //         } 
-        
+
 //         // (B) 2차 확인 (게시글 작성자 여부)
 //         if (!determinedRole && roomData.post?.id) {
 //            try {
@@ -170,10 +170,10 @@
 //         // 상대방 읽음 위치(OpponentLastReadId) 계산
 //         let finalOpponentReadId = 0;
 //         console.log("syncData : ", syncData.opponentLastReadChatId);
-        
+
 //         const opponent = roomData.participants.find(p => String(p.id) !== myIdStr);
 //         console.log('상대방 정보:', opponent);
-        
+
 //         if (opponent && (opponent as any).lastReadChatId) {
 //             finalOpponentReadId = (opponent as any).lastReadChatId;
 //             console.log(finalOpponentReadId)
@@ -436,7 +436,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Send, MoreVertical,
-  Paperclip, Smile, Loader2, X, Coins, LogOut, ShieldAlert
+  Paperclip, Smile, Loader2, X, LogOut, ShieldAlert
 } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -458,7 +458,9 @@ import { useChat } from '../components/ChatContext';
 import type { ChatRoom, ChatMessage, ChatReadEvent } from '../types/chat';
 
 import '../styles/chat-page.css';
-import { API_BASE_URL } from '../config';
+import { Dialog } from "@capacitor/dialog";
+
+// import { API_BASE_URL } from '../config';
 
 const WS_URL = 'https://treasurehunter.seohamin.com/ws';
 
@@ -474,73 +476,89 @@ const ChatPage: React.FC = () => {
   // -----------------------
   // 핸들러 함수들
   // -----------------------
-  const handleSendPoints = async () => {
-    if (!roomInfo?.post?.id) { alert("게시글 정보를 찾을 수 없습니다."); return; }
-    if (!roomId) { alert("채팅방 정보를 찾을 수 없습니다."); return; }
-    if (!confirm('포인트를 전달하고 거래를 완료하시겠습니까?')) return;
+  // const handleSendPoints = async () => {
+  //   if (!roomInfo?.post?.id) { alert("게시글 정보를 찾을 수 없습니다."); return; }
+  //   if (!roomId) { alert("채팅방 정보를 찾을 수 없습니다."); return; }
+  //   if (!confirm('포인트를 전달하고 거래를 완료하시겠습니까?')) return;
 
-    try {
-      const token = await import('../utils/auth').then(m => m.getValidAuthToken());
-      if (!token) { alert("로그인이 필요합니다."); return; }
+  //   try {
+  //     const token = await import('../utils/auth').then(m => m.getValidAuthToken());
+  //     if (!token) { alert("로그인이 필요합니다."); return; }
 
-      const response = await fetch(`${API_BASE_URL}/post/${roomInfo.post.id}/complete`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ roomId: roomId })
-      });
+  //     const response = await fetch(`${API_BASE_URL}/post/${roomInfo.post.id}/complete`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify({ roomId: roomId })
+  //     });
 
-      if (response.ok) {
-        alert('포인트가 성공적으로 전달되었습니다.');
-        navigate('/home');
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || '포인트 전달에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error("포인트 전달 오류:", error);
-      alert(`오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
-    }
-  };
+  //     if (response.ok) {
+  //       alert('포인트가 성공적으로 전달되었습니다.');
+  //       navigate('/home');
+  //     } else {
+  //       const errData = await response.json().catch(() => ({}));
+  //       throw new Error(errData.message || '포인트 전달에 실패했습니다.');
+  //     }
+  //   } catch (error) {
+  //     console.error("포인트 전달 오류:", error);
+  //     alert(`오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+  //   }
+  // };
 
   const handleDeleteChat = async () => {
-    if (!confirm("채팅방을 삭제하시겠습니까?")) return;
+    const { value } = await Dialog.confirm({ title: '알림', message: "채팅방을 삭제하시겠습니까?" });
+    if (!value) return;
     try {
       if (roomId) {
         await deleteChatRoom(roomId);
         navigate('/chat-list');
       }
     } catch (error) {
-      alert("채팅방 삭제에 실패했습니다.");
+      await Dialog.alert({ title: '알림', message: "채팅방 삭제에 실패했습니다." });
     }
   };
-  const handleBlockUser = () => {
-    if (!confirm("이 사용자를 차단하시겠습니까?\n차단 시 더 이상 이 사용자의 메시지와 게시글이 보이지 않습니다.")) return;
-    
-    const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
-    const partnerId = roomInfo?.participants.find(p => String(p.id) !== String(currentUser?.id))?.id;
-    const pIdStr = String(partnerId);
-    
-    if (partnerId && !blockedUsers.includes(pIdStr)) {
-      blockedUsers.push(pIdStr);
+
+  const handleBlockUser = async () => {
+    const { value } = await Dialog.confirm({ title: '알림', message: "이 사용자를 차단하시겠습니까?\n차단 시 더 이상 이 사용자의 메시지와 게시글이 보이지 않습니다." });
+    if (!value) return;
+
+    // 1. 내 ID와 비교하여 정확한 상대방 찾기
+    const myIdStr = String(currentUser?.id);
+    const partner = roomInfo?.participants.find(p => String(p.id) !== myIdStr);
+
+    if (!partner || partner.id === undefined) {
+      await Dialog.alert({ title: '알림', message: "오류: 차단할 상대방의 정보를 찾을 수 없습니다." });
+      return;
+    }
+
+    // 2. 무조건 안전한 문자열(String)로 변환
+    const partnerIdStr = String(partner.id);
+
+    // 3. 기존 차단 목록 불러오기 (배열 안의 모든 요소를 강제로 문자열로 통일)
+    const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]').map(String);
+
+    // 4. 중복 확인 후 명단에 추가
+    if (!blockedUsers.includes(partnerIdStr)) {
+      blockedUsers.push(partnerIdStr);
       localStorage.setItem('blockedUsers', JSON.stringify(blockedUsers));
     }
-    
-    alert("사용자가 차단되었습니다.");
-    navigate('/home', { replace: true });
+
+    await Dialog.alert({ title: '알림', message: "사용자가 차단되었습니다." });
+    // 차단 후 홈 화면보다는 채팅 목록 화면으로 보내는 것이 더 자연스럽습니다.
+    navigate('/chat-list', { replace: true });
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // 현재 로그인한 사용자 정보 가져오기
   const currentUser = getUserInfo();
 
   const [roomInfo, setRoomInfo] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  
+
   // 상대방이 읽은 위치
   const [opponentLastReadId, setOpponentLastReadId] = useState<number>(0);
 
@@ -548,7 +566,7 @@ const ChatPage: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  
+
   // 내 역할 (AUTHOR / CALLER)
   const [myUserType, setMyUserType] = useState<'AUTHOR' | 'CALLER' | null>(null);
   const myUserTypeRef = useRef<'AUTHOR' | 'CALLER' | null>(null);
@@ -588,21 +606,21 @@ const ChatPage: React.FC = () => {
 
         setRoomInfo(roomData);
         setMessages(syncData.chats || []);
-        
+
         const myIdStr = String(currentUser.id);
         let determinedRole: 'AUTHOR' | 'CALLER' | null = null;
 
         const me = roomData.participants.find(p => String(p.id) === myIdStr);
         if (me && me.userType) {
-           determinedRole = me.userType;
-        } 
-        
+          determinedRole = me.userType;
+        }
+
         if (!determinedRole && roomData.post?.id) {
-           try {
-             const postDetail = await fetchPostDetail(roomData.post.id);
-             const authorId = postDetail.user?.id || postDetail.author?.id;
-             if (String(authorId) === myIdStr) determinedRole = 'AUTHOR';
-           } catch (e) { console.error(e); }
+          try {
+            const postDetail = await fetchPostDetail(roomData.post.id);
+            const authorId = postDetail.user?.id || postDetail.author?.id;
+            if (String(authorId) === myIdStr) determinedRole = 'AUTHOR';
+          } catch (e) { console.error(e); }
         }
 
         const finalRole = determinedRole || 'CALLER';
@@ -610,11 +628,11 @@ const ChatPage: React.FC = () => {
 
         let finalOpponentReadId = 0;
         const opponent = roomData.participants.find(p => String(p.id) !== myIdStr);
-        
+
         if (opponent && (opponent as any).lastReadChatId) {
-            finalOpponentReadId = (opponent as any).lastReadChatId;
+          finalOpponentReadId = (opponent as any).lastReadChatId;
         } else {
-            finalOpponentReadId = syncData.opponentLastReadChatId || 0;
+          finalOpponentReadId = syncData.opponentLastReadChatId || 0;
         }
 
         setOpponentLastReadId(finalOpponentReadId);
@@ -724,18 +742,18 @@ const ChatPage: React.FC = () => {
         await sendChatMessage(roomId, inputMessage, nickname, profileImage, 'TEXT');
         setInputMessage('');
       }
-    } catch (error) { 
+    } catch (error) {
       console.error('메시지 전송 실패:', error);
-      alert('메시지 전송 중 오류가 발생했습니다.'); 
-    } finally { 
-      setIsSending(false); 
+      await Dialog.alert({ title: '알림', message: '메시지 전송 중 오류가 발생했습니다.' });
+    } finally {
+      setIsSending(false);
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { alert('파일 크기가 10MB를 초과할 수 없습니다.'); return; }
+    if (file.size > 10 * 1024 * 1024) { await Dialog.alert({ title: '알림', message: '파일 크기가 10MB를 초과할 수 없습니다.' }); return; }
     const reader = new FileReader();
     reader.onloadend = () => setPreviewUrl(reader.result as string);
     reader.readAsDataURL(file);
@@ -746,11 +764,12 @@ const ChatPage: React.FC = () => {
   const onEmojiClick = (emojiData: EmojiClickData) => { setInputMessage((prev) => prev + emojiData.emoji); };
 
   const getPartnerInfo = () => {
-    if (!roomInfo || !currentUser) return { name: '알 수 없음', image: '' };
+    if (!roomInfo || !currentUser) return { id: null, name: '알 수 없음', image: '' };
     const partner = roomInfo.participants.find(p => String(p.id) !== String(currentUser.id));
     return {
+      id: partner?.id,
       name: partner?.nickname || roomInfo.name || '상대방',
-      image: partner?.profileImage || 'https://via.placeholder.com/150?text=User'
+      image: partner?.profileImage || 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png'
     };
   };
   const partnerInfo = getPartnerInfo();
@@ -768,7 +787,7 @@ const ChatPage: React.FC = () => {
   };
 
   // [오류 해결] TypeScript 'setPoint' 에러를 피하기 위해 as any 사용
-  const hasPoint = ((roomInfo?.post as any)?.setPoint || 0) > 0;
+  // const hasPoint = ((roomInfo?.post as any)?.setPoint || 0) > 0;
 
   if (isLoading || !myUserType) {
     return (
@@ -782,13 +801,13 @@ const ChatPage: React.FC = () => {
     <div className={`chat-page-new ${theme}`}>
       <div className="chat-header-new">
         <button className="header-back-btn" onClick={() => navigate(-1)}> <ArrowLeft size={24} /> </button>
-        <div className="header-user-info">
+        <div className="header-user-info" onClick={() => { if (partnerInfo.id) navigate(`/other-profile/${partnerInfo.id}`); }} style={{ cursor: 'pointer' }}>
           <div className="header-avatar-wrapper"> <img src={partnerInfo.image} alt={partnerInfo.name} /> </div>
           <div className="header-user-details"> <h3>{partnerInfo.name}</h3> {roomInfo?.post && <p className="text-xs text-gray-500">{roomInfo.post.title}</p>} </div>
         </div>
         <div className="header-actions-new">
-          
-          <button 
+
+          <button
             className="header-icon-btn transition-colors hover:bg-gray-100 rounded-full p-2 outline-none focus:ring-2 focus:ring-primary/20 active:bg-gray-200"
             onClick={() => setShowActionSheet(true)}
           >
@@ -803,13 +822,13 @@ const ChatPage: React.FC = () => {
       )}
       <div className={`action-sheet-menu ${showActionSheet ? 'open' : ''}`}>
         <div className="action-sheet-header">채팅방 설정</div>
-        
-        {myUserType === 'AUTHOR' && hasPoint && (
+
+        {/* {myUserType === 'AUTHOR' && hasPoint && (
           <button className="action-sheet-btn" onClick={() => { setShowActionSheet(false); handleSendPoints(); }}>
             <Coins size={20} /> <span>포인트 전달하기</span>
           </button>
-        )}
-        
+        )} */}
+
         <button className="action-sheet-btn destructive" onClick={() => { setShowActionSheet(false); handleDeleteChat(); }}>
           <LogOut size={20} /> <span>채팅방 나가기</span>
         </button>
@@ -817,9 +836,9 @@ const ChatPage: React.FC = () => {
         <button className="action-sheet-btn" onClick={() => { setShowActionSheet(false); handleBlockUser(); }}>
           <ShieldAlert size={20} /> <span>이 사용자 차단하기</span>
         </button>
-        
+
         <div className="action-sheet-divider" />
-        
+
         <button className="action-sheet-btn cancel" onClick={() => setShowActionSheet(false)}>
           <span>취소</span>
         </button>
@@ -832,7 +851,7 @@ const ChatPage: React.FC = () => {
 
           return (
             <div key={index} className={`message-row-new ${isMyMessage ? 'my-message-row' : 'other-message-row'}`}>
-              {!isMyMessage && ( <div className="message-avatar-new"> <img src={partnerInfo.image} alt={partnerInfo.name} /> </div> )}
+              {!isMyMessage && (<div className="message-avatar-new" onClick={() => { if (partnerInfo.id) navigate(`/other-profile/${partnerInfo.id}`); }} style={{ cursor: 'pointer' }}> <img src={partnerInfo.image} alt={partnerInfo.name} /> </div>)}
               <div className="message-group-new" style={{ display: 'flex', flexDirection: 'column', alignItems: isMyMessage ? 'flex-end' : 'flex-start' }}>
                 {message.type === 'IMAGE' ? (
                   <div className={`message-image-new ${isMyMessage ? 'my-bubble' : 'other-bubble'}`} style={{ padding: '4px', background: 'transparent' }}>
@@ -843,7 +862,7 @@ const ChatPage: React.FC = () => {
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', flexDirection: isMyMessage ? 'row-reverse' : 'row' }}>
                   <span className={`message-time-new ${isMyMessage ? 'my-time' : 'other-time'}`}> {formatTime(message.sentAt)} </span>
-                  {isMyMessage && !isRead && ( <span className="text-xs text-yellow-500 font-medium">1</span> )}
+                  {isMyMessage && !isRead && (<span className="text-xs text-yellow-500 font-medium">1</span>)}
                 </div>
               </div>
             </div>
@@ -860,7 +879,7 @@ const ChatPage: React.FC = () => {
       )}
 
       <div className="input-area-new relative">
-        {showEmojiPicker && ( <div className="absolute bottom-16 left-0 z-50 shadow-xl"> <EmojiPicker onEmojiClick={onEmojiClick} width={300} height={400} searchDisabled skinTonesDisabled /> </div> )}
+        {showEmojiPicker && (<div className="absolute bottom-16 left-0 z-50 shadow-xl"> <EmojiPicker onEmojiClick={onEmojiClick} width={300} height={400} searchDisabled skinTonesDisabled /> </div>)}
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
         <button className="input-icon-btn-new" onClick={() => fileInputRef.current?.click()}><Paperclip size={22} /></button>
         <div className="input-wrapper-new">

@@ -165,7 +165,7 @@ const LeaderboardPage: React.FC = () => {
               {topThree[1] && (
                 <div className="podium-item second">
                   <div className="podium-avatar" onClick={() => navigate(`/other-profile/${topThree[1].id}`)}>
-                    <img src={topThree[1].profileImage} alt={topThree[1].nickname} onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150?text=User')} />
+                    <img src={topThree[1].profileImage} alt={topThree[1].nickname} onError={(e) => (e.currentTarget.src = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png')} />
                     <div className="rank-badge">
                       <span>2</span>
                     </div>
@@ -188,7 +188,7 @@ const LeaderboardPage: React.FC = () => {
                 <div className="podium-item first">
                   <Crown className="crown-icon" size={32} />
                   <div className="podium-avatar" onClick={() => navigate(`/other-profile/${topThree[0].id}`)}>
-                    <img src={topThree[0].profileImage} alt={topThree[0].nickname} onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150?text=User')} />
+                    <img src={topThree[0].profileImage} alt={topThree[0].nickname} onError={(e) => (e.currentTarget.src = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png')} />
                     <div className="rank-badge">
                       <span>1</span>
                     </div>
@@ -210,7 +210,7 @@ const LeaderboardPage: React.FC = () => {
               {topThree[2] && (
                 <div className="podium-item third">
                   <div className="podium-avatar" onClick={() => navigate(`/other-profile/${topThree[2].id}`)}>
-                    <img src={topThree[2].profileImage} alt={topThree[2].nickname} onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150?text=User')} />
+                    <img src={topThree[2].profileImage} alt={topThree[2].nickname} onError={(e) => (e.currentTarget.src = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png')} />
                     <div className="rank-badge">
                       <span>3</span>
                     </div>
@@ -244,7 +244,7 @@ const LeaderboardPage: React.FC = () => {
                   <div className="ranking-number">
                     <span>{user.rank}</span>
                   </div>
-                  <img src={user.profileImage || 'https://via.placeholder.com/150?text=User'} alt={user.nickname} className="ranking-avatar" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150?text=User')} />
+                  <img src={user.profileImage || 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png'} alt={user.nickname} className="ranking-avatar" onError={(e) => (e.currentTarget.src = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png')} />
                   <div className="ranking-info">
                     <p className="ranking-name">{user.nickname} {user.id === currentUserId && '(나)'}</p>
                     <div className="ranking-rating">

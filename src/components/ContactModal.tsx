@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Copy, Check, X } from 'lucide-react';
+import { Dialog } from "@capacitor/dialog";
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, email }) =
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('클립보드 복사 실패:', err);
-      alert('이메일 복사에 실패했습니다. 직접 입력해주세요.');
+      await Dialog.alert({ title: '알림', message: '이메일 복사에 실패했습니다. 직접 입력해주세요.' });
     }
   };
 

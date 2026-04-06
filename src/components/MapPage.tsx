@@ -8,6 +8,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { Capacitor } from '@capacitor/core';
 import '../styles/map-page.css';
 import { API_BASE_URL } from '../config';
+import { Dialog } from "@capacitor/dialog";
 
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
@@ -267,10 +268,10 @@ export default function MapPage() {
   // [추가] 테마 변경 감지하여 지도 스타일 업데이트
   useEffect(() => {
     if (map) {
-      const newStyles = theme === 'dark' 
-        ? googleMapDarkMode 
+      const newStyles = theme === 'dark'
+        ? googleMapDarkMode
         : [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }];
-      
+
       map.setOptions({ styles: newStyles });
     }
   }, [theme, map]);
@@ -284,7 +285,7 @@ export default function MapPage() {
     markersRef.current = [];
 
     const pinPath = "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z";
-    
+
     posts.forEach((post) => {
       if (!post.lat || !post.lon) return;
 
@@ -372,7 +373,7 @@ export default function MapPage() {
       if (error.message === 'Location permission denied') {
         errorMessage = '위치 권한이 거부되었습니다.';
       }
-      alert(errorMessage);
+      await Dialog.alert({ title: '알림', message: errorMessage });
     } finally {
       setIsLocating(false);
     }
@@ -382,7 +383,7 @@ export default function MapPage() {
     <div className={`map-page ${theme}`}>
       {/* 지도 컨테이너 */}
       <div ref={mapRef} className="map-container" />
-      
+
       {/* 맵 컨트롤 영역 */}
       <div className="map-controls">
         <button
@@ -423,7 +424,7 @@ export default function MapPage() {
           </div>
         </div>
       )}
-      
+
       {/* 내 위치 버튼 */}
       <button
         className="my-location-btn"
@@ -466,11 +467,11 @@ export default function MapPage() {
               <h3>{selectedPost.title}</h3>
               <p className="info-desc">{selectedPost.content}</p>
 
-              {selectedPost.setPoint > 0 && (
+              {/* {selectedPost.setPoint > 0 && (
                 <div className="reward-info">
                   💰 {selectedPost.setPoint.toLocaleString()} 포인트
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>

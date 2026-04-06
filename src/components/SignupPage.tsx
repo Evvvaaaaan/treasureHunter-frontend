@@ -355,6 +355,7 @@ import { signupUser, saveUserInfo, getValidAuthToken } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/signup-page.css';
 import { Capacitor } from '@capacitor/core';
+import { Dialog } from "@capacitor/dialog";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -380,7 +381,7 @@ export default function SignupPage() {
         const token = await getValidAuthToken();
         
         if (!token) {
-          alert("로그인 정보가 없습니다. 다시 로그인해주세요.");
+          await Dialog.alert({ title: '알림', message: "로그인 정보가 없습니다. 다시 로그인해주세요." });
           navigate('/login', { replace: true });
           return;
         }
@@ -449,7 +450,7 @@ export default function SignupPage() {
       }
       
       setLocationError(msg);
-      alert(msg);
+      await Dialog.alert({ title: '알림', message: msg });
     } finally {
       setIsLocationLoading(false);
     }
@@ -518,7 +519,7 @@ export default function SignupPage() {
       
     } catch (err) {
       console.error("이미지 업로드 실패:", err);
-      alert("이미지 업로드에 실패했습니다. 다시 시도해주세요.");
+      await Dialog.alert({ title: '알림', message: "이미지 업로드에 실패했습니다. 다시 시도해주세요." });
       // 실패 시 이미지를 비우거나 기존 상태 유지
       setProfileImage(''); 
     } finally {

@@ -45,7 +45,7 @@
 
 //   const [isEditing, setIsEditing] = useState(false);
 //   const [editNickname, setEditNickname] = useState('');
-  
+
 //   const [profileImage, setProfileImage] = useState('');
 //   const [isSaving, setIsSaving] = useState(false);
 //   const [editImageFile, setEditImageFile] = useState<File | null>(null);
@@ -217,7 +217,7 @@
 //   return (
 //     // ✅ 전체 페이지 배경색 동적 적용
 //     <div className={`profile-page ${theme}`} style={{ backgroundColor: bgColor, paddingBottom: '80px', minHeight: '100vh', color: textColor }}>
-      
+
 //       {/* Header */}
 //       <div 
 //         className="profile-header"
@@ -475,7 +475,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Settings, Camera, Edit2, Bell, Ticket,
+  ArrowLeft, Settings, Camera, Edit2, Bell,
   History as HistoryIcon, LogOut, Package, Trophy,
   Activity as ActivityIcon, TrendingUp, Mail, Shield
 } from 'lucide-react';
@@ -486,6 +486,7 @@ import { useTheme } from '../utils/theme';
 import '../styles/profile-page.css';
 import { API_BASE_URL } from '../config';
 import ContactModal from './ContactModal';
+import { Dialog } from "@capacitor/dialog";
 
 interface UserStats {
   totalItems: number;
@@ -507,12 +508,12 @@ interface Badge {
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  
+
   const [user, setUser] = useState<UserInfo | null>(getUserInfo());
   const [isEditing, setIsEditing] = useState(false);
   const [editNickname, setEditNickname] = useState('');
 
-  
+
   const [profileImage, setProfileImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -576,7 +577,7 @@ const ProfilePage: React.FC = () => {
         setProfileImage(uploadedUrl);
       } catch (error) {
         console.error("이미지 업로드 실패:", error);
-        alert("이미지 업로드에 실패했습니다.");
+        await Dialog.alert({ title: '알림', message: "이미지 업로드에 실패했습니다." });
       }
     }
   };
@@ -611,7 +612,7 @@ const ProfilePage: React.FC = () => {
         setUser(updatedUser);
         saveUserInfo(updatedUser); // 로컬 스토리지 최신화
         setIsEditing(false);
-        alert('프로필이 저장되었습니다!');
+        await Dialog.alert({ title: '알림', message: '프로필이 저장되었습니다!' });
       } else {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.message || '프로필 수정 실패');
@@ -619,14 +620,14 @@ const ProfilePage: React.FC = () => {
 
     } catch (error) {
       console.error('Failed to save profile:', error);
-      alert(`프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+      await Dialog.alert({ title: '알림', message: `프로필 저장 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}` });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleLogout = () => {
-    if (confirm('로그아웃 하시겠습니까?')) {
+  const handleLogout = async () => {
+    if ((await Dialog.confirm({ title: '알림', message: '로그아웃 하시겠습니까?' })).value) {
       localStorage.clear();
       navigate('/login');
     }
@@ -653,10 +654,10 @@ const ProfilePage: React.FC = () => {
         {/* Profile Hero - Centered */}
         <div className="profile-hero-section">
           <div className="profile-avatar-large">
-            <img 
-              src={profileImage || user.profileImage} 
-              alt="Profile" 
-              onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=User'; }}
+            <img
+              src={profileImage || user.profileImage}
+              alt="Profile"
+              onError={(e) => { (e.target as HTMLImageElement).src = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png'; }}
             />
             {isEditing && (
               <label className="edit-avatar-btn">
@@ -670,7 +671,7 @@ const ProfilePage: React.FC = () => {
               </label>
             )}
           </div>
-          
+
           {isEditing ? (
             <div className="profile-edit-hero">
               <input
@@ -722,16 +723,13 @@ const ProfilePage: React.FC = () => {
         </div>
 
         {/* Action Cards Grid */}
-        <div className="action-cards-wrapper"> 
-           <div className="action-cards-grid">
+        <div className="action-cards-wrapper">
+          <div className="action-cards-grid">
             <button className="action-card-dark" onClick={() => navigate('/notifications')}>
               <Bell size={24} />
               <span>알림</span>
             </button>
-            <button className="action-card-dark" onClick={() => alert("포인트 스토어 기능은 준비 중입니다.")}>
-              <Ticket size={24} />
-              <span>포인트 스토어</span>
-            </button>
+
             <button className="action-card-dark" onClick={() => navigate('/my-items')}>
               <HistoryIcon size={24} />
               <span>내역</span>
@@ -742,7 +740,7 @@ const ProfilePage: React.FC = () => {
 
       {/* 2. White Body Content Section */}
       <div className="profile-content-body ">
-        
+
         {/* Badges Section */}
         {badges.length > 0 && (
           <div className="content-section">
@@ -765,22 +763,22 @@ const ProfilePage: React.FC = () => {
             <button className="menu-list-item" onClick={() => navigate('/my-items')}>
               <div className="menu-icon-bg primary"><Package size={20} /></div>
               <span className="menu-text">내 등록 아이템</span>
-              <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>
+              <div className="menu-arrow"><ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} /></div>
             </button>
             <button className="menu-list-item" onClick={() => navigate('/reviews')}>
               <div className="menu-icon-bg success"><Trophy size={20} /></div>
               <span className="menu-text">받은 후기</span>
-              <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>
+              <div className="menu-arrow"><ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} /></div>
             </button>
             <button className="menu-list-item" onClick={() => navigate('/favorites')}>
               <div className="menu-icon-bg warning"><ActivityIcon size={20} /></div>
               <span className="menu-text">관심 목록 ({user.likedPosts?.length || 0})</span>
-              <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>
+              <div className="menu-arrow"><ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} /></div>
             </button>
             <button className="menu-list-item" onClick={() => navigate('/leaderboard')}>
               <div className="menu-icon-bg info"><TrendingUp size={20} /></div>
               <span className="menu-text">리더보드</span>
-              <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>
+              <div className="menu-arrow"><ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} /></div>
             </button>
           </div>
         </div>
@@ -791,17 +789,17 @@ const ProfilePage: React.FC = () => {
             <button className="menu-list-item" onClick={() => setIsContactModalOpen(true)}>
               <div className="menu-icon-bg gray"><Mail size={20} /></div>
               <span className="menu-text">문의하기</span>
-              <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>
+              <div className="menu-arrow"><ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} /></div>
             </button>
-            <ContactModal 
-              isOpen={isContactModalOpen} 
-              onClose={() => setIsContactModalOpen(false)} 
+            <ContactModal
+              isOpen={isContactModalOpen}
+              onClose={() => setIsContactModalOpen(false)}
               email="vmfhrmfoald36@gmail.com"
             />
             <button className="menu-list-item" onClick={() => navigate('/privacy')}>
               <div className="menu-icon-bg gray"><Shield size={20} /></div>
               <span className="menu-text">개인정보 처리방침</span>
-              <div className="menu-arrow"><ArrowLeft size={16} style={{transform: 'rotate(180deg)'}} /></div>
+              <div className="menu-arrow"><ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} /></div>
 
             </button>
           </div>
@@ -816,7 +814,7 @@ const ProfilePage: React.FC = () => {
       </div>
 
       <BottomNavigation />
-    </div>
+    </div >
   );
 };
 

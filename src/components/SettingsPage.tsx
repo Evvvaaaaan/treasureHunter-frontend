@@ -23,6 +23,7 @@ import { deleteUser, getUserInfo, clearTokens } from '../utils/auth';
 import BottomNavigation from './BottomNavigation';
 import PushNotificationAlert from './PushNotificationAlert'; 
 import '../styles/settings-page.css';
+import { Dialog } from "@capacitor/dialog";
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -72,7 +73,7 @@ const SettingsPage: React.FC = () => {
   // 설정 버튼을 눌렀을 때의 핸들러
   const handlePushToggle = async (checked: boolean) => {
     if (!Capacitor.isNativePlatform()) {
-      alert("푸시 알림은 모바일 앱 환경에서만 설정할 수 있습니다.");
+      await Dialog.alert({ title: '알림', message: "푸시 알림은 모바일 앱 환경에서만 설정할 수 있습니다." });
       return;
     }
 
@@ -83,7 +84,7 @@ const SettingsPage: React.FC = () => {
       if (status.receive === 'prompt') {
         setShowPushAlert(true);
       } else if (status.receive === 'denied') {
-        if (window.confirm("기기 설정에서 푸시 알림이 차단되어 있습니다. 설정 페이지로 이동하시겠습니까?")) {
+        if ((await Dialog.confirm({ title: '알림', message: "기기 설정에서 푸시 알림이 차단되어 있습니다. 설정 페이지로 이동하시겠습니까?" })).value) {
           // 🚨 수정된 부분: 기기별 설정창 열기
           await NativeSettings.open({
             optionAndroid: AndroidSettings.ApplicationDetails,
@@ -93,7 +94,7 @@ const SettingsPage: React.FC = () => {
       }
     } else {
       // 2. 알림을 끄려고 할 때
-      if (window.confirm("푸시 알림을 끄려면 기기의 '설정'에서 직접 변경해야 합니다. 기기 설정으로 이동하시겠습니까?")) {
+      if ((await Dialog.confirm({ title: '알림', message: "푸시 알림을 끄려면 기기의 '설정'에서 직접 변경해야 합니다. 기기 설정으로 이동하시겠습니까?" })).value) {
         // 🚨 수정된 부분: 기기별 설정창 열기
         await NativeSettings.open({
           optionAndroid: AndroidSettings.ApplicationDetails,
@@ -108,34 +109,34 @@ const SettingsPage: React.FC = () => {
     localStorage.setItem('setting_push', String(isEnabled));
   };
 
-  const handleLogout = () => {
-    if (window.confirm('정말 로그아웃하시겠습니까?')) {
+  const handleLogout = async () => {
+    if ((await Dialog.confirm({ title: '알림', message: '정말 로그아웃하시겠습니까?' })).value) {
       clearTokens();
       navigate('/login');
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (window.confirm('정말 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    if ((await Dialog.confirm({ title: '알림', message: '정말 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.' })).value) {
       try {
         const userInfo = getUserInfo();
         if (!userInfo) {
-          alert('사용자 정보를 찾을 수 없습니다.');
+          await Dialog.alert({ title: '알림', message: '사용자 정보를 찾을 수 없습니다.' });
           return;
         }
 
         const success = await deleteUser(String(userInfo.id));
 
         if (success) {
-          alert('회원 탈퇴가 완료되었습니다.');
+          await Dialog.alert({ title: '알림', message: '회원 탈퇴가 완료되었습니다.' });
           clearTokens();
           navigate('/login');
         } else {
-          alert('회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.');
+          await Dialog.alert({ title: '알림', message: '회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.' });
         }
       } catch (error) {
         console.error('회원 탈퇴 중 오류 발생:', error);
-        alert('알 수 없는 오류가 발생했습니다.');
+        await Dialog.alert({ title: '알림', message: '알 수 없는 오류가 발생했습니다.' });
       }
     }
   };

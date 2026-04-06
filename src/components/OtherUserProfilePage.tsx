@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../utils/theme";
 import { getUserProfile, type UserInfo } from "../utils/auth";
+import { Dialog } from '@capacitor/dialog';
 import "../styles/other-user-profile-page.css";
 
 // UI에 표시할 사용자 프로필 인터페이스
@@ -63,29 +64,29 @@ const OtherUserProfilePage: React.FC = () => {
       if (!userData) {
         throw new Error("사용자 정보를 찾을 수 없습니다.");
       }
-       const avgScore = userData.totalReviews > 0 
-        ? userData.totalScore / userData.totalReviews 
+      const avgScore = userData.totalReviews > 0
+        ? userData.totalScore / userData.totalReviews
         : 0;
       const trustScore = Math.round(avgScore); // 5점 만점 기준 -> 100점 만점
 
       const mappedProfile: UserProfile = {
         id: userData.id.toString(),
         nickname: userData.nickname,
-        profileImage: userData.profileImage || "https://via.placeholder.com/400x400?text=No+Image",
+        profileImage: userData.profileImage || "https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png",
         bio: "안녕하세요! 보물찾기를 통해 잃어버린 물건을 찾고 있습니다.",
         trustScore: trustScore,
-        isOnline: false, 
-        location: "활동 지역 정보 없음", 
+        isOnline: false,
+        location: "활동 지역 정보 없음",
         joinedDate: new Date(userData.createdAt).toLocaleDateString('ko-KR', {
           year: 'numeric', month: 'long', day: 'numeric'
         }),
         stats: {
           itemsFound: userData.returnedItemsCount || 0,
-          itemsLost: userData.posts ? userData.posts.filter(p => 
+          itemsLost: userData.posts ? userData.posts.filter(p =>
             (p.type || '').toUpperCase() === 'LOST'
           ).length : 0,
           helpedOthers: userData.totalReviews || 0,
-          successRate: 95, 
+          successRate: 95,
         },
         badges: Array.from({ length: userData.badgeCount || 0 }).map((_, idx) => ({
           id: `badge-${idx}`,
@@ -104,25 +105,27 @@ const OtherUserProfilePage: React.FC = () => {
     }
   };
 
-  const handleReport = () => {
-    if (confirm("이 사용자를 신고하시겠습니까?")) {
-      alert("신고가 접수되었습니다. 검토 후 조치하겠습니다.");
+  const handleReport = async () => {
+    const { value } = await Dialog.confirm({ title: '알림', message: "이 사용자를 신고하시겠습니까?" });
+    if (value) {
+      await Dialog.alert({ title: '알림', message: "신고가 접수되었습니다. 검토 후 조치하겠습니다." });
     }
   };
-  
+
   // [수정] 리뷰 페이지 이동 핸들러
   const handleWriteReview = () => {
-      // /review/:userId 경로로 이동
-      navigate(`/review/${id}`);
+    // /review/:userId 경로로 이동
+    navigate(`/review/${id}`);
   };
-const handleBlock = () => {
-    if (confirm("이 사용자를 차단하시겠습니까?\n차단 시 더 이상 이 사용자의 게시글과 메시지가 보이지 않습니다.")) {
+  const handleBlock = async () => {
+    const { value } = await Dialog.confirm({ title: '알림', message: "이 사용자를 차단하시겠습니까?\n차단 시 더 이상 이 사용자의 게시글과 메시지가 보이지 않습니다." });
+    if (value) {
       const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
       if (id && !blockedUsers.includes(id)) {
         blockedUsers.push(id);
         localStorage.setItem('blockedUsers', JSON.stringify(blockedUsers));
       }
-      alert("사용자가 차단되었습니다.");
+      await Dialog.alert({ title: '알림', message: "사용자가 차단되었습니다." });
       navigate(-1); // 이전 화면으로 돌아가기
     }
   };

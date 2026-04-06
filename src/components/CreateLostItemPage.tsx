@@ -1165,7 +1165,7 @@
 //           <Textarea
 //             id="description"
 //             placeholder={`[경찰서 신고 접수 시 필수 작성 내용 예시]
-              
+
 // 1. 습득 일시: (정확한 날짜와 시간)
 // 2. 습득 장소: (구체적인 건물명, 층수, 도로명 주소 등)
 // 3. 물건 특징: (브랜드, 모델명, 색상, 고유번호/일련번호 등)
@@ -1424,7 +1424,7 @@ import {
   Loader2,
   ChevronLeft,
   Check,
-  Coins,
+  // Coins,
   AlertCircle,
   ShieldQuestion, // 익명 아이콘 추가
 
@@ -1437,10 +1437,11 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 // [MODIFIED] createPost, PostData, getValidAuthToken 추가
-import { getUserInfo, type UserInfo, createPost, type PostData, getValidAuthToken } from '../utils/auth';
+import { getUserInfo, createPost, type PostData, getValidAuthToken } from '../utils/auth';
 import { useTheme } from '../utils/theme';
 import '../styles/create-lost-item.css';
 import { API_BASE_URL } from '../config';
+import { Dialog } from "@capacitor/dialog";
 
 // 구글 맵 다크 모드 스타일 정의
 const googleMapDarkMode = [
@@ -1630,7 +1631,7 @@ const uploadImages = async (files: File[], token: string): Promise<string[]> => 
 
 
 export default function CreateLostItemPage() {
-  const [currentUser] = useState<UserInfo | null>(getUserInfo());
+  // const [currentUser] = useState<UserInfo | null>(getUserInfo());
   const navigate = useNavigate();
   const { theme } = useTheme();
 
@@ -1650,11 +1651,11 @@ export default function CreateLostItemPage() {
   // const [userPoints, setUserPoints] = useState(1000);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // mapRef는 더 이상 직접적인 DOM 접근에 사용되지 않고 GoogleMap 컴포넌트 내부에서 처리됨
   // 하지만 onLoad 콜백을 위해 유지할 수도 있음
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  
+
   const [title, setTitle] = useState('분실물');
 
   // [NEW] 익명 등록 상태 추가
@@ -1883,7 +1884,7 @@ export default function CreateLostItemPage() {
     const currentPhotoCount = formData.photos.length;
     const availableSlots = 5 - currentPhotoCount;
     if (availableSlots <= 0) {
-      alert('사진은 최대 5장까지 업로드할 수 있습니다.');
+      await Dialog.alert({ title: '알림', message: '사진은 최대 5장까지 업로드할 수 있습니다.' });
       return;
     }
 
@@ -2524,7 +2525,7 @@ export default function CreateLostItemPage() {
         </div>
 
         {/* Reward Points */}
-        <div className="form-section">
+        {/* <div className="form-section">
           <div className="label-with-check">
             <Label htmlFor="rewardPoints">
               <Coins style={{ width: '1rem', height: '1rem' }} aria-hidden="true" />
@@ -2557,7 +2558,7 @@ export default function CreateLostItemPage() {
             <span>{currentUser?.point?.toLocaleString() ?? 0} P</span>
           </div>
           <p className="input-hint" style={{ fontSize: '0.875rem', color: '#6b7280' }}>습득자에게 사례금으로 지급할 포인트를 설정할 수 있습니다.</p>
-        </div>
+        </div> */}
 
         {/* Lost Date */}
         <div className="form-section">

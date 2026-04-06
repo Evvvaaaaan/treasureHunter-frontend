@@ -9,6 +9,7 @@ import { getUserInfo, checkToken, getValidAuthToken } from '../utils/auth';
 import { useTheme } from '../utils/theme';
 import '../styles/favorites-page.css';
 import { API_BASE_URL } from '../config';
+import { Dialog } from "@capacitor/dialog";
 
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
 
@@ -111,7 +112,7 @@ const FavoritesPage: React.FC = () => {
     try {
       const token = await getValidAuthToken();
       if (!token) {
-        alert('로그인이 필요합니다.');
+        await Dialog.alert({ title: '알림', message: '로그인이 필요합니다.' });
         navigate('/login');
         return;
       }
@@ -182,12 +183,12 @@ const FavoritesPage: React.FC = () => {
   const handleRemoveFavorite = async (itemId: string, e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (!confirm('관심 목록에서 삭제하시겠습니까?')) return;
+    if (!(await Dialog.confirm({ title: '알림', message: '관심 목록에서 삭제하시겠습니까?' })).value) return;
 
     try {
       const token = await getValidAuthToken();
       if (!token) {
-        alert("로그인이 필요합니다.");
+        await Dialog.alert({ title: '알림', message: "로그인이 필요합니다." });
         return;
       }
 
@@ -200,14 +201,14 @@ const FavoritesPage: React.FC = () => {
 
       if (response.status === 204 || response.ok) {
         setFavorites(prev => prev.filter(item => item.id !== itemId));
-        alert("삭제되었습니다.");
+        await Dialog.alert({ title: '알림', message: "삭제되었습니다." });
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || '삭제 실패');
       }
     } catch (error) {
       console.error('Failed to remove favorite:', error);
-      alert('삭제 중 오류가 발생했습니다.');
+      await Dialog.alert({ title: '알림', message: '삭제 중 오류가 발생했습니다.' });
     }
   };
 

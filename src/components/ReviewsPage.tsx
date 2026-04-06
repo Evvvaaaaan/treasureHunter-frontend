@@ -127,7 +127,7 @@ const ReviewsPage: React.FC = () => {
             id: review.id.toString(),
             reviewerId: review.author?.id.toString() || 'unknown',
             reviewerName: review.author?.nickname || '익명',
-            reviewerImage: review.author?.profileImage || 'https://via.placeholder.com/150?text=User',
+            reviewerImage: review.author?.profileImage || 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png',
             rating: review.score,
             content: review.content,
             title: review.title,

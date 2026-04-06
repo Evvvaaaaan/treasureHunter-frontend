@@ -14,7 +14,8 @@ import { getValidAuthToken, getUserInfo, getUserProfile } from "../utils/auth";
 import { fetchChatRoomDetail } from "../utils/chat";
 import { uploadImage } from "../utils/file";
 import "../styles/review-page.css";
-import { API_BASE_URL } from '../config'; 
+import { API_BASE_URL } from '../config';
+import { Dialog } from "@capacitor/dialog";
 
 interface ReviewData {
   title: string;
@@ -68,19 +69,19 @@ const ReviewPage: React.FC = () => {
     try {
       const roomData = await fetchChatRoomDetail(chatRoomId);
       const partnerInfo = roomData.participants.find(p => p.id !== Number(currentUser?.id));
-      
+
       if (partnerInfo) {
         // [추가] 자기 자신 체크
         if (partnerInfo.id === Number(currentUser?.id)) {
-            alert("자기 자신에게는 후기를 작성할 수 없습니다.");
-            navigate(-1);
-            return;
+          await Dialog.alert({ title: '알림', message: "자기 자신에게는 후기를 작성할 수 없습니다." });
+          navigate(-1);
+          return;
         }
 
         setPartner({
           id: partnerInfo.id,
           nickname: partnerInfo.nickname || "알 수 없음",
-          profileImage: partnerInfo.profileImage || "https://via.placeholder.com/150?text=User"
+          profileImage: partnerInfo.profileImage || "https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png"
         });
       } else {
         throw new Error("대화 상대방을 찾을 수 없습니다.");
@@ -92,7 +93,7 @@ const ReviewPage: React.FC = () => {
 
     } catch (error) {
       console.error("채팅방 정보 로드 실패:", error);
-      alert("정보를 불러오는데 실패했습니다.");
+      await Dialog.alert({ title: '알림', message: "정보를 불러오는데 실패했습니다." });
       navigate(-1);
     } finally {
       setIsLoading(false);
@@ -103,27 +104,27 @@ const ReviewPage: React.FC = () => {
   const loadDirectUserInfo = async (targetUserId: string) => {
     // [추가] 자기 자신 체크
     if (Number(targetUserId) === Number(currentUser?.id)) {
-        alert("자기 자신에게는 후기를 작성할 수 없습니다.");
-        navigate(-1);
-        return;
+      await Dialog.alert({ title: '알림', message: "자기 자신에게는 후기를 작성할 수 없습니다." });
+      navigate(-1);
+      return;
     }
 
     setIsLoading(true);
     try {
       const userData = await getUserProfile(targetUserId);
       if (userData) {
-         setPartner({
-            id: userData.id,
-            nickname: userData.nickname,
-            profileImage: userData.profileImage || "https://via.placeholder.com/150?text=User"
-         });
-         setPostId(null); 
+        setPartner({
+          id: userData.id,
+          nickname: userData.nickname,
+          profileImage: userData.profileImage || "https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png"
+        });
+        setPostId(null);
       } else {
-          throw new Error("사용자 정보를 찾을 수 없습니다.");
+        throw new Error("사용자 정보를 찾을 수 없습니다.");
       }
     } catch (error) {
       console.error("사용자 정보 로드 실패:", error);
-      alert("사용자 정보를 불러올 수 없습니다.");
+      await Dialog.alert({ title: '알림', message: "사용자 정보를 불러올 수 없습니다." });
       navigate(-1);
     } finally {
       setIsLoading(false);
@@ -135,10 +136,10 @@ const ReviewPage: React.FC = () => {
     setReviewData({ ...reviewData, score: value });
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (reviewData.images.length + files.length > 5) {
-      alert("최대 5장까지만 업로드할 수 있습니다.");
+      await Dialog.alert({ title: '알림', message: "최대 5장까지만 업로드할 수 있습니다." });
       return;
     }
     const newImages = [...reviewData.images, ...files];
@@ -171,15 +172,15 @@ const ReviewPage: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
+
     // [추가] 제출 전 다시 한번 자기 자신 체크
     if (partner?.id === Number(currentUser?.id)) {
-        alert("자기 자신에게는 후기를 작성할 수 없습니다.");
-        return;
+      await Dialog.alert({ title: '알림', message: "자기 자신에게는 후기를 작성할 수 없습니다." });
+      return;
     }
 
     if (!partner?.id) {
-      alert("후기 대상 정보가 없어 작성할 수 없습니다.");
+      await Dialog.alert({ title: '알림', message: "후기 대상 정보가 없어 작성할 수 없습니다." });
       return;
     }
 
@@ -200,7 +201,7 @@ const ReviewPage: React.FC = () => {
         content: reviewData.content,
         score: reviewData.score,
         targetUserId: partner.id,
-        images: imageUrls 
+        images: imageUrls
       };
 
       const response = await fetch(`${API_BASE_URL}/review`, {
@@ -228,12 +229,12 @@ const ReviewPage: React.FC = () => {
         }
       }
 
-      alert("후기가 소중하게 전달되었습니다!");
-      navigate(-1); 
+      await Dialog.alert({ title: '알림', message: "후기가 소중하게 전달되었습니다!" });
+      navigate(-1);
 
     } catch (error) {
       console.error("후기 등록 오류:", error);
-      alert(`후기 등록 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+      await Dialog.alert({ title: '알림', message: `후기 등록 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}` });
     } finally {
       setIsSubmitting(false);
     }
@@ -319,7 +320,7 @@ const ReviewPage: React.FC = () => {
             <Star size={20} style={{ color: getScoreColor(reviewData.score) }} />
             <span>만족도 평가</span>
           </div>
-          
+
           <div className="score-display-review">
             <span className="score-emoji">{getScoreEmoji(reviewData.score)}</span>
             <span className="score-number-review" style={{ color: getScoreColor(reviewData.score) }}>
@@ -381,7 +382,7 @@ const ReviewPage: React.FC = () => {
         {/* Image Upload */}
         <div className="form-group-review">
           <label className="form-label-review">사진 첨부 (선택)</label>
-          
+
           {imagePreviews.length > 0 && (
             <div className="image-preview-grid-review">
               {imagePreviews.map((preview, index) => (

@@ -36,9 +36,9 @@ const ChatListPage: React.FC = () => {
   useEffect(() => {
     // 1. 여기서도 차단된 유저 목록을 다시 한 번 불러옵니다.
     const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
-    
+
     // 2. chatRooms 원본에서 일단 차단된 유저를 뺍니다.
-    const validRooms = chatRooms.filter(room => !blockedUsers.includes(String(room.userId)));
+    const validRooms = chatRooms.filter(room => !blockedUsers.map(String).includes(String(room.userId)));
 
     // 3. 남은 방들을 대상으로 검색어 필터링을 진행합니다.
     if (!searchQuery.trim()) {
@@ -172,7 +172,7 @@ const ChatListPage: React.FC = () => {
           id: room.roomId,
           userId: partner?.id.toString() || 'unknown',
           userName: partner?.nickname || room.name || '알 수 없는 사용자',
-          userAvatar: partner?.profileImage || 'https://via.placeholder.com/100?text=User',
+          userAvatar: partner?.profileImage || 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png',
           isOnline: false,
           lastMessage: lastMessageText,
           lastMessageType: lastMessageType,
@@ -185,11 +185,11 @@ const ChatListPage: React.FC = () => {
       });
 
       const uiRooms = await Promise.all(uiRoomsPromises);
-      
+
       // 차단 유저 필터링 추가
       const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
-      const nonBlockedRooms = uiRooms.filter(room => !blockedUsers.includes(String(room.userId)));
-      
+      const nonBlockedRooms = uiRooms.filter(room => !blockedUsers.map(String).includes(String(room.userId)));
+
       nonBlockedRooms.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       setChatRooms(nonBlockedRooms);
@@ -243,8 +243,8 @@ const ChatListPage: React.FC = () => {
       </div>
       <div className="chat-list-content-new">
         {isLoading ? (
-          <div className="loading-container-new"><Loader2 className="animate-spin" size={48} 
-              style={{ color: '#10b981', marginBottom: '20px' }} /><p>채팅 목록을 불러오는 중...</p></div>
+          <div className="loading-container-new"><Loader2 className="animate-spin" size={48}
+            style={{ color: '#10b981', marginBottom: '20px' }} /><p>채팅 목록을 불러오는 중...</p></div>
         ) : filteredRooms.length === 0 ? (
           <div className="empty-state-new">
             <MessageCircle size={64} className="empty-icon-new" />

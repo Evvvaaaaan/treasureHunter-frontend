@@ -12,7 +12,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "./ui/alert-dialog"; 
+} from "./ui/alert-dialog";
+import { Dialog } from "@capacitor/dialog";
 
 interface PushNotificationAlertProps {
   open: boolean;
@@ -64,7 +65,7 @@ const PushNotificationAlert = ({
 
     try {
       if (alertType === 'denied') {
-        alert("설정 > 앱 > Find X > 알림 권한을 켜주세요.");
+        await Dialog.alert({ title: '알림', message: "설정 > 앱 > Find X > 알림 권한을 켜주세요." });
         onOpenChange(false);
       } else {
         const result = await PushNotifications.requestPermissions();
@@ -103,9 +104,9 @@ const PushNotificationAlert = ({
           });
 
           // ❌ 2. 기기 등록 실패 시 에러 처리
-          PushNotifications.addListener('registrationError', (error) => {
+          PushNotifications.addListener('registrationError', async (error) => {
             console.error('❌ 푸시 등록 에러:', error);
-            alert('기기를 알림 서버에 등록하지 못했습니다.');
+            await Dialog.alert({ title: '알림', message: '기기를 알림 서버에 등록하지 못했습니다.' });
           });
 
           // 3. 리스너 세팅 후 최종적으로 기기 등록 실행!
@@ -117,7 +118,7 @@ const PushNotificationAlert = ({
       }
     } catch (error) {
       console.error("Push Error:", error);
-      alert("알림 설정 중 오류가 발생했습니다. 앱을 완전히 종료 후 다시 시도해주세요.");
+      await Dialog.alert({ title: '알림', message: "알림 설정 중 오류가 발생했습니다. 앱을 완전히 종료 후 다시 시도해주세요." });
       onOpenChange(false);
     } finally {
       setIsChecking(false);

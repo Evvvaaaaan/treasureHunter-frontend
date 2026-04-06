@@ -491,7 +491,7 @@ import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core'; // 플랫폼 확인용
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth'; 
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
 // ... (기존 컴포넌트 import 들은 그대로 유지) ...
 import LoginPage from './components/LoginPage';
@@ -506,7 +506,7 @@ import MapPage from './components/MapPage';
 import CreateItemPage from './components/CreateLostItemPage';
 import ChatListPage from './components/ChatListPage';
 import ChatPage from './components/ChatPage';
-import StorePage from './components/StorePage';
+// import StorePage from './components/StorePage';
 import OtherUserProfilePage from './components/OtherUserProfilePage';
 import SettingsPage from './components/SettingsPage';
 import NotificationsPage from './components/NotificationsPage';
@@ -530,7 +530,6 @@ import { ChatProvider } from './components/ChatContext';
 // firebase.ts에서 함수 import
 // import { requestPermission, onMessageListener } from './firebase';
 import { API_BASE_URL } from './config';
-import AiSupportPage from './components/AiSupportPage';
 
 /**
  * 앱 로딩 시 전체 화면 스피너
@@ -589,7 +588,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       const token = await getValidAuthToken();
-      
+
       if (token) {
         let currentInfo = getUserInfo(); // 로컬 정보 먼저 확인
 
@@ -606,7 +605,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         // 2. 최신 정보 업데이트 (실패해도 로컬 정보가 있으면 유지!)
         if (currentInfo && currentInfo.id) {
           setUserInfo(currentInfo); // 일단 보여줌 (빠른 렌더링)
-          
+
           // 백그라운드에서 최신화 시도
           checkToken(currentInfo.id.toString()).then(freshUserInfo => {
             if (freshUserInfo) setUserInfo(freshUserInfo);
@@ -625,20 +624,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [location.pathname]);
 
   if (isLoading) return <FullPageSpinner />;
-  
+
   // 로그인 안 된 경우 처리
   if (!userInfo) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', padding: '20px', textAlign: 'center' }}>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '10px' }}>정보를 불러올 수 없습니다</h2>
         <p style={{ color: '#666', marginBottom: '20px' }}>네트워크 연결을 확인해주세요.</p>
-        <button 
+        <button
           onClick={() => window.location.reload()}
           style={{ padding: '10px 20px', backgroundColor: 'var(--primary)', color: 'white', borderRadius: '8px', border: 'none', marginBottom: '10px' }}
         >
           다시 시도
         </button>
-        <button 
+        <button
           onClick={() => { clearTokens(); window.location.href = '/login'; }}
           style={{ padding: '10px 20px', backgroundColor: '#ef4444', color: 'white', borderRadius: '8px', border: 'none' }}
         >
@@ -672,14 +671,14 @@ function RootRedirect() {
         let currentInfo = getUserInfo();
 
         if (!currentInfo || !currentInfo.id) {
-            const userId = getUserIdFromToken(token);
-            if (userId) currentInfo = await checkToken(userId);
+          const userId = getUserIdFromToken(token);
+          if (userId) currentInfo = await checkToken(userId);
         }
 
         if (currentInfo && currentInfo.id) {
           // [수정됨] 서버 확인 실패해도 로컬 정보가 있으면 유지
           const freshUserInfo = await checkToken(currentInfo.id.toString());
-          setUserInfo(freshUserInfo || currentInfo); 
+          setUserInfo(freshUserInfo || currentInfo);
         } else {
           setUserInfo(null);
         }
@@ -709,7 +708,7 @@ export default function App() {
   useEffect(() => {
     GoogleAuth.initialize({
       // ⚠️ 따옴표(') 안에 복사한 ID를 넣으세요. 끝에 콤마(,)도 지우지 마세요.
-      clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com', 
+      clientId: '272231760809-0l7kijd2m5jtumjr4s1jj5dk22g17hmh.apps.googleusercontent.com',
       scopes: ['profile', 'email'],
       grantOfflineAccess: true,
     });
@@ -777,13 +776,13 @@ export default function App() {
         }
 
         // (4) 포그라운드 알림 수신 리스너 (앱이 켜져 있을 때 알림 도착)
-        await FirebaseMessaging.addListener('notificationReceived', (event : any) => {
+        await FirebaseMessaging.addListener('notificationReceived', (event: any) => {
           console.log('🔔 포그라운드 알림 수신:', event.notification);
           // 필요한 경우 Toast 메시지 등을 띄우거나 상태 업데이트
         });
 
         // (5) 알림 클릭 리스너 (알림을 누르고 앱을 열었을 때)
-        await FirebaseMessaging.addListener('notificationActionPerformed', (event : any) => {
+        await FirebaseMessaging.addListener('notificationActionPerformed', (event: any) => {
           console.log('👆 알림 클릭됨:', event.notification);
           // 예: 채팅방으로 이동하는 로직이 필요하면 여기에 작성
           // const chatId = event.notification.data.chatId;
@@ -850,7 +849,7 @@ export default function App() {
             <Route path="/my-items" element={<ProtectedRoute><MyItemsPage /></ProtectedRoute>} />
             <Route path="/chat/:id" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
             <Route path="/chat-list" element={<ProtectedRoute><ChatListPage /></ProtectedRoute>} />
-            <Route path="/store" element={<ProtectedRoute><StorePage /></ProtectedRoute>} />
+            {/* <Route path="/store" element={<ProtectedRoute><StorePage /></ProtectedRoute>} /> */}
             <Route path="/other-profile/:id" element={<ProtectedRoute><OtherUserProfilePage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
@@ -860,7 +859,6 @@ export default function App() {
             <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
             <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
-            <Route path="/ai-support" element={<AiSupportPage />} />
 
             <Route path="/about" element={<AppInfoPage />} />
             <Route path="/help" element={<HelpPage />} />

@@ -73,6 +73,11 @@ const PrivacyPage: React.FC = () => {
           <strong>- 필수 수집 정보: 이름 및 연락처</strong><br/>
           회사는 서비스 이용 과정이나 사업 처리 과정에서 다음과 같은 정보들이 자동으로 생성되어 수집될 수 있습니다.<br/>
           <strong>- 필수 수집 정보: 기기 식별자(디바이스 토큰, FCM 토큰), 단말기 정보(OS 버전, 모델명), 접속 IP 주소, 서비스 이용 기록(AI 채팅 내역), 불량 이용 기록</strong></p>
+          <p style={{ marginTop: '8px' }}>
+          ※ 위치정보는 <strong>앱 사용 중(When In Use)</strong>에만 수집되며, 주변 분실물/습득물 지도 표시 및 거리 기반 게시글 정렬을 위해 사용합니다.<br/>
+          ※ 푸시 알림을 허용한 경우에 한해 디바이스 토큰(FCM/APNs 연계 토큰)을 수집하여 알림 발송에 사용합니다.<br/>
+          
+          </p>
         </div>
 
         <div className="policy-section" style={{ marginBottom: '24px' }}>
@@ -177,6 +182,9 @@ const PrivacyPage: React.FC = () => {
           나. 개인정보가 이전되는 국가, 이전일시 및 이전방법<br/>
           다. 개인정보를 이전받는 자의 성명(법인인 경우 그 명칭 및 정보관리 책임자의 연락처)<br/>
           라. 개인정보를 이전받는 자의 개인정보 이용목적 및 보유·이용 기간</p>
+          <p style={{ marginTop: '8px' }}>
+          ※ AI 고객지원 기능에 외부 AI API가 연동되는 경우, 질의 텍스트 등 최소한의 정보가 국외 서버에서 처리될 수 있으며, 제공 범위/항목/보관기간은 서비스 내 고지 및 관련 법령에 따라 안내합니다.
+          </p>
         </div>
 
         <div className="policy-section" style={{ marginBottom: '24px' }}>

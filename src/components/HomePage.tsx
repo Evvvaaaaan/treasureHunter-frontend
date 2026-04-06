@@ -26,6 +26,7 @@ import BottomNavigation from './BottomNavigation';
 import { useInView } from 'react-intersection-observer';
 import { API_BASE_URL } from '../config';
 import type { Post } from '../types/post';
+import { Dialog } from "@capacitor/dialog";
 
 // interface AuthorInfo {
 //   id: number;
@@ -309,11 +310,11 @@ export default function HomePage() {
       const success = await deleteUser(userInfo.id.toString());
       setIsDeleteDialogOpen(false);
       if (success) {
-        alert('회원 탈퇴 완료');
+        await Dialog.alert({ title: '알림', message: '회원 탈퇴 완료' });
         clearTokens(); 
         window.location.href = '/login';
       } else {
-        alert('회원 탈퇴 실패');
+        await Dialog.alert({ title: '알림', message: '회원 탈퇴 실패' });
       }
     }
   };

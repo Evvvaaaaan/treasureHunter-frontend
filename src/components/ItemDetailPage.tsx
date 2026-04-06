@@ -331,7 +331,7 @@
 
 //   const handleEdit = () => {
 //     setIsMenuOpen(false);
-//     alert("게시글 수정 기능은 준비 중입니다.");
+
 //   };
 
 //   const handleShare = async () => {
@@ -343,10 +343,10 @@
 //       return;
 //     }
 //     const isLost = item.type === 'lost';
-  
+
 //     const prefix = isLost ? '🚨 도와주세요!' : '📢 주인을 찾습니다!';
 //     const suffix = isLost ? '혹시 보신 분 계신가요?' : '주인분은 여기서 확인하세요!';
-  
+
 //   const shareText = `[Find X]\n${prefix} ${item.title}\n${suffix}`;
 //     const realUrl = `https://treasurehunter.seohamin.com/post/${id}`;
 //     const shareData = {
@@ -358,10 +358,10 @@
 
 //     try {
 //       // [2번 알림] 플러그인 호출 직전
-      
+
 //       // canShare 체크 없이 바로 실행
 //       await Share.share(shareData);
-      
+
 //       // [3번 알림] 이게 안 뜨면 플러그인이 먹통인 것
 //       // alert('3. 공유 창 열림 성공');
 
@@ -698,13 +698,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MapPin, Calendar, Share2, Flag, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart, Edit, Trash, MoreVertical } from 'lucide-react';
+import { MapPin, Calendar, Share2, Flag, MessageCircle, ChevronLeft, ChevronRight, X, Star, Heart, Trash, MoreVertical } from 'lucide-react';
 import { useTheme } from '../utils/theme';
 import { getValidAuthToken, getUserInfo } from '../utils/auth';
 import { createChatRoom } from '../utils/chat';
 import '../styles/item-detail.css';
 import { API_BASE_URL } from '../config';
 import { Share } from '@capacitor/share';
+import { Dialog } from "@capacitor/dialog";
 
 interface ApiPost {
   id: number;
@@ -793,7 +794,7 @@ const ItemDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
-  
+
   // Action Sheet 메뉴 상태
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -942,7 +943,7 @@ const ItemDetailPage: React.FC = () => {
         setPostAuthor({
           id: data.author.id.toString(),
           nickname: data.author.nickname,
-          profileImage: data.author.profileImage || 'https://via.placeholder.com/150?text=User',
+          profileImage: data.author.profileImage || 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png',
           trustScore: trustScore,
           successCount: 0,
           badges: [],
@@ -952,7 +953,7 @@ const ItemDetailPage: React.FC = () => {
         setPostAuthor({
           id: 'anonymous',
           nickname: '익명',
-          profileImage: 'https://via.placeholder.com/150?text=Anonymous',
+          profileImage: 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png',
           trustScore: 0,
           successCount: 0,
           badges: [],
@@ -969,11 +970,11 @@ const ItemDetailPage: React.FC = () => {
 
   const handleDelete = async () => {
     setIsMenuOpen(false); // 메뉴 닫기
-    if (!confirm('정말 이 게시물을 삭제하시겠습니까?')) return;
+    if (!(await Dialog.confirm({ title: '알림', message: '정말 이 게시물을 삭제하시겠습니까?' })).value) return;
     try {
       const token = await getValidAuthToken();
       if (!token) {
-        alert("로그인이 필요합니다.");
+        await Dialog.alert({ title: '알림', message: "로그인이 필요합니다." });
         return;
       }
       const response = await fetch(`${API_BASE_URL}/post/${id}`, {
@@ -981,13 +982,13 @@ const ItemDetailPage: React.FC = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
-        alert('게시물이 삭제되었습니다.');
+        await Dialog.alert({ title: '알림', message: '게시물이 삭제되었습니다.' });
         navigate('/home');
       } else {
         throw new Error('삭제 실패');
       }
     } catch (error) {
-      alert('삭제에 실패했습니다.');
+      await Dialog.alert({ title: '알림', message: '삭제에 실패했습니다.' });
     }
   };
 
@@ -995,7 +996,7 @@ const ItemDetailPage: React.FC = () => {
     if (!item || !id) return;
     const token = await getValidAuthToken();
     if (!token) {
-      if (confirm("로그인이 필요한 기능입니다. 로그인하시겠습니까?")) navigate('/login');
+      if ((await Dialog.confirm({ title: '알림', message: "로그인이 필요한 기능입니다. 로그인하시겠습니까?" })).value) navigate('/login');
       return;
     }
     const prevItem = { ...item };
@@ -1016,18 +1017,15 @@ const ItemDetailPage: React.FC = () => {
     }
   };
 
-  const handleEdit = () => {
-    setIsMenuOpen(false); // 메뉴 닫기
-    alert("게시글 수정 기능은 준비 중입니다.");
-  };
+
 
   const handleShare = async () => {
     if (!item || !id) return;
     const isLost = item.type === 'lost';
-  
+
     const prefix = isLost ? '🚨 도와주세요!' : '📢 주인을 찾습니다!';
     const suffix = isLost ? '혹시 보신 분 계신가요?' : '주인분은 여기서 확인하세요!';
-  
+
     const shareText = `[Find X]\n${prefix} ${item.title}\n${suffix}`;
     const realUrl = `https://treasurehunter.seohamin.com/post/${id}`;
     const shareData = {
@@ -1044,16 +1042,16 @@ const ItemDetailPage: React.FC = () => {
     }
   };
 
-  const handleReport = () => {
-    if (confirm('이 게시물을 신고하시겠습니까?')) {
-      alert('신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+  const handleReport = async () => {
+    if ((await Dialog.confirm({ title: '알림', message: '이 게시물을 신고하시겠습니까?' })).value) {
+      await Dialog.alert({ title: '알림', message: '신고가 접수되었습니다. 검토 후 조치하겠습니다.' });
     }
   };
 
   const handleStartChat = async () => {
     const currentUser = getUserInfo();
     if (!currentUser) {
-      if (confirm('로그인이 필요한 서비스입니다. 로그인 하시겠습니까?')) {
+      if ((await Dialog.confirm({ title: '알림', message: '로그인이 필요한 서비스입니다. 로그인 하시겠습니까?' })).value) {
         navigate('/login');
       }
       return;
@@ -1063,20 +1061,20 @@ const ItemDetailPage: React.FC = () => {
       return;
     }
     if (isMyPost) {
-      alert("자신의 게시물에는 채팅을 걸 수 없습니다.");
+      await Dialog.alert({ title: '알림', message: "자신의 게시물에는 채팅을 걸 수 없습니다." });
       return;
     }
     try {
       const roomName = `${item?.title}`;
       const postId = parseInt(item?.id || '0', 10);
       if (!postId) {
-        alert("잘못된 게시글 정보입니다.");
+        await Dialog.alert({ title: '알림', message: "잘못된 게시글 정보입니다." });
         return;
       }
       const roomId = await createChatRoom(roomName, postId, false);
       navigate(`/chat/${roomId}`);
     } catch (error) {
-      alert(error instanceof Error ? error.message : '채팅방 생성에 실패했습니다.');
+      await Dialog.alert({ title: '알림', message: error instanceof Error ? error.message : '채팅방 생성에 실패했습니다.' });
     }
   };
 
@@ -1116,7 +1114,7 @@ const ItemDetailPage: React.FC = () => {
           <button className="icon-button" onClick={handleShare}>
             <Share2 size={20} />
           </button>
-          
+
           {isMyPost ? (
             <div className="menu-wrapper">
               {/* 더보기 버튼 */}
@@ -1141,9 +1139,7 @@ const ItemDetailPage: React.FC = () => {
       )}
       <div className={`action-sheet-menu ${isMenuOpen ? 'open' : ''}`}>
         <div className="action-sheet-header">게시글 설정</div>
-        <button className="action-sheet-btn" onClick={handleEdit}>
-          <Edit size={20} /> <span>수정하기</span>
-        </button>
+
         <button className="action-sheet-btn destructive" onClick={handleDelete}>
           <Trash size={20} /> <span>삭제하기</span>
         </button>
@@ -1231,7 +1227,7 @@ const ItemDetailPage: React.FC = () => {
           </div>
         )}
 
-        {item.reward.points > 0 && (
+        {/* {item.reward.points > 0 && (
           <div className="reward-card">
             <div className="reward-icon">💰</div>
             <div className="reward-info">
@@ -1239,7 +1235,7 @@ const ItemDetailPage: React.FC = () => {
               <p className="reward-description">{item.reward.description}</p>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="description-section">
           <h2>상세 설명</h2>

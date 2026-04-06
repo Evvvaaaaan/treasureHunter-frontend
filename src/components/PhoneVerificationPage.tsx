@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/phone-verification.css';
 import { getTokens, checkToken, getUserInfo } from '../utils/auth';
+import { Dialog } from "@capacitor/dialog";
 
 interface PhoneVerificationPageProps {
   onVerificationComplete?: () => void;
@@ -108,7 +109,7 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
       setIsCodeSent(true);
       setTimer(180); // 3 minutes
       setCanResend(false);
-      alert('인증번호가 전송되었습니다.');
+      await Dialog.alert({ title: '알림', message: '인증번호가 전송되었습니다.' });
     } catch (err) {
       setError(err instanceof Error ? err.message : '인증번호 전송에 실패했습니다.');
       console.error('Send verification error:', err);
@@ -149,7 +150,7 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
         await checkToken(userInfo.id.toString());
       }
 
-      alert('전화번호 인증이 완료되었습니다!');
+      await Dialog.alert({ title: '알림', message: '전화번호 인증이 완료되었습니다!' });
       
       if (onVerificationComplete) {
         onVerificationComplete();
@@ -176,8 +177,8 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleSkip = () => {
-    if (window.confirm('전화번호 인증을 건너뛰시겠습니까?\n나중에 마이페이지에서 인증할 수 있습니다.')) {
+  const handleSkip = async () => {
+    if ((await Dialog.confirm({ title: '알림', message: '전화번호 인증을 건너뛰시겠습니까?\n나중에 마이페이지에서 인증할 수 있습니다.' })).value) {
       navigate('/home');
     }
   };
