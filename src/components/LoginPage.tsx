@@ -171,7 +171,19 @@ export default function LoginPage() {
                 saveTokens(authData);
                 navigate('/home', { replace: true });
               } else if (authData.role === 'NOT_REGISTERED') {
-                navigate('/signup-profile', { state: { ...authData } });
+                console.log("신규 Apple 회원 -> 토큰 저장 후 회원가입 이동");
+                
+                // ✅ 1. 토큰을 먼저 저장해야 다음 페이지의 권한 체크를 통과합니다.
+                saveTokens(authData); 
+                
+                // ✅ 2. 그 후 페이지 이동 (Google 로직과 동일하게 '/signup'으로 갈지 확인 필요)
+                navigate('/signup-profile', { 
+                  state: { 
+                    ...authData,
+                    accessToken: authData.accessToken,
+                    refreshToken: authData.refreshToken
+                  } 
+                });
               }
             }
           }

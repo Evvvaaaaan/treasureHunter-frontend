@@ -577,7 +577,7 @@ const ProfilePage: React.FC = () => {
         setProfileImage(uploadedUrl);
       } catch (error) {
         console.error("이미지 업로드 실패:", error);
-        await Dialog.alert({ title: '알림', message: "이미지 업로드에 실패했습니다." });
+        await Dialog.alert({ title: '알림', message: "이미지 용량이 초과되어 업로드에 실패했습니다." });
       }
     }
   };

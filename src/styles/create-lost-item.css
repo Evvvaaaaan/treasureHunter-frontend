@@ -486,6 +486,8 @@
   justify-content: center;
   background: linear-gradient(to bottom, #ecfdf5, #ffffff);
   padding: 2rem;
+  overflow: hidden;
+  touch-action: none;
 }
 
 .success-icon {
