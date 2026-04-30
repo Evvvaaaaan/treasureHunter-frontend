@@ -24,6 +24,11 @@ dist-ssr
 *.sw?
 
 
+# Environment variables (contains secrets — never commit)
+.env
+.env.local
+.env.*.local
+
 # Firebase config
 google-services.json
 android/app/google-services.json

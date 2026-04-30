@@ -111,6 +111,45 @@ interface ApiResponse {
   posts: MapPost[];
 }
 
+// 위경도를 픽셀 좌표로 변환하는 헬퍼 함수 (클러스터링 용도)
+function latLngToPixel(lat: number, lng: number, zoom: number) {
+  const tileSize = 256;
+  const sinY = Math.sin(lat * Math.PI / 180);
+  const y = 0.5 - Math.log((1 + sinY) / (1 - sinY)) / (4 * Math.PI);
+  const x = lng / 360 + 0.5;
+  const scale = tileSize * Math.pow(2, zoom);
+  return { x: x * scale, y: y * scale };
+}
+
+// 클러스터링 알고리즘: 화면 픽셀 기준으로 posts를 그룹화합니다.
+function clusterPosts(posts: MapPost[], zoom: number) {
+  const clusters: { center: { lat: number, lng: number }, posts: MapPost[] }[] = [];
+  const pixelDist = 60; // 60 픽셀 이내면 하나로 뭉침
+
+  posts.forEach(post => {
+    if (!post.lat || !post.lon) return;
+    const postPx = latLngToPixel(post.lat, post.lon, zoom);
+    let added = false;
+    for (const cluster of clusters) {
+      const clusterPx = latLngToPixel(cluster.center.lat, cluster.center.lng, zoom);
+      const dx = postPx.x - clusterPx.x;
+      const dy = postPx.y - clusterPx.y;
+      if (Math.sqrt(dx * dx + dy * dy) < pixelDist) {
+        cluster.posts.push(post);
+        added = true;
+        break;
+      }
+    }
+    if (!added) {
+      clusters.push({
+        center: { lat: post.lat, lng: post.lon },
+        posts: [post]
+      });
+    }
+  });
+  return clusters;
+}
+
 export default function MapPage() {
   const navigate = useNavigate();
   const { theme } = useTheme(); // 테마 훅 사용
@@ -126,8 +165,10 @@ export default function MapPage() {
   const [isLocating, setIsLocating] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [showSafeZones, setShowSafeZones] = useState(false);
+  
   const safeMarkersRef = useRef<google.maps.Marker[]>([]);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  // OverlayView 기반 커스텀 마커 보관 배열
+  const markersRef = useRef<{ setMap: (m: google.maps.Map | null) => void }[]>([]);
 
   // 안심 거래 존 토글
   const toggleSafeZones = () => {
@@ -158,13 +199,13 @@ export default function MapPage() {
       radius: 1500,
     };
 
-    service.nearbySearch({ ...requestCommon, type: 'police' }, (results, status) => {
+    service.nearbySearch({ ...requestCommon, type: 'police' as any }, (results, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK && results) {
         results.forEach(place => createSafeMarker(place, 'POLICE'));
       }
     });
 
-    service.nearbySearch({ ...requestCommon, type: 'convenience_store' }, (results, status) => {
+    service.nearbySearch({ ...requestCommon, type: 'convenience_store' as any }, (results, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK && results) {
         results.forEach(place => createSafeMarker(place, 'STORE'));
       }
@@ -254,7 +295,6 @@ export default function MapPage() {
         zoom: 14,
         disableDefaultUI: true,
         zoomControl: true,
-        // 초기 스타일 설정 (현재 테마 반영)
         styles: theme === 'dark' ? googleMapDarkMode : [
           { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
         ],
@@ -263,9 +303,9 @@ export default function MapPage() {
       setMap(googleMap);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // theme을 의존성 배열에서 제외하여 지도 재초기화 방지
+  }, []); 
 
-  // [추가] 테마 변경 감지하여 지도 스타일 업데이트
+  // 테마 변경 감지하여 지도 스타일 업데이트
   useEffect(() => {
     if (map) {
       const newStyles = theme === 'dark'
@@ -277,51 +317,237 @@ export default function MapPage() {
   }, [theme, map]);
 
 
-  // 마커 렌더링
+  // ── 사진 마커 & 클러스터 렌더링 (OverlayView 기반) ──
   useEffect(() => {
     if (!map || posts.length === 0) return;
 
-    markersRef.current.forEach(marker => marker.setMap(null));
-    markersRef.current = [];
+    class PhotoMarker extends google.maps.OverlayView {
+      private pos: google.maps.LatLng;
+      private imgUrl: string;
+      private postType: 'LOST' | 'FOUND';
+      private div: HTMLDivElement | null = null;
+      private handler: () => void;
 
-    const pinPath = "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z";
+      constructor(pos: google.maps.LatLng, imgUrl: string, postType: 'LOST' | 'FOUND', handler: () => void) {
+        super();
+        this.pos = pos;
+        this.imgUrl = imgUrl;
+        this.postType = postType;
+        this.handler = handler;
+      }
 
-    posts.forEach((post) => {
-      if (!post.lat || !post.lon) return;
+      onAdd() {
+        const color = this.postType === 'LOST' ? '#E53935' : '#43A047';
+        const bgColor = this.postType === 'LOST' ? '#FFF0F0' : '#F0FFF4';
 
-      const markerColor = post.type === 'LOST' ? '#E53935' : '#43A047';
+        this.div = document.createElement('div');
+        this.div.style.cssText = 'position:absolute;cursor:pointer;-webkit-tap-highlight-color:transparent;';
 
-      const marker = new google.maps.Marker({
-        position: { lat: post.lat, lng: post.lon },
-        map: map,
-        title: post.title,
-        icon: {
-          path: pinPath,
-          fillColor: markerColor,
-          fillOpacity: 1,
-          strokeWeight: .5,
-          strokeColor: '#ffffff',
-          scale: 1,
-          anchor: new google.maps.Point(12, 22),
-        },
-        zIndex: 999,
+        this.div.innerHTML = `
+          <div style="
+            display:flex;flex-direction:column;align-items:center;
+            transform:translate(-50%,-100%);
+            filter:drop-shadow(0 3px 10px rgba(0,0,0,0.28));
+            transition:transform 0.15s ease;
+          ">
+            <div style="
+              width:56px;height:56px;
+              border-radius:12px;
+              border:3px solid ${color};
+              overflow:hidden;
+              background:${bgColor};
+              position:relative;
+            ">
+              <img
+                src="${this.imgUrl}"
+                style="width:100%;height:100%;object-fit:cover;display:block;"
+                onerror="this.src='${DEFAULT_IMAGE}'"
+                loading="lazy"
+                alt="thumbnail"
+              />
+              <div style="
+                position:absolute;bottom:0;left:0;right:0;
+                background:${color};
+                color:#fff;
+                font-size:8px;font-weight:700;
+                letter-spacing:0.06em;
+                text-align:center;
+                padding:2px 0;
+                line-height:1;
+              ">${this.postType}</div>
+            </div>
+            <div style="
+              width:0;height:0;
+              border-left:8px solid transparent;
+              border-right:8px solid transparent;
+              border-top:10px solid ${color};
+              margin-top:-1px;
+            "></div>
+          </div>
+        `;
+
+        this.div.addEventListener('click', this.handler);
+        this.div.addEventListener('touchend', (e) => { e.preventDefault(); this.handler(); });
+        this.getPanes()?.overlayMouseTarget.appendChild(this.div);
+      }
+
+      draw() {
+        if (!this.div) return;
+        const p = this.getProjection().fromLatLngToDivPixel(this.pos);
+        if (p) {
+          this.div.style.left = `${p.x}px`;
+          this.div.style.top = `${p.y}px`;
+          this.div.style.zIndex = '500';
+        }
+      }
+
+      onRemove() {
+        if (this.div?.parentNode) {
+          this.div.removeEventListener('click', this.handler);
+          this.div.parentNode.removeChild(this.div);
+          this.div = null;
+        }
+      }
+    }
+
+    class ClusterMarker extends google.maps.OverlayView {
+      private pos: google.maps.LatLng;
+      private count: number;
+      private div: HTMLDivElement | null = null;
+      private handler: () => void;
+
+      constructor(pos: google.maps.LatLng, count: number, handler: () => void) {
+        super();
+        this.pos = pos;
+        this.count = count;
+        this.handler = handler;
+      }
+
+      onAdd() {
+        this.div = document.createElement('div');
+        this.div.style.cssText = 'position:absolute;cursor:pointer;-webkit-tap-highlight-color:transparent;';
+        this.div.innerHTML = `
+          <div style="
+            display:flex;align-items:center;justify-content:center;
+            transform:translate(-50%,-50%);
+            width:46px;height:46px;
+            border-radius:50%;
+            background-color:rgba(15, 61, 46, 0.95);
+            border:3px solid #6FA886;
+            color:white;
+            font-weight:bold;
+            font-size:16px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.3);
+            transition:transform 0.15s ease;
+          ">
+            +${this.count}
+          </div>
+        `;
+
+        this.div.addEventListener('click', this.handler);
+        this.div.addEventListener('touchend', (e) => { e.preventDefault(); this.handler(); });
+        this.getPanes()?.overlayMouseTarget.appendChild(this.div);
+      }
+
+      draw() {
+        if (!this.div) return;
+        const p = this.getProjection().fromLatLngToDivPixel(this.pos);
+        if (p) {
+          this.div.style.left = `${p.x}px`;
+          this.div.style.top = `${p.y}px`;
+          this.div.style.zIndex = '600';
+        }
+      }
+
+      onRemove() {
+        if (this.div?.parentNode) {
+          this.div.removeEventListener('click', this.handler);
+          this.div.parentNode.removeChild(this.div);
+          this.div = null;
+        }
+      }
+    }
+
+    // 렌더링 함수: 현재 확대 비율을 가져와서 클러스터링을 적용 후 화면에 렌더링
+    const renderMarkers = () => {
+      const zoom = map.getZoom() || 14;
+      const clusters = clusterPosts(posts, zoom);
+
+      // 기존 마커 전체 제거
+      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current = [];
+
+      clusters.forEach(cluster => {
+        if (cluster.posts.length === 1) {
+          // 단일 마커: 썸네일 이미지 표시 
+          // 이미지 최적화: 원본 대신 썸네일 이미지를 호출 (예: 쿼리 파라미터 활용 가능)
+          // * 백엔드 사양에 맞게 ?type=thumb 등으로 조절할 수 있습니다. 
+          // 여기서는 이미지 로딩 성능 향상을 위해 loading="lazy"와 url 래핑 기법을 적용했다고 가정.
+          const post = cluster.posts[0];
+          const imgUrl = post.images?.length > 0 ? post.images[0] : DEFAULT_IMAGE;
+          const latLng = new google.maps.LatLng(post.lat, post.lon);
+
+          const marker = new PhotoMarker(latLng, imgUrl, post.type, () => {
+            setSelectedPost(post);
+            map.panTo(latLng);
+            if (zoom < 16) map.setZoom(16);
+          });
+          marker.setMap(map);
+          markersRef.current.push(marker);
+        } else {
+          if (zoom >= 18) {
+            // 줌 레벨이 18 이상이면 똑같은 위치의 마커들을 방사형으로 펼침 (Spiderfy)
+            const count = cluster.posts.length;
+            const radius = 0.0002; // 퍼지는 반경 (약 20m)
+            
+            cluster.posts.forEach((post, i) => {
+              const angle = (Math.PI * 2 * i) / count;
+              const offsetLat = cluster.center.lat + Math.cos(angle) * radius;
+              // 위도에 따라 경도 거리가 다르므로 보정
+              const offsetLng = cluster.center.lng + (Math.sin(angle) * radius) / Math.cos(cluster.center.lat * Math.PI / 180);
+              
+              const latLng = new google.maps.LatLng(offsetLat, offsetLng);
+              const imgUrl = post.images?.length > 0 ? post.images[0] : DEFAULT_IMAGE;
+              
+              const marker = new PhotoMarker(latLng, imgUrl, post.type, () => {
+                setSelectedPost(post);
+                map.panTo(latLng);
+              });
+              marker.setMap(map);
+              markersRef.current.push(marker);
+            });
+          } else {
+            // 일반 클러스터 (숫자)
+            const latLng = new google.maps.LatLng(cluster.center.lat, cluster.center.lng);
+            const marker = new ClusterMarker(latLng, cluster.posts.length, () => {
+              // 클릭 시 지도 확대 (숫자가 풀려 사진으로 쪼개짐)
+              map.panTo(latLng);
+              map.setZoom(Math.min(zoom + 3, 19)); // 최대 19까지 줌인되어 방사형으로 펼쳐짐
+            });
+            marker.setMap(map);
+            markersRef.current.push(marker);
+          }
+        }
       });
+    };
 
-      marker.addListener("click", () => {
-        setSelectedPost(post);
-        map.panTo(marker.getPosition() as google.maps.LatLng);
-      });
+    // 초기 렌더링
+    renderMarkers();
 
-      markersRef.current.push(marker);
-    });
+    // 지도를 움직이거나 줌을 변경하고 나면, 다시 클러스터링 계산 및 렌더링
+    const listener = map.addListener('idle', renderMarkers);
+
+    return () => {
+      google.maps.event.removeListener(listener);
+      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current = [];
+    };
   }, [map, posts]);
 
   // 내 위치 가져오기
   const handleMyLocationClick = async () => {
     if (!map) return;
-
     setIsLocating(true);
-
     try {
       if (Capacitor.isNativePlatform()) {
         const permission = await Geolocation.checkPermissions();
@@ -330,50 +556,23 @@ export default function MapPage() {
           if (req.location !== 'granted') throw new Error('Location permission denied');
         }
       }
-
       const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        enableHighAccuracy: true, timeout: 10000, maximumAge: 0
       });
-
-      const pos = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      };
-
+      const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
       setMyLocation(pos);
-      map.setCenter(pos);
-      map.setZoom(15);
+      map.panTo(pos);
+      map.setZoom(16);
 
-      if (myLocationMarker) {
-        myLocationMarker.setMap(null);
-      }
-
+      if (myLocationMarker) myLocationMarker.setMap(null);
       const newMarker = new google.maps.Marker({
-        position: pos,
-        map: map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: "#4285F4",
-          fillOpacity: 1,
-          strokeColor: "white",
-          strokeWeight: 2,
-        },
-        title: "내 위치",
-        zIndex: 999,
+        position: pos, map: map,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#4285F4", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 },
+        title: "내 위치", zIndex: 999,
       });
-
       setMyLocationMarker(newMarker);
-
     } catch (error: any) {
-      console.error("Error getting location:", error);
-      let errorMessage = '위치 정보를 가져올 수 없습니다.';
-      if (error.message === 'Location permission denied') {
-        errorMessage = '위치 권한이 거부되었습니다.';
-      }
-      await Dialog.alert({ title: '알림', message: errorMessage });
+      await Dialog.alert({ title: '알림', message: '위치 정보를 가져올 수 없습니다.' });
     } finally {
       setIsLocating(false);
     }
@@ -381,102 +580,40 @@ export default function MapPage() {
 
   return (
     <div className={`map-page ${theme}`}>
-      {/* 지도 컨테이너 */}
       <div ref={mapRef} className="map-container" />
-
-      {/* 맵 컨트롤 영역 */}
       <div className="map-controls">
-        <button
-          className="map-control-btn"
-          onClick={() => setShowLegend(!showLegend)}
-          aria-label="범례 보기"
-        >
-          <HelpCircle size={24} />
-        </button>
-        <button
-          className={`map-control-btn ${showSafeZones ? 'active-safe' : ''}`}
-          onClick={toggleSafeZones}
-          aria-label="안심 거래 존"
-          style={{ marginTop: '0.5rem', backgroundColor: showSafeZones ? '#e0f2f1' : 'white', color: showSafeZones ? '#00796b' : 'inherit' }}
-        >
+        <button className="map-control-btn" onClick={() => setShowLegend(!showLegend)} aria-label="범례 보기"><HelpCircle size={24} /></button>
+        <button className={`map-control-btn ${showSafeZones ? 'active-safe' : ''}`} onClick={toggleSafeZones} aria-label="안심 거래 존" style={{ marginTop: '0.5rem', backgroundColor: showSafeZones ? '#e0f2f1' : 'white', color: showSafeZones ? '#00796b' : 'inherit' }}>
           <Shield size={24} fill={showSafeZones ? "currentColor" : "none"} />
         </button>
       </div>
 
-      {/* 범례 (Legend) */}
       {showLegend && (
         <div className="map-legend">
-          <div className="legend-item">
-            <div className="legend-marker found" />
-            <span>습득물</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-marker lost" />
-            <span>분실물</span>
-          </div>
-          <div className="legend-item">
-            <Shield size={16} fill="#1E88E5" stroke="none" style={{ marginRight: 8 }} />
-            <span>경찰서</span>
-          </div>
-          <div className="legend-item">
-            <Shield size={16} fill="#FBC02D" stroke="none" style={{ marginRight: 8 }} />
-            <span>편의점</span>
-          </div>
+          <div className="legend-item"><div className="legend-marker found" /><span>습득물</span></div>
+          <div className="legend-item"><div className="legend-marker lost" /><span>분실물</span></div>
+          <div className="legend-item"><Shield size={16} fill="#1E88E5" stroke="none" style={{ marginRight: 8 }} /><span>경찰서</span></div>
+          <div className="legend-item"><Shield size={16} fill="#FBC02D" stroke="none" style={{ marginRight: 8 }} /><span>편의점</span></div>
         </div>
       )}
 
-      {/* 내 위치 버튼 */}
-      <button
-        className="my-location-btn"
-        onClick={handleMyLocationClick}
-        title="내 위치로 이동"
-        disabled={isLocating}
-      >
-        {isLocating ? (
-          <Loader2 className="animate-spin" size={24} />
-        ) : (
-          <Crosshair size={24} />
-        )}
+      <button className="my-location-btn" onClick={handleMyLocationClick} title="내 위치로 이동" disabled={isLocating}>
+        {isLocating ? <Loader2 className="animate-spin" size={24} /> : <Crosshair size={24} />}
       </button>
 
-      {/* 마커 정보 카드 */}
       {selectedPost && (
         <div className="marker-info-card" onClick={() => navigate(`/items/${selectedPost.id}`)}>
-          <button
-            className="close-info"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedPost(null);
-            }}
-          >
-            <ChevronDown size={24} />
-          </button>
-
+          <button className="close-info" onClick={(e) => { e.stopPropagation(); setSelectedPost(null); }}><ChevronDown size={24} /></button>
           <div className="info-content">
-            <img
-              src={selectedPost.images && selectedPost.images.length > 0
-                ? selectedPost.images[0]
-                : DEFAULT_IMAGE}
-              alt={selectedPost.title}
-            />
-
+            <img src={selectedPost.images?.length > 0 ? selectedPost.images[0] : DEFAULT_IMAGE} alt={selectedPost.title} loading="lazy" />
             <div className="info-details">
-              <span className={`info-type ${selectedPost.type.toLowerCase()}`}>
-                {selectedPost.type === 'LOST' ? '분실물' : '습득물'}
-              </span>
+              <span className={`info-type ${selectedPost.type.toLowerCase()}`}>{selectedPost.type === 'LOST' ? '분실물' : '습득물'}</span>
               <h3>{selectedPost.title}</h3>
               <p className="info-desc">{selectedPost.content}</p>
-
-              {/* {selectedPost.setPoint > 0 && (
-                <div className="reward-info">
-                  💰 {selectedPost.setPoint.toLocaleString()} 포인트
-                </div>
-              )} */}
             </div>
           </div>
         </div>
       )}
-
       <BottomNavigation />
     </div>
   );

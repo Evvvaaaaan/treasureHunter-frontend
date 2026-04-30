@@ -5,7 +5,6 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { getValidAuthToken, getUserInfo } from '../utils/auth';
 import { fetchChatRooms, fetchChatMessages } from '../utils/chat';
-import { fetchPostDetail } from '../utils/post';
 import type { ChatRoom } from '../types/chat';
 
 const WS_URL = 'https://treasurehunter.seohamin.com/ws';
@@ -83,29 +82,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await Promise.all(
         rooms.map(async room => {
           try {
-            let myUserType: 'AUTHOR' | 'CALLER' = 'CALLER';
+            // participants가 없는 응답 방어 (optional chaining)
+            const me = room.participants?.find(p => Number(p.id) === myId);
+            const myUserType: 'AUTHOR' | 'CALLER' = me?.userType || 'CALLER';
 
-            if (room.post?.author?.id && Number(room.post.author.id) === myId) {
-              myUserType = 'AUTHOR';
-            } else if (room.post?.id) {
-              try {
-                const postDetail = await fetchPostDetail(room.post.id);
-                const authorId = postDetail.user?.id || postDetail.author?.id;
-                if (Number(authorId) === myId) myUserType = 'AUTHOR';
-              } catch (e) {
-                console.log(e);
-              }
-            }
+            // parseInt가 NaN을 반환하면 0으로 폴백
+            const lastReadId =
+              parseInt(localStorage.getItem(`lastRead_${room.roomId}`) || '0', 10) || 0;
 
-            const lastReadId = parseInt(
-              localStorage.getItem(`lastRead_${room.roomId}`) || '0',
-              10,
-            );
-
+            // lastReadId를 커서로 사용해 그 이후 메시지만 가져오기
             const syncData = await fetchChatMessages(room.roomId, lastReadId, 300);
             if (syncData.chats && syncData.chats.length > 0) {
-              const unreadMessages = syncData.chats.filter(
-                c => c.id > lastReadId && c.userType !== myUserType,
+              const unreadMessages = syncData.chats.filter(c =>
+                c.userType !== myUserType &&  // 상대방 메시지만
+                c.type !== 'ENTER' &&         // 입장 시스템 메시지 제외
+                c.type !== 'EXIT',            // 퇴장 시스템 메시지 제외
               );
               count += unreadMessages.length;
             }

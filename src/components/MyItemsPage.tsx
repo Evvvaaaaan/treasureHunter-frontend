@@ -265,7 +265,7 @@ const MyItemsPage: React.FC = () => {
                 className="item-card"
                 onClick={() => navigate(`/items/${item.id}`)}
               >
-                <div className="item-image-container" style={{ position: 'relative' }}>
+                <div className="item-image-container">
                   <img src={item.image} alt={item.title} className="item-image" />
                   
                   <div className="image-overlay">
@@ -275,18 +275,7 @@ const MyItemsPage: React.FC = () => {
                   </div>
 
                   {item.status === 'completed' && (
-                    <div style={{
-                      position: 'absolute',
-                      inset: 0,
-                      backgroundColor: 'rgba(0,0,0,0.5)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      fontSize: '14px',
-                      zIndex: 5
-                    }}>
+                    <div className="completed-overlay">
                       완료됨
                     </div>
                   )}

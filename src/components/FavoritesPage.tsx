@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MapPin, Calendar, Filter, Bookmark, Trash2, ArrowLeft } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Heart, Search, Filter } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Badge } from './ui/badge';
 import BottomNavigation from './BottomNavigation';
 import { getUserInfo, checkToken, getValidAuthToken } from '../utils/auth';
 import { useTheme } from '../utils/theme';
@@ -48,7 +46,6 @@ const FavoritesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'lost' | 'found'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'date'>('recent');
-  const [showFilters, setShowFilters] = useState(false);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -231,223 +228,106 @@ const FavoritesPage: React.FC = () => {
     );
   }
 
-  // 테마에 따른 색상 정의
-  const isDark = theme === 'dark';
-  const headerBg = isDark ? '#111827' : '#ffffff';
-  const headerBorder = isDark ? '#374151' : '#e5e7eb';
-  const textColor = isDark ? '#f3f4f6' : '#111827';
-  const subTextColor = isDark ? '#9ca3af' : '#6b7280';
-  const cardBg = isDark ? '#1f2937' : '#ffffff';
-
   return (
-    // [수정] paddingTop 제거 및 배경색 테마 적용
-    <div className={`favorites-page ${theme}`} style={{ minHeight: '100vh', backgroundColor: isDark ? '#030712' : '#f9fafb', paddingBottom: '80px' }}>
-      
+    <div className={`favorites-page ${theme}`}>
       {/* Header */}
-      <header 
-        className="favorites-header"
-        // [수정] 다이나믹 아일랜드 해결을 위한 스타일 적용
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-          backgroundColor: headerBg,
-          borderBottom: `1px solid ${headerBorder}`,
-          paddingLeft: '20px',
-          paddingRight: '20px',
-          paddingBottom: '16px',
-          // 핵심: 안전 영역만큼 패딩을 추가
-          paddingTop: 'calc(16px + env(safe-area-inset-top))',
-          color: textColor
-        }}
-      >
-        <div className="header-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', display: 'flex' }}>
-              <ArrowLeft size={24} color={textColor} />
-            </button>
-            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: 'inherit', letterSpacing: '-.8px' }}>관심 목록</h1>
-          </div>
-          <button
-            className="filter-toggle"
-            onClick={() => setShowFilters(!showFilters)}
-            style={{ color: subTextColor }}
-          >
-            <Filter size={20} />
-          </button>
+      <header className="fav-header">
+        <div>
+          <div className="fav-eyebrow">· WATCHLIST ·</div>
+          <div className="fav-title">관심 흔적</div>
         </div>
-
-        {/* Filters */}
-        {showFilters && (
-          <motion.div
-            className="filters-panel"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{ marginTop: '16px' }}
-          >
-            <div className="filter-group">
-              <label style={{color: textColor}}>유형</label>
-              <div className="filter-buttons">
-                {['all', 'lost', 'found'].map(type => (
-                  <button
-                    key={type}
-                    onClick={() => setFilterType(type as any)}
-                    className={filterType === type ? 'active' : ''}
-                    style={{ 
-                      backgroundColor: filterType === type ? undefined : (isDark ? '#374151' : 'white'),
-                      color: filterType === type ? undefined : subTextColor,
-                      borderColor: isDark ? '#4b5563' : undefined
-                    }}
-                  >
-                    {type === 'all' ? '전체' : type === 'lost' ? '분실물' : '습득물'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-group">
-              <label style={{color: textColor}}>정렬</label>
-              <div className="filter-buttons">
-                <button
-                  onClick={() => setSortBy('recent')}
-                  className={sortBy === 'recent' ? 'active' : ''}
-                  style={{ 
-                    backgroundColor: sortBy === 'recent' ? undefined : (isDark ? '#374151' : 'white'),
-                    color: sortBy === 'recent' ? undefined : subTextColor,
-                    borderColor: isDark ? '#4b5563' : undefined
-                  }}
-                >
-                  최근 저장순
-                </button>
-                <button
-                  onClick={() => setSortBy('date')}
-                  className={sortBy === 'date' ? 'active' : ''}
-                  style={{ 
-                    backgroundColor: sortBy === 'date' ? undefined : (isDark ? '#374151' : 'white'),
-                    color: sortBy === 'date' ? undefined : subTextColor,
-                    borderColor: isDark ? '#4b5563' : undefined
-                  }}
-                >
-                  날짜순
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Count */}
-        <div className="favorites-count" style={{ color: subTextColor, marginTop: '16px' }}>
-          <Bookmark size={14} />
-          <span>총 {filteredFavorites.length}개의 아이템</span>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button className="fav-search-btn" onClick={() => navigate('/search')}>
+            <Search size={18} />
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="favorites-content" style={{ padding: '20px' }}>
-        {filteredFavorites.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">
-              <Heart size={64} color="#d1d5db" />
-            </div>
-            <h2 style={{color: textColor}}>관심 목록이 비어있습니다</h2>
-            <p style={{color: subTextColor}}>마음에 드는 아이템을 관심 목록에 추가해보세요!</p>
+      {/* Stats strip */}
+      <div className="fav-stats-strip">
+        <svg width="200" height="80" viewBox="0 0 200 80" style={{ position: "absolute", right: -10, top: -10, opacity: 0.15, pointerEvents: "none" }}>
+          <g stroke="currentColor" strokeWidth="0.8" fill="none">
+            <path d="M0 20 Q 50 0, 100 20 T 200 20"/>
+            <path d="M0 40 Q 50 20, 100 40 T 200 40"/>
+            <path d="M0 60 Q 50 40, 100 60 T 200 60"/>
+          </g>
+        </svg>
+        <div className="fav-stats-item">
+          <div className="fav-stats-val">{favorites.length}</div>
+          <div className="fav-stats-label">저장됨</div>
+        </div>
+        <div style={{ width: 1, height: 28, background: "rgba(195,219,200,0.25)", position: "relative", zIndex: 2 }}/>
+        <div className="fav-stats-item">
+          <div className="fav-stats-val" style={{ color: "var(--c-honey, #D9A441)" }}>{favorites.filter(i => i.isCompleted).length}</div>
+          <div className="fav-stats-label">완료/매칭</div>
+        </div>
+      </div>
+
+      {/* Sort/filter */}
+      <div className="fav-filter-row">
+        <div className="fav-filter-pills">
+          {['all', 'lost', 'found'].map((type) => (
             <button
-              className="browse-button"
-              onClick={() => navigate('/home')}
+              key={type}
+              onClick={() => setFilterType(type as any)}
+              className={`fav-filter-pill ${filterType === type ? 'active' : ''}`}
             >
-              아이템 둘러보기
+              {type === 'all' ? '전체' : type === 'lost' ? '분실' : '습득'}
             </button>
-          </div>
+          ))}
+        </div>
+        <button className="fav-sort" onClick={() => setSortBy(sortBy === 'recent' ? 'date' : 'recent')}>
+          <span>{sortBy === 'recent' ? '최신순' : '날짜순'}</span>
+          <Filter size={10} />
+        </button>
+      </div>
+
+      {/* List */}
+      <div className="fav-list">
+        {filteredFavorites.length === 0 ? (
+           <div className="empty-state" style={{ padding: '40px 0', textAlign: 'center' }}>
+            <Heart size={48} color="var(--c-slate, #556B60)" style={{ opacity: 0.3, margin: '0 auto 16px' }} />
+            <p style={{ color: 'var(--c-slate, #556B60)' }}>관심 목록이 비어있습니다.</p>
+            <button className="browse-button" onClick={() => navigate('/home')} style={{ marginTop: '16px', background: 'var(--c-forest)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px' }}>아이템 둘러보기</button>
+           </div>
         ) : (
-          <div className="favorites-grid">
-            {filteredFavorites.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                className="favorite-card"
-                onClick={() => navigate(`/items/${item.id}`)}
-                style={{ backgroundColor: cardBg, borderColor: headerBorder }}
-              >
-                <div className="card-image">
-                  <ImageWithFallback
-                    src={item.image}
-                    alt={item.title}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover'
-                    }}
-                  />
-                  <Badge
-                    style={{
-                      position: 'absolute',
-                      top: '8px',
-                      left: '8px',
-                      backgroundColor: item.status === 'lost' ? '#ef4444' : '#10b981',
-                      color: 'white',
-                      fontSize: '10px',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      fontWeight: 600
-                    }}
-                  >
-                    {item.status === 'lost' ? '분실' : '습득'}
-                  </Badge>
-
-                  {/* 삭제 버튼 */}
-                  <button
-                    className="remove-favorite-btn"
-                    onClick={(e) => handleRemoveFavorite(item.id, e)}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-
+          filteredFavorites.map((item) => (
+            <div key={item.id} className="fav-card" onClick={() => navigate(`/items/${item.id}`)}>
+              <div className={`fav-card-bar ${item.status}`} />
+              <div className="fav-card-body">
+                <div className="fav-thumb-wrap">
+                  <ImageWithFallback src={item.image} alt={item.title} />
                   {item.isCompleted && (
-                    <div style={{
-                      position: 'absolute',
-                      inset: 0,
-                      backgroundColor: 'rgba(0,0,0,0.5)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      fontSize: '14px'
-                    }}>
-                      완료됨
-                    </div>
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>완료</div>
                   )}
+                  <button className="fav-heart-btn" onClick={(e) => handleRemoveFavorite(item.id, e)}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z"/></svg>
+                  </button>
                 </div>
-
-                <div className="card-content">
-                  <div className="card-header">
-                    <h3 style={{color: textColor}}>{item.title}</h3>
-                    <span className="category-badge" style={{ backgroundColor: isDark ? '#374151' : '#f3f4f6', color: subTextColor }}>{item.category}</span>
+                <div className="fav-card-content">
+                  <div className="fav-meta-row">
+                    <span className={`fav-type-badge ${item.status}`}>· {item.status.toUpperCase()} ·</span>
+                    {item.rewardPoints ? <span className="fav-reward">◆ {item.rewardPoints}</span> : null}
                   </div>
-
-                  <div className="card-meta">
-                    <div className="meta-item address">
-                      <MapPin size={12} color={subTextColor} />
-                      <span style={{color: subTextColor}} title={item.location}>{item.location}</span>
-                    </div>
-                    <div className="meta-item">
-                      <Calendar size={12} color={subTextColor} />
-                      <span style={{color: subTextColor}}>{formatDate(item.date)}</span>
-                    </div>
+                  <div className="fav-item-title">{item.title}</div>
+                  <div className="fav-footer-info">
+                    <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.location}</span>
+                    <span>·</span>
+                    <span>{formatDate(item.date)}</span>
                   </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        )
-        }
-      </main >
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="fav-hint">
+        💡 관심 흔적은 내용이 바뀌면 알림을 받을 수 있어요
+      </div>
 
       <BottomNavigation />
-    </div >
+    </div>
   );
 };
 

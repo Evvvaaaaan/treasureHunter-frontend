@@ -23,5 +23,8 @@ export const uploadImage = async (file: File): Promise<string> => {
   }
 
   const data = await response.json();
-  return data.fileUrl; // 백엔드가 반환하는 이미지 URL
+  if (!data.fileUrl || typeof data.fileUrl !== 'string') {
+    throw new Error(`이미지 URL을 받지 못했습니다. 응답: ${JSON.stringify(data)}`);
+  }
+  return data.fileUrl;
 };

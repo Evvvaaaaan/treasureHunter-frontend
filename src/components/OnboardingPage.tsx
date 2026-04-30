@@ -83,8 +83,8 @@ const OnboardingPage: React.FC = () => {
 
   const slideVariants = {
     enter: (direction: number) => ({
-      x: direction > 0 ? 1000 : -1000,
-      opacity: 0
+      x: direction > 0 ? '100%' : '-100%',
+      opacity: 1
     }),
     center: {
       zIndex: 1,
@@ -93,8 +93,8 @@ const OnboardingPage: React.FC = () => {
     },
     exit: (direction: number) => ({
       zIndex: 0,
-      x: direction < 0 ? 1000 : -1000,
-      opacity: 0
+      x: direction < 0 ? '100%' : '-100%',
+      opacity: 1
     })
   };
 
@@ -112,7 +112,7 @@ const OnboardingPage: React.FC = () => {
 
       {/* Slides Container */}
       <div className="slides-container">
-        <AnimatePresence initial={false} custom={direction} mode="wait">
+        <AnimatePresence initial={false} custom={direction}>
           <motion.div
             key={currentSlide}
             custom={direction}
@@ -121,8 +121,8 @@ const OnboardingPage: React.FC = () => {
             animate="center"
             exit="exit"
             transition={{
-              x: { type: "spring", stiffness: 300, damping: 30 },
-              opacity: { duration: 0.2 }
+              x: { type: "spring", stiffness: 400, damping: 35 },
+              opacity: { duration: 0 }
             }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}

@@ -6,7 +6,6 @@ import {
   Image as ImageIcon,
   X,
   AlertCircle,
-  Send,
   Loader2,
 } from "lucide-react";
 import { useTheme } from "../utils/theme";
@@ -295,59 +294,51 @@ const ReviewPage: React.FC = () => {
         >
           <ArrowLeft size={24} />
         </button>
-        <h1>후기 작성</h1>
-        <div className="header-spacer" />
+        <div className="review-title">후기 작성</div>
+        <div style={{ width: 24 }} /> {/* Spacer */}
       </div>
 
-      {/* Content */}
-      <div className="review-content">
-        {/* User Info Card */}
-        <div className="user-card-review">
-          <img
-            src={partner.profileImage}
-            alt={partner.nickname}
-            className="user-avatar-review"
-          />
-          <div className="user-info-review">
-            <p className="user-nickname-review">{partner.nickname}</p>
-            <p className="user-subtitle-review">님과의 거래는 어떠셨나요?</p>
-          </div>
+      <div className="review-hero">
+        <div className="hero-emoji">🎉</div>
+        <div className="hero-title">보물을 되찾았어요!</div>
+        <div className="hero-stats">
+          <div className="hero-stat-chip">리워드 포인트 +5,000P</div>
+          <div className="hero-stat-chip">관련 뱃지 +1</div>
         </div>
+      </div>
 
-        {/* Score Section */}
-        <div className="score-section-review">
-          <div className="score-header-review">
-            <Star size={20} style={{ color: getScoreColor(reviewData.score) }} />
-            <span>만족도 평가</span>
-          </div>
-
-          <div className="score-display-review">
-            <span className="score-emoji">{getScoreEmoji(reviewData.score)}</span>
-            <span className="score-number-review" style={{ color: getScoreColor(reviewData.score) }}>
-              {reviewData.score}
-            </span>
-            <span className="score-max-review">점</span>
-          </div>
-
-          <input
-            type="range"
-            min="1"
-            max="100"
-            value={reviewData.score}
-            onChange={handleScoreChange}
-            className="score-slider-review"
-            style={{
-              background: `linear-gradient(to right, ${getScoreColor(reviewData.score)} 0%, ${getScoreColor(reviewData.score)} ${reviewData.score}%, #e5e7eb ${reviewData.score}%, #e5e7eb 100%)`,
-            }}
-          />
-
-          <div className="score-labels-review">
-            <span>아쉬워요</span>
-            <span>보통이에요</span>
-            <span>최고예요</span>
-          </div>
+      <div className="review-section">
+        <div className="section-title">
+          <Star fill="currentColor" size={20} color="var(--c-honey, #D9A441)" />
+          만족도 평가
         </div>
+        
+        <div className="score-display-review">
+          <div className="score-emoji">{getScoreEmoji(reviewData.score)}</div>
+          <div className="score-number-review" style={{ color: getScoreColor(reviewData.score) }}>{reviewData.score}</div>
+          <div className="score-max-review">점</div>
+        </div>
+        
+        <input
+          type="range"
+          min="1"
+          max="100"
+          value={reviewData.score}
+          onChange={handleScoreChange}
+          className="score-slider-review"
+          style={{
+            background: `linear-gradient(to right, ${getScoreColor(reviewData.score)} 0%, ${getScoreColor(reviewData.score)} ${reviewData.score}%, var(--c-line, #E6E3D6) ${reviewData.score}%, var(--c-line, #E6E3D6) 100%)`,
+          }}
+          disabled={isSubmitting}
+        />
+        <div className="score-labels-review">
+          <span>아쉬워요</span>
+          <span>보통이에요</span>
+          <span>최고예요</span>
+        </div>
+      </div>
 
+      <div className="review-section">
         {/* Title Input */}
         <div className="form-group-review">
           <label className="form-label-review">제목</label>
@@ -365,7 +356,7 @@ const ReviewPage: React.FC = () => {
 
         {/* Content Input */}
         <div className="form-group-review">
-          <label className="form-label-review">상세 내용</label>
+          <label className="form-label-review">이 외에도 거래에 대해 남기고 싶은 말이 있다면 적어주세요!</label>
           <textarea
             placeholder="거래하며 좋았던 점이나 아쉬웠던 점을 솔직하게 적어주세요. (최소 10자)"
             value={reviewData.content}
@@ -415,30 +406,28 @@ const ReviewPage: React.FC = () => {
             </label>
           )}
         </div>
+      </div>
 
-        {/* Submit Button */}
-        <button
-          className="submit-btn-review"
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="animate-spin mr-2" size={20} />
-              <span>등록 중...</span>
-            </>
-          ) : (
-            <>
-              <Send size={20} className="mr-2" />
-              <span>후기 등록 완료</span>
-            </>
-          )}
-        </button>
+      <button
+        className="submit-btn-review"
+        onClick={handleSubmit}
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="animate-spin mr-2" size={20} />
+            <span>등록 중...</span>
+          </>
+        ) : (
+          <>
+            <span>후기 등록하기</span>
+          </>
+        )}
+      </button>
 
-        <div className="info-message-review">
-          <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
-          <p>후기는 수정할 수 없으며, 허위 사실 기재 시 이용이 제한될 수 있습니다.</p>
-        </div>
+      <div className="info-message-review">
+        <AlertCircle size={16} className="flex-shrink-0" />
+        <div>솔직하고 따뜻한 후기는 FindX 커뮤니티를 아름답게 만듭니다. 허위 사실 기재 시 이용이 제한될 수 있습니다.</div>
       </div>
     </div>
   );

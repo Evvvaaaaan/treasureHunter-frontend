@@ -233,10 +233,9 @@ const ReviewsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f9fafb' }}>
-        <div style={{ width: '48px', height: '48px', border: '4px solid #e5e7eb', borderTopColor: '#10b981', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ marginTop: '16px', color: '#6b7280' }}>리뷰를 불러오는 중...</p>
-        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      <div className={`reviews-page ${theme}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="loading-spinner"></div>
+        <p style={{ marginTop: '16px', color: 'var(--c-subtext)', fontWeight: 600 }}>리뷰를 불러오는 중...</p>
       </div>
     );
   }
@@ -311,12 +310,11 @@ const ReviewsPage: React.FC = () => {
         {filteredReviews.length > 0 ? (
           filteredReviews.map(review => (
             <div key={review.id} className="review-card">
-              <div className="review-header" style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+              <div className="review-header">
                 <img
                   src={review.reviewerImage}
                   alt={review.reviewerName}
                   className="reviewer-image"
-                  style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e5e7eb' }}
                 />
                 <div className="reviewer-info">
                   <div className="reviewer-name-row">
@@ -349,9 +347,9 @@ const ReviewsPage: React.FC = () => {
 
                 {/* 이미지 렌더링 추가 */}
                 {review.images && review.images.length > 0 && (
-                  <div className="review-images" style={{ display: 'flex', gap: '8px', marginTop: '12px', overflowX: 'auto' }}>
+                  <div className="review-images">
                     {review.images.map((img, idx) => (
-                      <img key={idx} src={img} alt={`review-img-${idx}`} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                      <img key={idx} src={img} alt={`review-img-${idx}`} />
                     ))}
                   </div>
                 )}
@@ -366,9 +364,9 @@ const ReviewsPage: React.FC = () => {
             </div>
           ))
         ) : (
-          <div className="empty-state" style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <Award size={48} stroke="#d1d5db" style={{ margin: '0 auto 16px' }} />
-            <p style={{ color: '#6b7280', fontSize: '15px' }}>해당하는 후기가 없습니다</p>
+          <div className="empty-state">
+            <Award size={48} className="empty-icon" />
+            <p>해당하는 후기가 없습니다</p>
           </div>
         )}
       </div>

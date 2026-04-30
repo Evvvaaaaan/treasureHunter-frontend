@@ -11,7 +11,7 @@ const PrivacyPage: React.FC = () => {
   return (
     <div className={`settings-page ${theme}`} style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* 헤더 부분 */}
-      <div className="settings-header">
+      <div className="settings-header" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="header-container">
           <motion.button
             className="back-btn"

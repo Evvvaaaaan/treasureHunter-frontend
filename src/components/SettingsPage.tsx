@@ -21,7 +21,7 @@ import {
 import { useTheme } from '../utils/theme';
 import { deleteUser, getUserInfo, clearTokens } from '../utils/auth';
 import BottomNavigation from './BottomNavigation';
-import PushNotificationAlert from './PushNotificationAlert'; 
+import PushNotificationAlert from './PushNotificationAlert';
 import '../styles/settings-page.css';
 import { Dialog } from "@capacitor/dialog";
 
@@ -162,16 +162,23 @@ const SettingsPage: React.FC = () => {
         <section className="settings-section">
           <h2 className="section-title">외관</h2>
           <div className="settings-list">
-            <button className="setting-item" onClick={toggleTheme}>
+            <div className="setting-item" onClick={toggleTheme} style={{ cursor: 'pointer' }}>
               <div className="setting-left">
                 {theme === 'dark' ? <Moon size={20} className="setting-icon" /> : <Sun size={20} className="setting-icon" />}
                 <div className="setting-info">
-                  <div className="setting-label">테마</div>
-                  <div className="setting-description">{theme === 'dark' ? '다크 모드' : '라이트 모드'}</div>
+                  <div className="setting-label">다크 모드</div>
+                  <div className="setting-description">{theme === 'dark' ? '켜짐' : '꺼짐'}</div>
                 </div>
               </div>
-              <ChevronRight size={20} className="chevron" />
-            </button>
+              <label className="toggle-switch" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={theme === 'dark'}
+                  onChange={toggleTheme}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
           </div>
         </section>
 

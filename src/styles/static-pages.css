@@ -1,8 +1,12 @@
 /* src/styles/static-pages.css */
 .static-page {
   min-height: 100vh;
-  background-color: var(--background);
+  background-color: #F5F2E8;
   padding-bottom: 2rem;
+}
+
+:root.dark .static-page {
+  background-color: var(--background);
 }
 
 /* Header */

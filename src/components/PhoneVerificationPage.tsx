@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/phone-verification.css';
-import { getTokens, checkToken, getUserInfo } from '../utils/auth';
+import { getValidAuthToken, checkToken, getUserInfo } from '../utils/auth';
+import { API_BASE_URL } from '../config';
 import { Dialog } from "@capacitor/dialog";
 
 interface PhoneVerificationPageProps {
@@ -90,12 +91,13 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
     setError('');
 
     try {
-      const tokens = getTokens();
-      const response = await fetch('https://treasurehunter.seohamin.com/api/v1/sms/verification/code', {
+      // [수정] getValidAuthToken()으로 만료 토큰 자동 갱신 + API_BASE_URL로 URL 일원화
+      const token = await getValidAuthToken();
+      const response = await fetch(`${API_BASE_URL}/sms/verification/code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(tokens?.accessToken && { 'Authorization': `Bearer ${tokens.accessToken}` })
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           phoneNumber: `+82${phoneNumber.replace(/[^\d]/g, '').substring(1)}`
@@ -128,12 +130,13 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
     setError('');
 
     try {
-      const tokens = getTokens();
-      const response = await fetch('https://treasurehunter.seohamin.com/api/v1/sms/verification/verify', {
+      // [수정] getValidAuthToken()으로 만료 토큰 자동 갱신 + API_BASE_URL로 URL 일원화
+      const token = await getValidAuthToken();
+      const response = await fetch(`${API_BASE_URL}/sms/verification/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(tokens?.accessToken && { 'Authorization': `Bearer ${tokens.accessToken}` })
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           phoneNumber: `+82${phoneNumber.replace(/[^\d]/g, '').substring(1)}`,

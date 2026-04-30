@@ -26,6 +26,7 @@
     "@capacitor/share": "^7.0.3",
     "@capacitor/status-bar": "^7.0.4",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
+    "@googlemaps/markerclusterer": "^2.6.2",
     "@react-google-maps/api": "^2.20.8",
     "@stomp/stompjs": "^7.2.1",
     "capacitor-native-settings": "^7.0.2",
@@ -66,14 +67,17 @@
     "@types/react-dom": "^19.1.9",
     "@types/sockjs-client": "^1.5.4",
     "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.22",
     "globals": "^16.4.0",
+    "jsdom": "^29.1.0",
     "ts-morph": "^27.0.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",
-    "vite": "npm:rolldown-vite@7.1.14"
+    "vite": "npm:rolldown-vite@7.1.14",
+    "vitest": "^4.1.5"
   },
   "overrides": {
     "@codetrix-studio/capacitor-google-auth": {

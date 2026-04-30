@@ -6,6 +6,20 @@
   --font-weight-normal: 400;
   --radius: 0.75rem;
 
+  /* ── FindX Deep Forest Palette ── */
+  --fx-forest: #0F3D2E;
+  --fx-moss: #1F6B4E;
+  --fx-sage: #6FA886;
+  --fx-mint: #E4EFE4;
+  --fx-cream: #F5F2E8;
+  --fx-paper: #FBFAF5;
+  --fx-ink: #12281F;
+  --fx-slate: #556B60;
+  --fx-line: #E6E3D6;
+  --fx-clay: #C97B5F;
+  --fx-honey: #D9A441;
+  --fx-white: #FFFFFF;
+
   /* Safe Area Insets */
   --sat: env(safe-area-inset-top);
   --sar: env(safe-area-inset-right);

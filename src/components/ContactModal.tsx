@@ -58,7 +58,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, email }) =
         {/* 상단 아이콘 */}
         <div style={{
           width: '64px', height: '64px', borderRadius: '50%',
-          backgroundColor: '#eff6ff', color: '#3b82f6',
+          backgroundColor: 'rgba(111, 168, 134, 0.15)', color: '#6FA886',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: '20px'
         }}>
@@ -66,39 +66,39 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, email }) =
         </div>
 
         {/* 텍스트 영역 */}
-        <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>
+        <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: 'bold', color: '#0F3D2E' }}>
           무엇을 도와드릴까요?
         </h3>
-        <p style={{ margin: '0 0 28px 0', fontSize: '14.5px', color: '#6b7280', textAlign: 'center', lineHeight: '1.6' }}>
+        <p style={{ margin: '0 0 28px 0', fontSize: '14.5px', color: '#4D7A62', textAlign: 'center', lineHeight: '1.6' }}>
           궁금한 점이나 불편한 점이 있으시다면<br/>아래 이메일로 언제든 편하게 연락해주세요!
         </p>
 
-        {/* 👇 수정된 부분: 이메일 표시와 복사 버튼의 세로 배치 영역 */}
+        {/* 이메일 표시와 복사 버튼 영역 */}
         <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', // 세로 정렬 및 간격 확보
-          backgroundColor: '#f9fafb', // 아주 연한 회색 배경으로 부드럽게
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
+          backgroundColor: '#F5F2E8',
           borderRadius: '16px', padding: '20px',
-          width: '100%', boxSizing: 'border-box', border: '1px solid #f3f4f6'
+          width: '100%', boxSizing: 'border-box', border: '1px solid #EAE7DC'
         }}>
           {/* 이메일 텍스트 */}
-          <span style={{ 
-            fontSize: '17px', 
-            color: '#1f2937', 
-            fontWeight: '600', 
-            letterSpacing: '0.5px' 
+          <span style={{
+            fontSize: '17px',
+            color: '#0F3D2E',
+            fontWeight: '600',
+            letterSpacing: '0.5px'
           }}>
             {email}
           </span>
-          
-          {/* 복사 버튼 (가로로 꽉 차게 변경하여 터치 영역 확보) */}
-          <button 
+
+          {/* 복사 버튼 */}
+          <button
             onClick={handleCopyEmail}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              backgroundColor: copied ? '#10b981' : '#3b82f6',
-              color: 'white', border: 'none', borderRadius: '12px', // 둥근 모서리 강화
+              backgroundColor: copied ? '#6FA886' : '#0F3D2E',
+              color: 'white', border: 'none', borderRadius: '12px',
               padding: '12px 16px', fontSize: '14px', fontWeight: '600',
-              width: '100%', // 박스 안에서 꽉 차게
+              width: '100%',
               cursor: 'pointer', transition: 'all 0.2s ease-in-out'
             }}
           >
