@@ -1,0 +1,80 @@
+apply plugin: 'com.android.application'
+
+// 1. Google 서비스 플러그인 적용 (최상단 혹은 android 블록 직전)
+apply plugin: 'com.google.gms.google-services'
+
+android {
+    namespace "com.junsun.treasurehunter"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.junsun.treasurehunter"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 30
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    
+    signingConfigs {
+        customDebug {
+            storeFile file('custom_debug.keystore')
+            storePassword 'android'
+            keyAlias 'custom_key'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            // 배포판에서 구글 로그인 Client ID 유실 방지를 위해 false 유지
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            signingConfig signingConfigs.customDebug
+        }
+    }
+}
+
+repositories {
+    flatDir {
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    
+    // 2. Firebase BoM (버전 관리자) 및 SDK 추가
+    // BoM을 사용하면 개별 라이브러리(analytics, auth 등)의 버전을 일일이 적지 않아도 됩니다.
+    implementation platform('com.google.firebase:firebase-bom:34.9.0')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-auth' // 구글 로그인을 위한 필수 라이브러리
+    implementation 'com.google.firebase:firebase-messaging' // 푸시 알림을 위한 라이브러리
+
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+// 기존의 try-catch 구문은 위에서 apply plugin으로 명시했으므로 삭제해도 무방하지만, 
+// 안전을 위해 유지하고 싶다면 아래와 같이 둡니다.
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.exists()) {
+        // 이미 위에서 적용했으므로 중복 적용되지 않도록 체크됨
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found.")
+}

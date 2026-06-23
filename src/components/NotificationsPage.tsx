@@ -33,70 +33,7 @@ const NotificationsPage: React.FC = () => {
     try {
       // Mock data for development
       const mockData: Notification[] = [
-        {
-          id: '1',
-          type: 'match',
-          title: '매칭 성공! 🎉',
-          message: 'iPhone 15 Pro 분실물이 매칭되었습니다. 메시지를 확인해보세요.',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30분 전
-          isRead: false,
-          relatedItemId: '1'
-        },
-        {
-          id: '2',
-          type: 'like',
-          title: '누군가 좋아요를 눌렀어요',
-          message: '홍길동님이 회원님의 게시물을 좋아합니다.',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2시간 전
-          isRead: false,
-          relatedItemId: '2',
-          relatedUserId: 'user123'
-        },
-        {
-          id: '3',
-          type: 'comment',
-          title: '새로운 댓글',
-          message: '김철수님이 회원님의 게시물에 댓글을 남겼습니다: "혹시 아직 찾으셨나요?"',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5시간 전
-          isRead: true,
-          relatedItemId: '3',
-          relatedUserId: 'user456'
-        },
-        {
-          id: '4',
-          type: 'badge',
-          title: '새로운 뱃지 획득! 🏆',
-          message: '"신뢰왕" 뱃지를 획득했습니다. 축하합니다!',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1일 전
-          isRead: true,
-          icon: '🏆'
-        },
-        {
-          id: '5',
-          type: 'system',
-          title: '분실물 등록 완료',
-          message: '에어팟 프로 분실물이 성공적으로 등록되었습니다.',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2일 전
-          isRead: true,
-          relatedItemId: '4'
-        },
-        {
-          id: '6',
-          type: 'match',
-          title: '근처에서 발견!',
-          message: '강남역 근처에서 회원님의 분실물과 유사한 습득물이 등록되었습니다.',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3일 전
-          isRead: true,
-          relatedItemId: '5'
-        },
-        {
-          id: '7',
-          type: 'system',
-          title: '포인트 적립 완료',
-          message: '성공적인 매칭으로 50,000 포인트가 적립되었습니다.',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), // 5일 전
-          isRead: true
-        }
+        
       ];
       
       setTimeout(() => {

@@ -65,7 +65,7 @@ export const fetchPostsByBounds = async (
     queryParams.append('postType', type);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/posts?${queryParams.toString()}`, {
+  const response = await fetch(`${API_BASE_URL}/posts?${queryParams.toString()}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -130,7 +130,7 @@ export const searchPostsByText = async (
   }
 
   // 3. API 호출
-  const response = await fetch(`${API_BASE_URL}/api/v1/posts?${queryParams.toString()}`, {
+  const response = await fetch(`${API_BASE_URL}/posts?${queryParams.toString()}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -183,7 +183,7 @@ export const fetchLatestPosts = async (
   }
 
   // API 호출 (GET /api/v1/posts?size=20&page=0&postType=LOST)
-  const response = await fetch(`${API_BASE_URL}/api/v1/posts?${queryParams.toString()}`, {
+  const response = await fetch(`${API_BASE_URL}/posts?${queryParams.toString()}`, {
     method: 'GET',
     headers: headers,
   });

@@ -5,13 +5,15 @@ importScripts("https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"
 importScripts("https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js");
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAQ6IObd2vmW1FTsGzKxgN57vxiEYL0Afk", // 본인의 설정값 확인
-  authDomain: "treasruehunter.firebaseapp.com",
-  projectId: "treasruehunter",
-  storageBucket: "treasruehunter.firebasestorage.app",
-  messagingSenderId: "97393197228",
-  appId: "1:97393197228:web:d8aefed3fb8fea18fc5f09",
+  apiKey: "AIzaSyB7JHm1Vu5GqWxx0XJcdZaGC_UMIVysXgI",
+  authDomain: "treasure-hunter-474414.firebaseapp.com",
+  projectId: "treasure-hunter-474414",
+  storageBucket: "treasure-hunter-474414.firebasestorage.app",
+  messagingSenderId: "272231760809",
+  appId: "1:272231760809:web:1d2a174dd0c86cc53ffab8",
+  measurementId: "G-0XF5Z3QMKG"
 };
+
 // 백그라운드용 앱 초기화
 firebase.initializeApp(firebaseConfig);
 

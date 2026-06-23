@@ -1,5 +1,14 @@
-// [MODIFIED] Added API_BASE_URL constant
-const API_BASE_URL = 'https://treasurehunter.seohamin.com';
+import { CapacitorHttp } from "@capacitor/core";
+import { API_BASE_URL } from '../config';
+// import { redirect } from "react-router-dom";
+
+// CORS 우회용 Origin 헤더 전용 (경로 없는 기본 도메인)
+const BASE_ORIGIN_URL = 'https://treasurehunter.seohamin.com';
+
+const COMMON_HEADERS = {
+  'Content-Type': 'application/json',
+  'Origin': BASE_ORIGIN_URL, // 👈 핵심: 백엔드가 허용하는 오리진으로 위장
+};
 
 // --- 상세 UserInfo 타입 정의 ---
 // ... (Your existing interfaces: ReviewAuthor, ReceivedReview, MyReview, Post, BlockedUser, UserOauth2Account) ...
@@ -103,6 +112,28 @@ export interface AuthTokens {
   exprTime?: number; // Expiry time in seconds from API
 }
 
+// [NEW] Helper to parse JWT and get User ID
+export const getUserIdFromToken = (token: string): string | null => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window
+        .atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        })
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    return payload.sub || payload.userId || payload.id || null;
+  } catch (e) {
+    console.error('Failed to parse JWT:', e);
+    return null;
+  }
+};
+
 // 게시물 생성 시 API에 보낼 데이터 타입 (CreateLostItemPage.tsx와 일치)
 export interface PostData {
   title: string;
@@ -120,6 +151,9 @@ export interface PostData {
 
 // --- 인증 관련 함수들 ---
 
+// [NEW] Singleton refresh promise: 동시에 여러 요청이 토큰 갱신을 시도하는 race condition 방지
+let refreshPromise: Promise<AuthTokens | null> | null = null;
+
 // [MODIFIED] Save tokens and calculate expiration timestamp
 export const saveTokens = (tokens: AuthTokens) => {
   if (tokens.accessToken) {
@@ -130,9 +164,10 @@ export const saveTokens = (tokens: AuthTokens) => {
   }
   // Calculate and store the absolute expiration time (timestamp in milliseconds)
   if (tokens.exprTime) {
-    // Add a small buffer (e.g., 10 seconds) before actual expiry
     const bufferSeconds = 10;
-    const expiresInMilliseconds = (tokens.exprTime - bufferSeconds) * 1000;
+    // exprTime이 buffer보다 작거나 같으면 음수가 되므로 0으로 clamp
+    const effectiveExpiry = Math.max(0, tokens.exprTime - bufferSeconds);
+    const expiresInMilliseconds = effectiveExpiry * 1000;
     const expirationTimestamp = Date.now() + expiresInMilliseconds;
     localStorage.setItem('tokenExpiration', expirationTimestamp.toString());
     console.log(`Token expiration set to: ${new Date(expirationTimestamp).toLocaleString()}`);
@@ -150,14 +185,14 @@ export const getTokens = (): (AuthTokens & { expirationTimestamp?: number }) | n
   const expirationTimestampStr = localStorage.getItem('tokenExpiration');
 
   if (!accessToken || !refreshToken) {
-    clearTokens(); // Ensure clean state if tokens are missing
     return null;
   }
 
   const expirationTimestamp = expirationTimestampStr ? parseInt(expirationTimestampStr, 10) : undefined;
 
-  // Basic check if timestamp is valid
-  if (expirationTimestamp && isNaN(expirationTimestamp)) {
+  // NaN은 falsy이므로 `expirationTimestamp && isNaN(...)` 패턴은 항상 false
+  // 원본 문자열로 NaN 여부를 판별해야 함
+  if (expirationTimestampStr && Number.isNaN(expirationTimestamp)) {
     console.error("Invalid tokenExpiration found in localStorage.");
     localStorage.removeItem('tokenExpiration'); // Clean up invalid data
     return { accessToken, refreshToken }; // Return without expiration
@@ -167,22 +202,44 @@ export const getTokens = (): (AuthTokens & { expirationTimestamp?: number }) | n
   return { accessToken, refreshToken, expirationTimestamp };
 };
 
-// [NEW] Check if the access token is expired or close to expiring
+// [FIXED] Check if the access token is expired
+// 1순위: localStorage에 저장된 만료 타임스탬프 사용
+// 2순위: JWT payload의 exp 클레임 파싱 (exprTime이 없을 때 fallback)
+// 기본값: 만료된 것으로 간주 → refresh 시도를 유도
 export const isTokenExpired = (): boolean => {
   const tokens = getTokens();
-  if (!tokens || !tokens.expirationTimestamp) {
-    // If no expiration time is stored, assume it might be expired or treat as non-expiring
-    // Depending on your strategy, you might want to return true here to force refresh/check
-    console.log("isTokenExpired: No expiration timestamp found.");
-    return false; // Assuming non-expiring for now, adjust if needed
+  if (!tokens?.accessToken) {
+    return true;
   }
 
-  // Check if current time is past the stored expiration time
-  const isExpired = Date.now() >= tokens.expirationTimestamp;
-  if (isExpired) {
-    console.log(`Token expired at ${new Date(tokens.expirationTimestamp).toLocaleString()}. Current time: ${new Date().toLocaleString()}`);
+  // 1순위: 저장된 만료 타임스탬프 확인
+  if (tokens.expirationTimestamp) {
+    const isExpired = Date.now() >= tokens.expirationTimestamp;
+    if (isExpired) {
+      console.log(`Token expired at ${new Date(tokens.expirationTimestamp).toLocaleString()}.`);
+    }
+    return isExpired;
   }
-  return isExpired;
+
+  // 2순위: JWT exp 클레임 직접 파싱 (서버가 exprTime을 안 보낼 때 fallback)
+  try {
+    const base64Url = tokens.accessToken.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64));
+    if (payload.exp) {
+      const isExpired = Date.now() >= payload.exp * 1000;
+      if (isExpired) {
+        console.log(`Token expired (JWT exp) at ${new Date(payload.exp * 1000).toLocaleString()}.`);
+      }
+      return isExpired;
+    }
+  } catch (e) {
+    console.warn('isTokenExpired: JWT exp 파싱 실패, 만료된 것으로 처리.', e);
+  }
+
+  // 만료 정보가 전혀 없으면 만료된 것으로 간주하여 refresh를 유도
+  console.log("isTokenExpired: 만료 정보 없음. 만료된 것으로 처리.");
+  return true;
 };
 
 
@@ -195,7 +252,7 @@ export const clearTokens = () => {
   localStorage.removeItem('tokenExpiration'); // Ensure expiration is cleared
 };
 
-// Save user info to localStorage
+// Save user info to localStorageg
 export const saveUserInfo = (userInfo: UserInfo) => {
   // Ensure ID is stored consistently, convert if needed (though API should provide number)
   const infoToSave = { ...userInfo, id: Number(userInfo.id) };
@@ -205,29 +262,23 @@ export const saveUserInfo = (userInfo: UserInfo) => {
 // Get user info from localStorage
 export const getUserInfo = (): UserInfo | null => {
   const userInfoStr = localStorage.getItem('userInfo');
-  if (!userInfoStr) return null;
+  if (!userInfoStr) {
+    return null; // 정보가 없으면 null 반환 (토큰 삭제 X)
+  }
 
   try {
-    const userInfo: UserInfo = JSON.parse(userInfoStr);
-    // Basic validation
-    if (userInfo && typeof userInfo.id === 'number') {
-      return userInfo;
-    } else {
-      console.error("Invalid user info found in localStorage:", userInfo);
-      clearTokens(); // Clear invalid data
-      return null;
-    }
+    return JSON.parse(userInfoStr);
+    // 간단한 유효성 검사
   } catch (error) {
-    console.error("Failed to parse user info from localStorage:", error);
-    clearTokens(); // Clear corrupted data
-    return null;
+    console.error("User info parsing error:", error);
+    return null; // 파싱 에러 시 null (토큰 삭제 X)
   }
 };
 
 // Fetch initial tokens after OAuth callback (if using cookies/credentials)
 export const fetchAndStoreTokens = async (): Promise<AuthTokens | null> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/token`, {
+    const response = await fetch(`${API_BASE_URL}/auth/token`, {
       credentials: 'include', // Important if backend sets cookies
     });
 
@@ -236,6 +287,7 @@ export const fetchAndStoreTokens = async (): Promise<AuthTokens | null> => {
       clearTokens();
       return null;
     }
+
 
     const data: AuthTokens = await response.json();
 
@@ -256,44 +308,58 @@ export const fetchAndStoreTokens = async (): Promise<AuthTokens | null> => {
 
 
 // Refresh the access token using the refresh token
+// [FIXED] Singleton promise로 동시 refresh 요청에 의한 race condition 방지
 export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
-  console.log("Attempting to refresh access token...");
-  const currentTokens = getTokens();
-  if (!currentTokens?.refreshToken) {
-    console.log("Refresh failed: No refresh token found.");
-    clearTokens(); // Clear everything if refresh token is missing
-    return null;
+  // 이미 진행 중인 refresh가 있으면 동일한 promise를 반환 (중복 요청 방지)
+  if (refreshPromise) {
+    console.log("Refresh already in progress, reusing existing promise.");
+    return refreshPromise;
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/token/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: currentTokens.refreshToken }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      console.error(`Token refresh failed. Status: ${response.status}`, errorBody);
-      clearTokens(); // Clear tokens if refresh fails
+  refreshPromise = (async (): Promise<AuthTokens | null> => {
+    console.log("Attempting to refresh access token...");
+    const currentTokens = getTokens();
+    if (!currentTokens?.refreshToken) {
+      console.log("Refresh failed: No refresh token found.");
+      clearTokens();
       return null;
     }
 
-    const newTokens: AuthTokens = await response.json();
-    if (newTokens.accessToken && newTokens.refreshToken && newTokens.exprTime) {
-      console.log("Access token refreshed successfully.");
-      saveTokens(newTokens); // Save the new tokens and update expiration
-      return newTokens;
-    } else {
-      console.error("Refresh response missing required token data.");
-      clearTokens(); // Clear if response is malformed
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/token/refresh`, {
+        method: 'POST',
+        headers: COMMON_HEADERS,
+        body: JSON.stringify({ refreshToken: currentTokens.refreshToken }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        console.error(`Token refresh failed. Status: ${response.status}`, errorBody);
+        clearTokens();
+        return null;
+      }
+
+      const newTokens: AuthTokens = await response.json();
+      if (newTokens.accessToken && newTokens.refreshToken && newTokens.exprTime) {
+        console.log("Access token refreshed successfully.");
+        saveTokens(newTokens);
+        return newTokens;
+      } else {
+        console.error("Refresh response missing required token data.");
+        clearTokens();
+        return null;
+      }
+    } catch (error) {
+      console.error('Token refresh request failed:', error);
+      clearTokens();
       return null;
     }
-  } catch (error) {
-    console.error('Token refresh request failed:', error);
-    clearTokens(); // Clear tokens on network or other errors
-    return null;
-  }
+  })().finally(() => {
+    // refresh 완료 후 반드시 초기화하여 다음 갱신 요청이 새로 시작될 수 있게 함
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
 };
 
 // [NEW] Get a valid auth token, attempting refresh if expired
@@ -341,8 +407,9 @@ export const checkToken = async (userId: string): Promise<UserInfo | null> => {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
       headers: {
+        ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
     });
@@ -366,89 +433,281 @@ export const checkToken = async (userId: string): Promise<UserInfo | null> => {
     return null;
   }
 };
-
-
-// Sign up a new user
-// ... existing code ...
-
-// Sign up a new user
+//cors 에러 우회해결 코드 
 export const signupUser = async (
-  userId: string,
   nickname: string,
   profileImage: string,
   name: string,
   lat?: number | null,
   lon?: number | null
-): Promise<boolean> => {
-  // Use getValidAuthToken to ensure token validity
+): Promise<UserInfo | null> => {
   const token = await getValidAuthToken();
   if (!token) {
     console.error('Signup failed: No valid token.');
-    return false;
+    return null;
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
-      method: 'POST',
+    // 1. CapacitorHttp.post 사용 (네이티브 통신)
+    const response = await CapacitorHttp.post({
+      url: `${API_BASE_URL}/user`,
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...COMMON_HEADERS,
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ nickname, profileImage, name, lat, lon }),
+      data: {
+        nickname,
+        profileImage,
+        name,
+        lat: lat !== undefined && lat !== null ? String(lat) : null, // 숫자를 문자로 변환
+        lon: lon !== undefined && lon !== null ? String(lon) : null  // 숫자를 문자로 변환
+      },
+    });
+
+    // 2. CapacitorHttp 응답 처리 (response.status, response.data 사용)
+    if (response.status !== 200 && response.status !== 201) {
+      console.error(`Signup failed. Status: ${response.status}`, response.data);
+
+      // 에러 메시지 처리
+      const errorMessage = response.data?.message || '회원가입 요청 실패';
+      throw new Error(errorMessage);
+    }
+
+    console.log("Signup successful:", response.data);
+    return response.data as UserInfo;
+
+  } catch (error) {
+    console.error('Signup request failed:', error);
+    // 에러 객체 상세 출력
+    if (error instanceof Error) {
+      console.error('Error Message:', error.message);
+    } else {
+      console.error('Unknown Error:', JSON.stringify(error));
+    }
+    throw error;
+  }
+};
+// cors 해결 후, 사용 코드
+// Sign up a new user
+// export const signupUser = async (
+//   nickname: string,
+//   profileImage: string,
+//   name: string,
+//   lat?: number | null,
+//   lon?: number | null
+// ): Promise<UserInfo | null> => {
+//   // 1. 토큰 확인 (API 명세: Authorization Header 필수)
+//   const token = await getValidAuthToken();
+//   if (!token) {
+//     console.error('Signup failed: No valid token.');
+//     return null;
+//   }
+
+//   try {
+//     // 2. API 엔드포인트 수정 (userId 제거 -> /api/v1/user)
+//     const response = await fetch(`${API_BASE_URL}/user`, {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         Authorization: `Bearer ${token}`,
+//       },
+//       // 3. Body 데이터 구성 (API 명세에 맞춰 lat, lon을 String으로 변환)
+//       body: JSON.stringify({ 
+//         nickname, 
+//         profileImage, 
+//         name, 
+//         lat: lat !== undefined && lat !== null ? String(lat) : null, 
+//         lon: lon !== undefined && lon !== null ? String(lon) : null 
+//       }),
+//     });
+
+//     if (!response.ok) {
+//       const errorBody = await response.json().catch(() => ({}));
+//       console.error(`Signup failed. Status: ${response.status}`, errorBody);
+//       const errorText = await response.text();
+//       console.error(`🚨 회원가입 실패 (Status: ${response.status})`);
+//       console.error(`🚨 서버 응답 본문: ${errorText}`);
+
+
+
+//       // 서버에서 보내주는 구체적인 에러 메시지가 있다면 throw
+//       if (errorBody.message) {
+//         throw new Error(errorBody.message);
+//       }
+//       return null;
+//     }
+
+
+//     // 4. 성공 시 응답(UserInfo) 반환
+//     const registeredUser: UserInfo = await response.json();
+//     console.log("Signup successful:", registeredUser);
+//     return registeredUser;
+
+//   } catch (error) {
+//     console.error('Signup request failed details:', error);
+//     if (error instanceof Error) {
+//         console.error('Error Message:', error.message);
+//     }
+//     throw error;
+//   }
+// };
+
+// [NEW] Login with social token (native flow)
+export interface SocialLoginResponse extends AuthTokens {
+  role: 'USER' | 'NOT_REGISTERED' | 'NOT_VERIFIED' | 'ADMIN';
+  // UserInfo fields might be included
+  id?: number;
+  nickname?: string;
+  profileImage?: string;
+  name?: string;
+}
+
+// [NEW] Login with social token (native flow)
+// export const loginWithSocialToken = async (provider: string, code: string, name?: string, redirect_uri?: string): Promise<SocialLoginResponse | null> => {
+//   const sendName = name ? name : 'null';
+//   let finalRedirectUri = redirect_uri;
+//   if (!finalRedirectUri) {
+//     if (provider === 'apple') {
+//       // Apple은 'postmessage'를 허용하지 않으므로, 백엔드 설정과 100% 일치하는 주소 강제 주입
+//       finalRedirectUri = `${API_BASE_URL}/login/oauth2/code/apple`;
+//     } else {
+//       // Google 등은 postmessage 사용
+//       finalRedirectUri = 'postmessage';
+//     }
+//   }
+//   console.log('========== [loginWithSocialToken 요청 시작] ==========');
+//   console.log('Provider (제공자):', provider);
+//   console.log('Auth Code (인증 코드):', code);
+//   console.log('User Name (이름):', name || '이름 없음');
+//   console.log('Redirect URI:', redirect_uri || 'postmessage');
+//   console.log('===================================================');
+//   try {
+//     // fetch 대신 CapacitorHttp.post 사용
+//     const response = await CapacitorHttp.post({
+//       url: `${API_BASE_URL}/auth/oauth2`,
+//       headers: COMMON_HEADERS,
+//       data: { provider, code, sendName, redirect_uri: finalRedirectUri},
+//     });
+
+//     // CapacitorHttp는 응답 데이터가 response.data에 담깁니다.
+//     console.log('CapacitorHttp Response Status:', response.status);
+//     console.log('CapacitorHttp Response Data:', JSON.stringify(response.data));
+
+//     if (response.status === 200 || response.status === 201) {
+//       const data = response.data;
+//       if (data.accessToken && data.refreshToken) {
+//         // [CRITICAL] 토큰 저장
+//         saveTokens(data);
+
+//         // [CRITICAL] UserInfo 저장 (응답에 포함되어 있다면)
+//         // 만약 응답이 UserInfo 구조를 일부 가지고 있다면 저장 시도
+//         if (data.id && data.nickname) {
+//           saveUserInfo(data as UserInfo);
+//           console.log("UserInfo saved from login response.");
+//         } else {
+//           // 정보가 없다면 최소한의 정보라도 저장하거나, 이후 fetch 필요
+//           console.warn("Login response missing UserInfo fields. HomePage might need fetch.");
+//           // 임시로 role 저장 (필요하다면)
+//           // 하지만 HomePage는 full UserInfo를 기대함.
+//           // 여기서는 data를 그대로 리턴하여 LoginPage나 후속 로직에서 처리하도록 함.
+//         }
+
+//         return data as SocialLoginResponse;
+//       } else {
+//         console.error('Missing tokens in response data:', data);
+//       }
+//     } else {
+//       console.error('Unexpected status code:', response.status);
+//     }
+//     return null;
+//   } catch (error) {
+//     console.error('네이티브 통신 실패:', error);
+//     if (error instanceof TypeError && error.message === 'Load failed') {
+//       console.error('🚨 원인: 네트워크 차단 (CORS 문제이거나 인터넷 연결 없음)');
+//       console.error('👉 백엔드 개발자에게 "capacitor://localhost" 오리진을 허용해달라고 요청하세요.');
+//     } else if (error instanceof Error) {
+//       console.error('메시지:', error.message);
+//       console.error('스택:', error.stack);
+//     } else {
+//       console.error('알 수 없는 오류:', JSON.stringify(error));
+//     }
+//     return null;
+//   }
+// };
+
+// [NEW] App Store Reviewer login (TestFlight / 심사용 계정 전용)
+// 로그인 화면에서 입력받은 id / password를 사용해 심사용 계정으로 로그인
+export const loginReviewerForReview = async (id: string, password: string): Promise<AuthTokens | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/reviewer/login`, {
+      method: 'POST',
+      headers: COMMON_HEADERS,
+      body: JSON.stringify({ id, password }),
     });
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));
-      console.error(`Signup failed. Status: ${response.status}`, errorBody);
-
-      // [MODIFIED] 서버에서 보낸 에러 메시지를 throw합니다.
-      if (errorBody.message) {
-        throw new Error(errorBody.message);
-      }
-
-      return false;
-    }
-    console.log("Signup successful.");
-    return true; // Return true on successful signup (2xx status)
-
-  } catch (error) {
-    console.error('Signup request failed:', error);
-    // [MODIFIED] 에러를 다시 던져서 컴포넌트에서 처리할 수 있게 합니다.
-    throw error;
-  }
-};
-
-// [NEW] Login with social token (native flow)
-export const loginWithSocialToken = async (provider: string, token: string): Promise<boolean> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/${provider}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token }),
-    });
-
-    if (!response.ok) {
-      console.error(`Social login failed. Status: ${response.status}`);
-      return false;
+      console.error(`Reviewer login failed. Status: ${response.status}`, errorBody);
+      return null;
     }
 
     const data: AuthTokens = await response.json();
+
     if (data.accessToken && data.refreshToken) {
+      // 토큰 및 만료 시간 저장
       saveTokens(data);
-      return true;
+      return data;
+    } else {
+      console.error('Reviewer login response missing tokens:', data);
+      return null;
     }
-    return false;
   } catch (error) {
-    console.error('Social login request failed:', error);
-    return false;
+    console.error('Reviewer login request failed:', error);
+    return null;
   }
 };
+// 배포 시, 현재 주석된 코드 사용
+// export const loginWithSocialToken = async (provider: string, code: string, name?: string): Promise<boolean> => {
+//   try {
+//     const response = await fetch(`${API_BASE_URL}/auth/oauth2`, {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//       body: JSON.stringify({ provider, code, name, access_type: 'offline' ,redirect_uri: 'postmessage'}),
+//     });
+
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       console.error(`Social login failed. Status: ${response.status}, Body: ${errorText}`);
+//       return false;
+//     }
+
+//     const data: AuthTokens = await response.json();
+//     if (data.accessToken && data.refreshToken) {
+//       saveTokens(data);
+//       return true;
+//     }
+//     return false;
+//   } catch (error) {
+//     console.error('Social login request failed. Error details:', error);
+//     if (error instanceof TypeError && error.message === 'Load failed') {
+//       console.error('🚨 원인: 네트워크 차단 (CORS 문제이거나 인터넷 연결 없음)');
+//       console.error('👉 백엔드 개발자에게 "capacitor://localhost" 오리진을 허용해달라고 요청하세요.');
+//     } else if (error instanceof Error) {
+//       console.error('메시지:', error.message);
+//       console.error('스택:', error.stack);
+//     } else {
+//       console.error('알 수 없는 오류:', JSON.stringify(error));
+//     }
+//     return false;
+//   }
+// };
 
 // Get OAuth URL for a provider
 export const getOAuthUrl = (provider: 'google' | 'kakao' | 'naver' | 'apple'): string => {
-  return `${API_BASE_URL}/oauth2/authorization/${provider}`;
+  // oauth2 진입점은 /api/v1 prefix 없이 BASE 도메인에서 직접 처리됨
+  return `${BASE_ORIGIN_URL}/oauth2/authorization/${provider}`;
 };
 
 // Delete user account
@@ -461,16 +720,17 @@ export const deleteUser = async (userId: string): Promise<boolean> => {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
       method: 'DELETE',
       headers: {
+        ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
     });
 
     if (response.ok) {
       console.log("User deleted successfully.");
-      clearTokens(); // Clear local data after successful deletion
+      clearTokens(); // [FIXED] 계정 삭제 후 반드시 로컬 토큰 제거
       return true;
     } else {
       const errorBody = await response.json().catch(() => ({}));
@@ -493,15 +753,15 @@ export const getUserProfile = async (userId: string): Promise<UserInfo | null> =
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/user/${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      console.error(`Failed to fetch user profile. Status: ${response.status}`, errorBody);
+      const errorText = await response.text().catch(() => '');
+      console.error(`Failed to fetch user profile. Status: ${response.status}`, errorText);
       // If it's 401/403, potentially clear tokens as access is denied
       if (response.status === 401 || response.status === 403) {
         // clearTokens(); // 다른 사람 프로필 조회 실패가 내 로그아웃을 유발하면 안 될 수도 있음 (상황에 따라 결정)
@@ -529,10 +789,10 @@ export const createPost = async (postData: PostData): Promise<Post | null> => { 
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/post`, {
+    const response = await fetch(`${API_BASE_URL}/post`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(postData),
@@ -591,10 +851,10 @@ export const createChatRoom = async (
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/chat/room`, {
+    const response = await fetch(`${API_BASE_URL}/chat/room`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        ...COMMON_HEADERS,
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
@@ -629,6 +889,84 @@ export const createChatRoom = async (
   } catch (error) {
     console.error('Error creating chat room:', error);
     alert(error instanceof Error ? error.message : "채팅방을 만들 수 없습니다.");
+    return null;
+  }
+};
+
+// utils/auth.ts (또는 해당 함수가 있는 파일)
+// utils/auth.ts
+
+export const loginWithSocialToken = async (
+  provider: 'google' | 'apple' | 'kakao' | 'naver',
+  token: string,
+  name?: string,
+  _redirectUri?: string
+) => {
+  // ✅ 1. [수정됨] 명세서에 따른 정확한 엔드포인트 URL (API_BASE_URL 통합)
+  const BACKEND_URL = `${API_BASE_URL}/auth/oauth2`;
+
+  // ✅ 2. [수정됨] 명세서에 따른 Request Body 구성
+  // code: 인증 코드
+  // provider: 'google', 'apple' 등
+  // name: 애플 로그인일 경우에만 필요 (그 외엔 undefined여도 무방할 듯하나 명세에 따름)
+  const payload = {
+    code: token,
+    provider: provider, // 예: 'google'
+    name: name // 애플 로그인 시 필요
+  };
+
+  console.log(`🚀 [DEBUG] 백엔드 요청 시작: ${BACKEND_URL}`);
+  console.log(`📦 [DEBUG] 보낼 데이터:`, JSON.stringify(payload));
+
+  // 폰에서 확인용 Alert (테스트 후 주석 처리)
+  // alert(`1. 백엔드 전송 시도\nURL: .../auth/oauth2\nProvider: ${provider}\nToken: ${token.substring(0, 10)}...`);
+
+  try {
+    const response = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    // 3. [응답 상태] 확인
+    console.log(`📡 [DEBUG] 응답 상태 코드: ${response.status}`);
+
+    // 4. [응답 본문] 읽기
+    const responseText = await response.text();
+    console.log(`📄 [DEBUG] 응답 본문(Raw): ${responseText}`);
+
+    if (!response.ok) {
+      // 백엔드가 400, 500 에러를 뱉은 경우
+      alert(`🚨 [서버 거절] Code: ${response.status}\n에러내용: ${responseText.substring(0, 150)}`);
+      throw new Error(`Server Error (${response.status}): ${responseText}`);
+    }
+
+    // 5. [성공] JSON 파싱 및 데이터 반환
+    try {
+      const data = JSON.parse(responseText);
+
+      // 명세서에 따르면 data = { role, accessToken, tokenType, exprTime, refreshToken }
+      // alert(`3. 로그인 성공! 🎉\nAccess Token: ${data.accessToken?.substring(0, 15)}...`);
+
+      return data;
+    } catch (parseError) {
+      console.error("JSON 파싱 에러 발생:", parseError);
+      alert(`🚨 [파싱 실패] 서버 응답이 JSON이 아닙니다.\n내용: ${responseText.substring(0, 100)}`);
+      return null;
+    }
+
+  } catch (error: any) {
+    // 6. [네트워크 에러] 아예 요청이 실패한 경우
+    console.error('❌ [DEBUG] 통신 실패:', error);
+
+    let errorMsg = error.message;
+    if (error.name === 'TypeError' && errorMsg === 'Failed to fetch') {
+      errorMsg = '서버에 닿지 못했습니다. (인터넷 연결, CORS, 또는 SSL 문제)';
+    }
+
+    alert(`💀 [통신 에러]\n${errorMsg}`);
     return null;
   }
 };

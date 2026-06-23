@@ -1,8 +1,12 @@
 /* src/styles/static-pages.css */
 .static-page {
   min-height: 100vh;
-  background-color: var(--background);
+  background-color: #F5F2E8;
   padding-bottom: 2rem;
+}
+
+:root.dark .static-page {
+  background-color: var(--background);
 }
 
 /* Header */
@@ -16,6 +20,7 @@
   padding: 1rem 1.25rem;
   background-color: var(--card);
   border-bottom: 1px solid var(--border);
+  padding-top: calc(1rem + env(safe-area-inset-top));
 }
 
 .static-header h1 {
@@ -51,7 +56,8 @@
 .text-section h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--primary); /* 스타벅스 그린 같은 강조색 */
+  color: var(--primary);
+  /* 스타벅스 그린 같은 강조색 */
   margin-bottom: 1rem;
   line-height: 1.4;
 }
@@ -86,8 +92,10 @@
 .label-icon-box {
   width: 64px;
   height: 64px;
-  border: 2px solid var(--primary); /* 육각형 느낌의 테두리 색상 */
-  border-radius: 12px; /* 약간 둥근 사각형 (이미지는 육각형이지만 CSS로 쉽게 구현하기 위해 둥근 사각형 사용) */
+  border: 2px solid var(--primary);
+  /* 육각형 느낌의 테두리 색상 */
+  border-radius: 12px;
+  /* 약간 둥근 사각형 (이미지는 육각형이지만 CSS로 쉽게 구현하기 위해 둥근 사각형 사용) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -154,4 +162,74 @@
   line-height: 1.6;
   border-top: 1px solid var(--border);
   background-color: var(--input-background);
+}
+
+/* 강조 박스 */
+.intro-box {
+  background-color: #f3f4f6;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #374151;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.highlight-box {
+  background-color: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #c2410c;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin: 10px 0;
+  display: flex;
+  align-items: start;
+}
+
+.highlight-box.red {
+  background-color: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+/* 리스트 스타일 */
+.terms-list li {
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  color: #4b5563;
+  padding-left: 4px;
+}
+
+/* 테이블 스타일 */
+.table-container {
+  overflow-x: auto;
+  margin: 1rem 0;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.policy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.policy-table th {
+  background-color: #f9fafb;
+  color: #374151;
+  font-weight: 600;
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.policy-table td {
+  padding: 10px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #6b7280;
+}
+
+.policy-table tr:last-child td {
+  border-bottom: none;
 }

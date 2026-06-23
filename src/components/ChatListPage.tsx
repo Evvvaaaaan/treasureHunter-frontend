@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MessageCircle, Image, MapPin, X, MoreVertical, Loader2 } from 'lucide-react';
+import { Search, MessageCircle, Image, MapPin, Loader2 } from 'lucide-react';
 import { useTheme } from '../utils/theme';
 import BottomNavigation from './BottomNavigation';
 import { fetchChatRooms, fetchChatMessages } from '../utils/chat';
@@ -18,21 +18,38 @@ const ChatListPage: React.FC = () => {
 
   const [chatRooms, setChatRooms] = useState<ChatRoomUI[]>([]);
   const [filteredRooms, setFilteredRooms] = useState<ChatRoomUI[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   const subscriptions = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
+    const user = getUserInfo();
+    if (user?.role === 'NOT_VERIFIED') {
+      navigate('/verify-phone');
+      return;
+    }
     loadChatRooms();
     updateUnreadCount();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
+    // 1. 여기서도 차단된 유저 목록을 다시 한 번 불러옵니다.
+    let blockedUsers: string[] = [];
+    try {
+      blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
+    } catch {
+      localStorage.removeItem('blockedUsers');
+    }
+
+    // 2. chatRooms 원본에서 일단 차단된 유저를 뺍니다.
+    const validRooms = chatRooms.filter(room => !blockedUsers.map(String).includes(String(room.userId)));
+
+    // 3. 남은 방들을 대상으로 검색어 필터링을 진행합니다.
     if (!searchQuery.trim()) {
-      setFilteredRooms(chatRooms);
+      setFilteredRooms(validRooms);
     } else {
-      setFilteredRooms(chatRooms.filter(room =>
+      setFilteredRooms(validRooms.filter(room =>
         room.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         room.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
       ));
@@ -56,8 +73,12 @@ const ChatListPage: React.FC = () => {
       if (subscriptions.current.has(room.id)) return;
       const sub = stompClient.subscribe(`/topic/chat.room.${room.id}`, (message) => {
         if (message.body) {
-          const newMsg: ChatMessage = JSON.parse(message.body);
-          handleRealtimeMessage(newMsg);
+          try {
+            const newMsg: ChatMessage = JSON.parse(message.body);
+            handleRealtimeMessage(newMsg);
+          } catch (e) {
+            console.error('Failed to parse chat message:', e);
+          }
         }
       });
       subscriptions.current.set(room.id, sub);
@@ -160,7 +181,7 @@ const ChatListPage: React.FC = () => {
           id: room.roomId,
           userId: partner?.id.toString() || 'unknown',
           userName: partner?.nickname || room.name || '알 수 없는 사용자',
-          userAvatar: partner?.profileImage || 'https://via.placeholder.com/100?text=User',
+          userAvatar: partner?.profileImage || 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png',
           isOnline: false,
           lastMessage: lastMessageText,
           lastMessageType: lastMessageType,
@@ -173,10 +194,21 @@ const ChatListPage: React.FC = () => {
       });
 
       const uiRooms = await Promise.all(uiRoomsPromises);
-      uiRooms.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      setChatRooms(uiRooms);
-      setFilteredRooms(uiRooms);
+      // 차단 유저 필터링 추가
+      let blockedUsers: string[] = [];
+      try {
+        blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
+      } catch {
+        localStorage.removeItem('blockedUsers');
+      }
+      const nonBlockedRooms = uiRooms.filter(room => !blockedUsers.map(String).includes(String(room.userId)));
+
+      nonBlockedRooms.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      setChatRooms(nonBlockedRooms);
+      setFilteredRooms(nonBlockedRooms);
+
     } catch (error) {
       console.error('Failed to load chat rooms:', error);
     } finally {
@@ -211,54 +243,55 @@ const ChatListPage: React.FC = () => {
   };
 
   return (
-    <div className={`chat-list-page-new ${theme}`}>
-      <div className="chat-list-header-new">
-        <h1>메시지</h1>
-        <button className="header-more-btn"><MoreVertical size={24} /></button>
-      </div>
-      <div className="search-section-new">
-        <div className="search-container-new">
-          <Search className="search-icon-new" size={18} />
-          <input type="text" placeholder="검색" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input-new" />
-          {searchQuery && <button className="clear-search-new" onClick={() => setSearchQuery('')} aria-label="검색어 지우기"><X size={16} /></button>}
+    <div className={`chat-list-page ${theme}`}>
+      <div className="messages-header">
+        <div>
+          <div className="messages-eyebrow">· INBOX ·</div>
+          <div className="messages-title">대화</div>
+        </div>
+        <div className="messages-actions">
+          <button className="search-btn" onClick={() => navigate('/search')}><Search size={18}/></button>
         </div>
       </div>
-      <div className="chat-list-content-new">
+      
+      <div className="messages-filter-pills">
+        <div className="pill active">전체 <span className="pill-count">{filteredRooms.length}</span></div>
+      </div>
+
+      <div className="messages-thread-list">
         {isLoading ? (
-          <div className="loading-container-new"><Loader2 className="loading-spinner-new animate-spin" /><p>채팅 목록을 불러오는 중...</p></div>
+          <div className="loading-container-new"><Loader2 className="animate-spin" size={32} style={{ color: 'var(--c-moss)', margin: '40px auto' }} /></div>
         ) : filteredRooms.length === 0 ? (
-          <div className="empty-state-new">
-            <MessageCircle size={64} className="empty-icon-new" />
-            <h3>{searchQuery ? '검색 결과가 없습니다' : '채팅 내역이 없습니다'}</h3>
+          <div className="empty-state-new" style={{textAlign: 'center', marginTop: '40px'}}>
+            <MessageCircle size={48} style={{color: 'var(--c-slate)', opacity: 0.3, margin: '0 auto'}} />
+            <h3 style={{marginTop: '16px', color: 'var(--c-slate)'}}>{searchQuery ? '검색 결과가 없습니다' : '채팅 내역이 없습니다'}</h3>
           </div>
         ) : (
-          <div className="chat-rooms-list-new">
-            {filteredRooms.map((room) => (
-              <div
-                key={room.id}
-                className={`chat-room-item-new ${room.unreadCount > 0 ? 'has-unread' : ''}`}
-                // [핵심] 클릭 시 myUserType을 가지고 이동!
-                onClick={() => navigate(`/chat/${room.id}`, { state: { myUserType: room.myUserType } })}
-              >
-                <div className="avatar-container-new" onClick={(e) => { e.stopPropagation(); navigate(`/other-profile/${room.userId}`); }}>
-                  <img src={room.userAvatar} alt={room.userName} />
-                  {room.isOnline && <div className="online-dot-new" />}
-                </div>
-                <div className="room-content-new">
-                  <div className="room-top-row">
-                    <h3 className="room-name-new">{room.userName}{room.itemTitle && <span style={{ fontSize: '0.8em', color: '#888', fontWeight: 'normal', marginLeft: '6px' }}> • {room.itemTitle}</span>}</h3>
-                    <span className="room-time-new">{formatTimeAgo(room.timestamp)}</span>
-                  </div>
-                  <div className="room-bottom-row">
-                    <p className="room-message-new">{getLastMessagePreview(room)}</p>
-                    {room.unreadCount > 0 && <span className="room-unread-new">{room.unreadCount}</span>}
-                  </div>
-                </div>
+          filteredRooms.map((room) => (
+            <div
+              key={room.id}
+              className={`thread-item ${room.unreadCount > 0 ? 'unread' : ''}`}
+              onClick={() => navigate(`/chat/${room.id}`, { state: { myUserType: room.myUserType } })}
+            >
+              <div className="thread-avatar" onClick={(e) => { e.stopPropagation(); navigate(`/other-profile/${room.userId}`); }}>
+                <img src={room.userAvatar} alt={room.userName} />
               </div>
-            ))}
-          </div>
+              <div className="thread-info">
+                <div className="thread-name">
+                  {room.userName} 
+                </div>
+                <div className="thread-item-name">◇ {room.itemTitle || '게시물 제목'}</div>
+                <div className="thread-last-message">{getLastMessagePreview(room)}</div>
+              </div>
+              <div className="thread-meta">
+                <div className="thread-time">{formatTimeAgo(room.timestamp)}</div>
+                {room.unreadCount > 0 && <div className="unread-badge">{room.unreadCount}</div>}
+              </div>
+            </div>
+          ))
         )}
       </div>
+
       <BottomNavigation />
     </div>
   );

@@ -20,12 +20,13 @@
 /* Safe area for iPhones with notch */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .bottom-navigation {
-    bottom: calc(16px + env(safe-area-inset-bottom));
+    bottom: calc(5px + env(safe-area-inset-bottom));
   }
 }
 
 .bottom-navigation .nav-item {
-  display: flex;
+  margin-top: 35px;
+   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -47,7 +48,7 @@
 }
 
 .bottom-navigation .nav-item.active {
-  color: #10b981;
+  color: #6FA886;
 }
 
 .bottom-navigation .nav-icon-wrapper {
@@ -100,7 +101,7 @@
 @media (hover: hover) {
   .bottom-navigation .nav-item:hover:not(.active) {
     background: rgba(16, 185, 129, 0.08);
-    color: #10b981;
+    color: #6FA886;
   }
 }
 
@@ -113,7 +114,7 @@
   transform: translateX(-50%);
   width: 40px;
   height: 3px;
-  background: #10b981;
+  /* background: #6FA886; */
   border-radius: 0 0 4px 4px;
 }
 

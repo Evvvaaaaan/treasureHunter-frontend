@@ -8,7 +8,10 @@ import { getValidAuthToken } from "../utils/auth";
 import "../styles/search-page.css";
 import { API_BASE_URL } from '../config'; 
 
+
 const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
+const DEFAULT_LAT = 37.5665;
+const DEFAULT_LON = 126.9780;
 
 interface ApiPost {
   id: number;
@@ -27,6 +30,7 @@ interface ApiPost {
   itemCategory: string;
   lat: number;
   lon: number;
+  distance: number;
   lostAt: string;
   likeCount: number;
   viewCount: number;
@@ -84,6 +88,29 @@ export default function SearchPage() {
     localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
   }, [recentSearches]);
 
+  const getCurrentLocation = (): Promise<{ lat: number; lon: number } | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Location error:", error);
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  };
+
   // -----------------------------------------------------------------------
   // [핵심 수정] API 요청 URL을 요구사항에 맞게 정확히 구성하는 함수
   // -----------------------------------------------------------------------
@@ -100,12 +127,18 @@ export default function SearchPage() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      const currentLocation = await getCurrentLocation();
+      const lat = currentLocation?.lat ?? DEFAULT_LAT;
+      const lon = currentLocation?.lon ?? DEFAULT_LON;
+
       // [수정] URLSearchParams를 사용하여 파라미터 조합
-      // 목표 URL: /api/v1/posts?searchType=text&query={query}&postType={type}&size=10&page=0
+      // 목표 URL: /api/v1/posts?searchType=text&query={query}&postType={type}&lat={lat}&lon={lon}&size=10&page=0
       const params = new URLSearchParams();
       
       params.append('searchType', 'text'); // 고정값
       params.append('query', query);       // 검색어 (한글 자동 인코딩됨)
+      params.append('lat', lat.toString());
+      params.append('lon', lon.toString());
       params.append('size', '10');         // 페이지 당 개수
       params.append('page', '0');          // 페이지 번호 (0부터 시작)
 
@@ -135,7 +168,7 @@ export default function SearchPage() {
         id: post.id.toString(),
         title: post.title,
         category: post.itemCategory,
-        location: '위치 정보',
+        location: `${post.distance.toFixed(1)}km`,
         date: post.lostAt,
         imageUrl: post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
@@ -309,7 +342,7 @@ export default function SearchPage() {
               <div
                 key={item.id}
                 className="search-result-item"
-                onClick={() => navigate(`/posts/${item.id}`)}
+                onClick={() => navigate(`/items/${item.id}`)}
               >
                 <div className="result-image" style={{ position: 'relative' }}>
                   <ImageWithFallback

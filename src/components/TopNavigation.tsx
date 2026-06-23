@@ -21,7 +21,12 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
   const [showSearchBar, setShowSearchBar] = useState(false);
 
   // Get user info from localStorage
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    localStorage.removeItem('user');
+  }
   const isAuthenticated = !!localStorage.getItem('auth_token');
 
   // Determine page title if not provided

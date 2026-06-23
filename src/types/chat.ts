@@ -30,6 +30,7 @@ export interface ChatPost {
   createdAt: string;
   isCompleted: boolean;
   status?: string;
+  setPoint: number;
 }
 
 export interface ChatRoom {

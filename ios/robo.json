@@ -1,0 +1,46 @@
+[
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementQuery": {
+      "text": "건너뛰기"
+    }
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementQuery": {
+      "text": "Reviewer ID"
+    }
+  },
+  {
+    "eventType": "VIEW_TEXT_CHANGED",
+    "replacementText": "applereview389503920384",
+    "elementQuery": {
+      "text": "Reviewer ID"
+    }
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementQuery": {
+      "text": "Reviewer Password"
+    }
+  },
+  {
+    "eventType": "VIEW_TEXT_CHANGED",
+    "replacementText": "TliKs9eZdRiXdPWBpX0MO84aRyxrvSzxFOJ35VB9Oxq1tpui",
+    "elementQuery": {
+      "text": "Reviewer Password"
+    }
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementQuery": {
+      "text": "리뷰어 로그인 확인"
+    }
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementQuery": {
+      "text": "Ok"
+    }
+  }
+]

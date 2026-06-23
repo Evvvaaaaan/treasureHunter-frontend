@@ -6,7 +6,6 @@ import {
   Image as ImageIcon,
   X,
   AlertCircle,
-  Send,
   Loader2,
 } from "lucide-react";
 import { useTheme } from "../utils/theme";
@@ -14,7 +13,8 @@ import { getValidAuthToken, getUserInfo, getUserProfile } from "../utils/auth";
 import { fetchChatRoomDetail } from "../utils/chat";
 import { uploadImage } from "../utils/file";
 import "../styles/review-page.css";
-import { API_BASE_URL } from '../config'; 
+import { API_BASE_URL } from '../config';
+import { Dialog } from "@capacitor/dialog";
 
 interface ReviewData {
   title: string;
@@ -68,19 +68,19 @@ const ReviewPage: React.FC = () => {
     try {
       const roomData = await fetchChatRoomDetail(chatRoomId);
       const partnerInfo = roomData.participants.find(p => p.id !== Number(currentUser?.id));
-      
+
       if (partnerInfo) {
         // [추가] 자기 자신 체크
         if (partnerInfo.id === Number(currentUser?.id)) {
-            alert("자기 자신에게는 후기를 작성할 수 없습니다.");
-            navigate(-1);
-            return;
+          await Dialog.alert({ title: '알림', message: "자기 자신에게는 후기를 작성할 수 없습니다." });
+          navigate(-1);
+          return;
         }
 
         setPartner({
           id: partnerInfo.id,
           nickname: partnerInfo.nickname || "알 수 없음",
-          profileImage: partnerInfo.profileImage || "https://via.placeholder.com/150?text=User"
+          profileImage: partnerInfo.profileImage || "https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png"
         });
       } else {
         throw new Error("대화 상대방을 찾을 수 없습니다.");
@@ -92,7 +92,7 @@ const ReviewPage: React.FC = () => {
 
     } catch (error) {
       console.error("채팅방 정보 로드 실패:", error);
-      alert("정보를 불러오는데 실패했습니다.");
+      await Dialog.alert({ title: '알림', message: "정보를 불러오는데 실패했습니다." });
       navigate(-1);
     } finally {
       setIsLoading(false);
@@ -103,27 +103,27 @@ const ReviewPage: React.FC = () => {
   const loadDirectUserInfo = async (targetUserId: string) => {
     // [추가] 자기 자신 체크
     if (Number(targetUserId) === Number(currentUser?.id)) {
-        alert("자기 자신에게는 후기를 작성할 수 없습니다.");
-        navigate(-1);
-        return;
+      await Dialog.alert({ title: '알림', message: "자기 자신에게는 후기를 작성할 수 없습니다." });
+      navigate(-1);
+      return;
     }
 
     setIsLoading(true);
     try {
       const userData = await getUserProfile(targetUserId);
       if (userData) {
-         setPartner({
-            id: userData.id,
-            nickname: userData.nickname,
-            profileImage: userData.profileImage || "https://via.placeholder.com/150?text=User"
-         });
-         setPostId(null); 
+        setPartner({
+          id: userData.id,
+          nickname: userData.nickname,
+          profileImage: userData.profileImage || "https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png"
+        });
+        setPostId(null);
       } else {
-          throw new Error("사용자 정보를 찾을 수 없습니다.");
+        throw new Error("사용자 정보를 찾을 수 없습니다.");
       }
     } catch (error) {
       console.error("사용자 정보 로드 실패:", error);
-      alert("사용자 정보를 불러올 수 없습니다.");
+      await Dialog.alert({ title: '알림', message: "사용자 정보를 불러올 수 없습니다." });
       navigate(-1);
     } finally {
       setIsLoading(false);
@@ -135,10 +135,10 @@ const ReviewPage: React.FC = () => {
     setReviewData({ ...reviewData, score: value });
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (reviewData.images.length + files.length > 5) {
-      alert("최대 5장까지만 업로드할 수 있습니다.");
+      await Dialog.alert({ title: '알림', message: "최대 5장까지만 업로드할 수 있습니다." });
       return;
     }
     const newImages = [...reviewData.images, ...files];
@@ -171,15 +171,15 @@ const ReviewPage: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
+
     // [추가] 제출 전 다시 한번 자기 자신 체크
     if (partner?.id === Number(currentUser?.id)) {
-        alert("자기 자신에게는 후기를 작성할 수 없습니다.");
-        return;
+      await Dialog.alert({ title: '알림', message: "자기 자신에게는 후기를 작성할 수 없습니다." });
+      return;
     }
 
     if (!partner?.id) {
-      alert("후기 대상 정보가 없어 작성할 수 없습니다.");
+      await Dialog.alert({ title: '알림', message: "후기 대상 정보가 없어 작성할 수 없습니다." });
       return;
     }
 
@@ -200,7 +200,7 @@ const ReviewPage: React.FC = () => {
         content: reviewData.content,
         score: reviewData.score,
         targetUserId: partner.id,
-        images: imageUrls 
+        images: imageUrls
       };
 
       const response = await fetch(`${API_BASE_URL}/review`, {
@@ -228,12 +228,12 @@ const ReviewPage: React.FC = () => {
         }
       }
 
-      alert("후기가 소중하게 전달되었습니다!");
-      navigate(-1); 
+      await Dialog.alert({ title: '알림', message: "후기가 소중하게 전달되었습니다!" });
+      navigate(-1);
 
     } catch (error) {
       console.error("후기 등록 오류:", error);
-      alert(`후기 등록 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+      await Dialog.alert({ title: '알림', message: `후기 등록 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}` });
     } finally {
       setIsSubmitting(false);
     }
@@ -294,59 +294,51 @@ const ReviewPage: React.FC = () => {
         >
           <ArrowLeft size={24} />
         </button>
-        <h1>후기 작성</h1>
-        <div className="header-spacer" />
+        <div className="review-title">후기 작성</div>
+        <div style={{ width: 24 }} /> {/* Spacer */}
       </div>
 
-      {/* Content */}
-      <div className="review-content">
-        {/* User Info Card */}
-        <div className="user-card-review">
-          <img
-            src={partner.profileImage}
-            alt={partner.nickname}
-            className="user-avatar-review"
-          />
-          <div className="user-info-review">
-            <p className="user-nickname-review">{partner.nickname}</p>
-            <p className="user-subtitle-review">님과의 거래는 어떠셨나요?</p>
-          </div>
+      <div className="review-hero">
+        <div className="hero-emoji">🎉</div>
+        <div className="hero-title">보물을 되찾았어요!</div>
+        <div className="hero-stats">
+          <div className="hero-stat-chip">리워드 포인트 +5,000P</div>
+          <div className="hero-stat-chip">관련 뱃지 +1</div>
         </div>
+      </div>
 
-        {/* Score Section */}
-        <div className="score-section-review">
-          <div className="score-header-review">
-            <Star size={20} style={{ color: getScoreColor(reviewData.score) }} />
-            <span>만족도 평가</span>
-          </div>
-          
-          <div className="score-display-review">
-            <span className="score-emoji">{getScoreEmoji(reviewData.score)}</span>
-            <span className="score-number-review" style={{ color: getScoreColor(reviewData.score) }}>
-              {reviewData.score}
-            </span>
-            <span className="score-max-review">점</span>
-          </div>
-
-          <input
-            type="range"
-            min="1"
-            max="100"
-            value={reviewData.score}
-            onChange={handleScoreChange}
-            className="score-slider-review"
-            style={{
-              background: `linear-gradient(to right, ${getScoreColor(reviewData.score)} 0%, ${getScoreColor(reviewData.score)} ${reviewData.score}%, #e5e7eb ${reviewData.score}%, #e5e7eb 100%)`,
-            }}
-          />
-
-          <div className="score-labels-review">
-            <span>아쉬워요</span>
-            <span>보통이에요</span>
-            <span>최고예요</span>
-          </div>
+      <div className="review-section">
+        <div className="section-title">
+          <Star fill="currentColor" size={20} color="var(--c-honey, #D9A441)" />
+          만족도 평가
         </div>
+        
+        <div className="score-display-review">
+          <div className="score-emoji">{getScoreEmoji(reviewData.score)}</div>
+          <div className="score-number-review" style={{ color: getScoreColor(reviewData.score) }}>{reviewData.score}</div>
+          <div className="score-max-review">점</div>
+        </div>
+        
+        <input
+          type="range"
+          min="1"
+          max="100"
+          value={reviewData.score}
+          onChange={handleScoreChange}
+          className="score-slider-review"
+          style={{
+            background: `linear-gradient(to right, ${getScoreColor(reviewData.score)} 0%, ${getScoreColor(reviewData.score)} ${reviewData.score}%, var(--c-line, #E6E3D6) ${reviewData.score}%, var(--c-line, #E6E3D6) 100%)`,
+          }}
+          disabled={isSubmitting}
+        />
+        <div className="score-labels-review">
+          <span>아쉬워요</span>
+          <span>보통이에요</span>
+          <span>최고예요</span>
+        </div>
+      </div>
 
+      <div className="review-section">
         {/* Title Input */}
         <div className="form-group-review">
           <label className="form-label-review">제목</label>
@@ -364,7 +356,7 @@ const ReviewPage: React.FC = () => {
 
         {/* Content Input */}
         <div className="form-group-review">
-          <label className="form-label-review">상세 내용</label>
+          <label className="form-label-review">이 외에도 거래에 대해 남기고 싶은 말이 있다면 적어주세요!</label>
           <textarea
             placeholder="거래하며 좋았던 점이나 아쉬웠던 점을 솔직하게 적어주세요. (최소 10자)"
             value={reviewData.content}
@@ -381,7 +373,7 @@ const ReviewPage: React.FC = () => {
         {/* Image Upload */}
         <div className="form-group-review">
           <label className="form-label-review">사진 첨부 (선택)</label>
-          
+
           {imagePreviews.length > 0 && (
             <div className="image-preview-grid-review">
               {imagePreviews.map((preview, index) => (
@@ -414,30 +406,28 @@ const ReviewPage: React.FC = () => {
             </label>
           )}
         </div>
+      </div>
 
-        {/* Submit Button */}
-        <button
-          className="submit-btn-review"
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="animate-spin mr-2" size={20} />
-              <span>등록 중...</span>
-            </>
-          ) : (
-            <>
-              <Send size={20} className="mr-2" />
-              <span>후기 등록 완료</span>
-            </>
-          )}
-        </button>
+      <button
+        className="submit-btn-review"
+        onClick={handleSubmit}
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="animate-spin mr-2" size={20} />
+            <span>등록 중...</span>
+          </>
+        ) : (
+          <>
+            <span>후기 등록하기</span>
+          </>
+        )}
+      </button>
 
-        <div className="info-message-review">
-          <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
-          <p>후기는 수정할 수 없으며, 허위 사실 기재 시 이용이 제한될 수 있습니다.</p>
-        </div>
+      <div className="info-message-review">
+        <AlertCircle size={16} className="flex-shrink-0" />
+        <div>솔직하고 따뜻한 후기는 FindX 커뮤니티를 아름답게 만듭니다. 허위 사실 기재 시 이용이 제한될 수 있습니다.</div>
       </div>
     </div>
   );

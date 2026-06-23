@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/phone-verification.css';
-import { getTokens, checkToken, getUserInfo } from '../utils/auth';
+import { getValidAuthToken, checkToken, getUserInfo } from '../utils/auth';
+import { API_BASE_URL } from '../config';
+import { Dialog } from "@capacitor/dialog";
 
 interface PhoneVerificationPageProps {
   onVerificationComplete?: () => void;
@@ -89,12 +91,13 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
     setError('');
 
     try {
-      const tokens = getTokens();
-      const response = await fetch('https://treasurehunter.seohamin.com/api/v1/sms/verification/code', {
+      // [수정] getValidAuthToken()으로 만료 토큰 자동 갱신 + API_BASE_URL로 URL 일원화
+      const token = await getValidAuthToken();
+      const response = await fetch(`${API_BASE_URL}/sms/verification/code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(tokens?.accessToken && { 'Authorization': `Bearer ${tokens.accessToken}` })
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           phoneNumber: `+82${phoneNumber.replace(/[^\d]/g, '').substring(1)}`
@@ -108,7 +111,7 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
       setIsCodeSent(true);
       setTimer(180); // 3 minutes
       setCanResend(false);
-      alert('인증번호가 전송되었습니다.');
+      await Dialog.alert({ title: '알림', message: '인증번호가 전송되었습니다.' });
     } catch (err) {
       setError(err instanceof Error ? err.message : '인증번호 전송에 실패했습니다.');
       console.error('Send verification error:', err);
@@ -127,12 +130,13 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
     setError('');
 
     try {
-      const tokens = getTokens();
-      const response = await fetch('https://treasurehunter.seohamin.com/api/v1/sms/verification/verify', {
+      // [수정] getValidAuthToken()으로 만료 토큰 자동 갱신 + API_BASE_URL로 URL 일원화
+      const token = await getValidAuthToken();
+      const response = await fetch(`${API_BASE_URL}/sms/verification/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(tokens?.accessToken && { 'Authorization': `Bearer ${tokens.accessToken}` })
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
           phoneNumber: `+82${phoneNumber.replace(/[^\d]/g, '').substring(1)}`,
@@ -149,7 +153,7 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
         await checkToken(userInfo.id.toString());
       }
 
-      alert('전화번호 인증이 완료되었습니다!');
+      await Dialog.alert({ title: '알림', message: '전화번호 인증이 완료되었습니다!' });
       
       if (onVerificationComplete) {
         onVerificationComplete();
@@ -176,8 +180,8 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleSkip = () => {
-    if (window.confirm('전화번호 인증을 건너뛰시겠습니까?\n나중에 마이페이지에서 인증할 수 있습니다.')) {
+  const handleSkip = async () => {
+    if ((await Dialog.confirm({ title: '알림', message: '전화번호 인증을 건너뛰시겠습니까?\n나중에 마이페이지에서 인증할 수 있습니다.' })).value) {
       navigate('/home');
     }
   };
@@ -237,7 +241,7 @@ const PhoneVerificationPage: React.FC<PhoneVerificationPageProps> = ({ onVerific
               </label>
               <input
                 id="verificationCode"
-                type="text"
+                type="tel"
                 placeholder="6자리 숫자 입력"
                 value={verificationCode}
                 onChange={handleCodeChange}

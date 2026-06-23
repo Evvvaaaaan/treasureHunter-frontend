@@ -1,63 +1,34 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   Search,
-  MapPin,
   Plus,
-  Bell,
   User,
   LogOut,
   Trash2,
   AlertCircle,
   Loader2,
-  Coins,
-  Navigation,
-  Calendar,
+  MapPin,
+  Heart
 } from 'lucide-react';
-import { Input } from './ui/input';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { Keyboard } from '@capacitor/keyboard';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Badge } from './ui/badge';
 import { getUserInfo, clearTokens, deleteUser, type UserInfo, getValidAuthToken } from '../utils/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import '../styles/home-page.css';
-import { Button } from './ui/button';
 import BottomNavigation from './BottomNavigation';
 import { useInView } from 'react-intersection-observer';
-
 import { API_BASE_URL } from '../config';
-
-interface AuthorInfo {
-  id: number;
-  nickname: string;
-  profileImage: string;
-  totalScore: number;
-  totalReviews: number;
-}
-
-interface ApiPost {
-  id: number;
-  title: string;
-  content: string;
-  type: 'LOST' | 'FOUND';
-  author?: AuthorInfo;
-  images: string[];
-  setPoint: number;
-  itemCategory: string;
-  lat: number;
-  lon: number;
-  lostAt: string;
-  createdAt: string;
-  updatedAt: string;
-  isAnonymous: boolean;
-  isCompleted: boolean;
-}
+import type { Post } from '../types/post';
+import { Dialog } from "@capacitor/dialog";
 
 interface ApiResponse {
   clientLat: number;
   clientLon: number;
   hasNext: boolean;
-  posts: ApiPost[];
+  posts: Post[];
 }
 
 interface LostItem {
@@ -67,54 +38,32 @@ interface LostItem {
   points: number;
   distance: number | null;
   image: string;
+  hasImage: boolean;
   status: 'lost' | 'found';
+  location: string | null;
   isCompleted: boolean;
   createdAt: string;
+  isLiked: boolean;
 }
 
-const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=ba/3c/ba3cbac6421ad26702c10ac05fe7c280a1686683f37321aebfb5026aa560ee21.png';
-
-// Haversine 거리 계산 함수 (km 단위) - 표시용
-const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) {
-    return 0;
-  }
-  const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-    Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-  return distance;
-};
+const DEFAULT_IMAGE = 'https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=62/cc/62ccbb3ae0690fbae3f0234204537bf17c2810740aa562336483c1df7fdc6fe1.png';
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
-
   let safeTimestamp = dateString;
   if (!safeTimestamp.endsWith('Z') && !/[+-]\d{2}:?\d{2}/.test(safeTimestamp)) {
     safeTimestamp += 'Z';
   }
-
   const date = new Date(safeTimestamp);
+  if (isNaN(date.getTime())) return '';
   const now = new Date();
-
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
   if (diffInSeconds < 0) return '방금 전';
   if (diffInSeconds < 60) return '방금 전';
-
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
-
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours}시간 전`;
-
   return new Intl.DateTimeFormat('ko-KR', {
     month: 'short',
     day: 'numeric',
@@ -122,296 +71,342 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
+
+
+const getTodayLabel = () => {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `TODAY · ${mm}/${dd}`;
+};
+
+// ── Radar decoration for hero card ──
+const RadarDecoration = () => (
+  <svg className="hero-radar" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
+    <circle cx="80" cy="80" r="50" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
+    <circle cx="80" cy="80" r="30" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
+    <circle cx="80" cy="80" r="4" fill="rgba(255,255,255,0.4)" />
+    <line x1="80" y1="10" x2="80" y2="150" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+    <line x1="10" y1="80" x2="150" y2="80" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+  </svg>
+);
+
+type ActiveTab = 'all' | 'lost' | 'found' | 'recent' | 'distance';
+
 export default function HomePage() {
   const navigate = useNavigate();
 
   const [userInfo] = useState<UserInfo | null>(getUserInfo());
   const [searchQuery, setSearchQuery] = useState('');
-  const [rawPosts, setRawPosts] = useState<ApiPost[]>([]);
+  const [rawPosts, setRawPosts] = useState<Post[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('all');
 
-  const [unreadNotifications] = useState(0);
+  // Search refs
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
-  // Pagination State
+  // Pagination
   const [hasNextPage, setHasNextPage] = useState(true);
   const [page, setPage] = useState(0);
   const [sortOption, setSortOption] = useState<'latest' | 'distance'>('latest');
 
-  // 무한 스크롤 감지 Ref
-  const { ref, inView } = useInView({
-    threshold: 0,
-    rootMargin: '100px', // 바닥보다 100px 위에서 미리 로딩
-  });
+  const { ref: bottomRef, inView } = useInView({ threshold: 0, rootMargin: '100px' });
 
-  // 1. 초기 로그인 체크
+  // Keyboard listeners
   useEffect(() => {
-    if (!userInfo) navigate('/login');
-  }, [userInfo, navigate]);
+    if (Capacitor.isNativePlatform()) {
+      const showListener = Keyboard.addListener('keyboardWillShow', () => {
+        setIsSearchFocused(true);
+      });
+      const hideListener = Keyboard.addListener('keyboardWillHide', () => {
+        setIsSearchFocused(false);
+        // Note: do NOT call document.activeElement.blur() here — it causes search to close immediately
+      });
+      return () => {
+        showListener.then(h => h.remove());
+        hideListener.then(h => h.remove());
+      };
+    }
+  }, []);
 
-  // 2. 위치 정보 가져오기 (마운트 시 1회)
+  // Delayed focus when search expands
+  useEffect(() => {
+    if (isSearchExpanded) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isSearchExpanded]);
+
+  // Click-outside to close search
+  useEffect(() => {
+    if (!isSearchExpanded) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+        setIsSearchExpanded(false);
+        setSearchQuery('');
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setIsSearchExpanded(false); setSearchQuery(''); }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isSearchExpanded]);
+
+  // Location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newLoc = {
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
-          };
-          setUserLocation(newLoc);
-
-          // 만약 현재 거리순 탭에 있다면, 위치 정보를 얻자마자 새로고침
-          if (sortOption === 'distance') {
-            setTimeout(() => {
-              setPage(0);
-              setHasNextPage(true);
-              fetchPosts(0, true, newLoc.lat, newLoc.lon);
-            }, 100);
-          }
-        },
-        (error) => console.error("Location error:", error),
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        (err) => console.error('Location error:', err),
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // 3. API 호출 함수
+  // Fetch posts
+  const resolveAddresses = async (postsToResolve: Post[]) => {
+    if (window.google && window.google.maps && window.google.maps.Geocoder) {
+      const geocoder = new window.google.maps.Geocoder();
+      for (const post of postsToResolve) {
+        if (post.location && !post.location.match(/^-?\d+\.\d+/)) continue;
+        
+        try {
+          const response = await geocoder.geocode({ location: { lat: post.lat, lng: post.lon } });
+          if (response.results && response.results[0]) {
+            const address = response.results[0].formatted_address.replace(/^대한민국\s*/, '');
+            const parts = address.split(' ');
+            const shortAddress = parts.length >= 3 ? `${parts[1]} ${parts[2]}` : address;
+            
+            setRawPosts(prev => 
+              prev.map(p => p.id === post.id ? { ...p, location: shortAddress } : p)
+            );
+          }
+        } catch (e) {
+          console.error("Geocoding failed for post", post.id, e);
+        }
+      }
+    }
+  };
+
   const fetchPosts = useCallback(async (
     pageNum: number,
     isReset: boolean = false,
     overrideLat?: number,
     overrideLon?: number
   ) => {
-    // 더 이상 페이지가 없고 리셋도 아니면 중단
     if (!isReset && !hasNextPage) return;
-
     setIsLoading(true);
-
-    const token = await getValidAuthToken();
-
-    if (!token) {
-      // setError('로그인이 필요합니다. 다시 로그인해주세요.');
-      setIsLoading(false);
-      navigate('/login');
-      return;
-    }
-
-    // 인자로 받은 좌표가 있으면 최우선 사용, 없으면 userLocation 사용, 그것도 없으면 기본값
-    const lat = overrideLat || userLocation?.lat || 37.5665;
-    const lon = overrideLon || userLocation?.lon || 126.9780;
-
     try {
-      // URL 파라미터 구성 (page, size 추가)
+      const token = await getValidAuthToken();
+      if (!token) { navigate('/login'); return; }
+
+      const lat = overrideLat ?? userLocation?.lat ?? 37.5665;
+      const lon = overrideLon ?? userLocation?.lon ?? 126.9780;
+
       const params = new URLSearchParams();
       params.append('page', pageNum.toString());
-      params.append('size', '10'); // 한 번에 가져올 개수
+      params.append('size', '10');
+      params.append('lat', lat.toString());
+      params.append('lon', lon.toString());
 
-      // [핵심 수정] 거리순 API 호출 시 파라미터 명세 준수
       if (sortOption === 'distance') {
-        params.append('searchType', 'distance'); // 기존 search_type -> searchType 으로 수정
-        params.append('lat', lat.toString());
-        params.append('lon', lon.toString());
-        params.append('maxDistance', '50'); // 필수: 최대 반경 50km
+        params.append('searchType', 'distance');
+        params.append('maxDistance', '50');
       }
 
-      const url = `${API_BASE_URL}/posts?${params.toString()}`;
-
-      const response = await fetch(url, {
-        method: 'GET',
+      const response = await CapacitorHttp.get({
+        url: `${API_BASE_URL}/posts?${params.toString()}`,
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Origin': 'https://treasurehunter.seohamin.com',
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP 오류! 상태: ${response.status}`);
-      }
+      if (response.status !== 200) throw new Error(`HTTP 오류: ${response.status}`);
 
-      const data: ApiResponse = await response.json();
-      const newPosts = data.posts || [];
-
-      // 데이터 상태 업데이트 (리셋이면 덮어쓰기, 아니면 이어붙이기)
+      const data = response.data as ApiResponse;
+      const newPosts = (data.posts || []).map(p => ({
+        ...p,
+        location: p.location || `${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}`
+      }));
       setRawPosts((prev) => {
         if (isReset) return newPosts;
-
-        // 중복 제거 후 병합
         const existingIds = new Set(prev.map(p => p.id));
-        const uniquePosts = newPosts.filter(p => !existingIds.has(p.id));
-        return [...prev, ...uniquePosts];
+        return [...prev, ...newPosts.filter(p => !existingIds.has(p.id))];
       });
-
-      // 다음 페이지 존재 여부 업데이트
       setHasNextPage(data.hasNext);
 
+      resolveAddresses(newPosts);
     } catch (err) {
       console.error('게시글 로딩 실패:', err);
-      // setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
+      if (pageNum === 0) setHasLoadedOnce(true);
     }
   }, [userLocation, sortOption, hasNextPage, navigate]);
 
-  // 4. 초기 로드 및 정렬 변경 시
   useEffect(() => {
-    if (userInfo) {
-      setPage(0);
-      setHasNextPage(true);
-      fetchPosts(0, true);
-    }
+    setPage(0);
+    setHasNextPage(true);
+    fetchPosts(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortOption, userInfo]);
+  }, [sortOption, userLocation]);
 
-  // 5. 무한 스크롤 트리거: 화면 바닥 감지 시 페이지 증가
   useEffect(() => {
-    // 거리순, 최신순 상관없이 inView가 true가 되면 동작
-    if (inView && hasNextPage && !isLoading) {
-      setPage((prev) => prev + 1);
-    }
+    if (inView && hasNextPage && !isLoading) setPage(p => p + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, hasNextPage, isLoading]);
 
-  // 6. 페이지 번호 변경 시 추가 데이터 로드
   useEffect(() => {
-    if (page > 0) {
-      fetchPosts(page, false); // false = append
-    }
+    if (page > 0) fetchPosts(page, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const handleLogout = () => {
-    clearTokens();
-    navigate('/login');
+  // Tab change handler
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    if (tab === 'distance') {
+      setSortOption('distance');
+    } else {
+      setSortOption('latest');
+    }
   };
 
-  const handleDeleteUser = () => {
-    setShowProfileMenu(false);
-    setIsDeleteDialogOpen(true);
-  };
+  const handleLogout = () => { clearTokens(); navigate('/login'); };
+
+  const handleDeleteUser = () => { setShowProfileMenu(false); setIsDeleteDialogOpen(true); };
 
   const confirmDeleteUser = async () => {
     if (userInfo) {
       const success = await deleteUser(userInfo.id.toString());
       setIsDeleteDialogOpen(false);
       if (success) {
-        alert('회원 탈퇴 완료');
-        navigate('/login', { replace: true });
+        await Dialog.alert({ title: '알림', message: '회원 탈퇴 완료' });
+        clearTokens();
+        window.location.href = '/login';
       } else {
-        alert('회원 탈퇴 실패');
+        await Dialog.alert({ title: '알림', message: '회원 탈퇴 실패' });
       }
     }
   };
 
-  // UI용 데이터 가공
+  // Data processing
   const lostItems: LostItem[] = useMemo(() => {
-    const items = rawPosts.map((post: ApiPost) => {
-      let distance: number | null = null;
-      if (userLocation) {
-        distance = getDistance(
-          userLocation.lat,
-          userLocation.lon,
-          post.lat,
-          post.lon
-        );
-      }
-
-      return {
+    let blockedUsers: string[] = [];
+    try {
+      blockedUsers = JSON.parse(localStorage.getItem('blockedUsers') || '[]');
+    } catch {
+      localStorage.removeItem('blockedUsers');
+    }
+    const items = rawPosts
+      .filter((post: Post) => !blockedUsers.includes(String(post.author?.id || '')))
+      .map((post: Post) => ({
         id: post.id.toString(),
         title: post.title,
-        content: post.content.substring(0, 10) + (post.content.length > 10 ? '...' : ''),
+        content: post.content.substring(0, 30) + (post.content.length > 30 ? '...' : ''),
         points: post.setPoint,
-        distance: distance,
-        image: post.images && post.images.length > 0 ? post.images[0] : DEFAULT_IMAGE,
+        distance: post.distance !== undefined ? post.distance : null,
+        image: post.images?.length > 0 ? post.images[0] : DEFAULT_IMAGE,
+        hasImage: (post.images?.length ?? 0) > 0,
         status: (post.type || 'LOST').toLowerCase() as 'lost' | 'found',
+        location: post.location ?? null,
         isCompleted: post.isCompleted,
         createdAt: post.createdAt,
-      };
-    });
-
-    // 클라이언트 사이드 정렬 (API가 정렬해서 주더라도, 위치 거리 계산 후 재정렬 보정)
-    if (sortOption === 'distance') {
-      return items.sort((a, b) => {
-        if (a.distance === null) return 1;
-        if (b.distance === null) return -1;
-        return a.distance - b.distance;
-      });
-    } else {
+        isLiked: post.isLiked || false,
+      }));
+    if (sortOption === 'latest') {
       return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
-  }, [rawPosts, userLocation, sortOption]);
+    return items;
+  }, [rawPosts, sortOption]);
+
+  // Hero stats
+  const lostCount = useMemo(() => rawPosts.filter(p => p.type === 'LOST' && !p.isCompleted).length, [rawPosts]);
+  const foundCount = useMemo(() => rawPosts.filter(p => p.type === 'FOUND' && !p.isCompleted).length, [rawPosts]);
+  const totalCount = lostCount + foundCount;
+
+  // Filter by active tab
+  const filteredItems = useMemo(() => {
+    let items = lostItems;
+    // Search filter
+    if (searchQuery) {
+      items = items.filter(i =>
+        i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        i.content.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    // Type filter
+    if (activeTab === 'lost') items = items.filter(i => i.status === 'lost');
+    else if (activeTab === 'found') items = items.filter(i => i.status === 'found');
+    return items;
+  }, [lostItems, searchQuery, activeTab]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
+    if (searchQuery.trim()) navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
   };
 
-  // 클라이언트 검색 필터
-  const filteredItems = lostItems.filter(
-    (item) =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const showInitialLoader = !hasLoadedOnce;
 
   return (
     <div className="home-page">
-      <header className="home-header">
+      {/* ── HEADER ── */}
+      <header className="home-header" ref={headerRef}>
         <div className="header-container">
           <div className="header-content">
-            <div className="header-logo">
-              <div className="logo-icon">
-                <MapPin style={{ width: '1.5rem', height: '1.5rem', color: 'white' }} />
-              </div>
+            {/* Logo + location */}
+            <div className="header-logo" onClick={() => setShowProfileMenu(false)}>
+              <img
+                src="https://treasurehunter.seohamin.com/api/v1/file/image?objectKey=2d/77/2d771d4f0ddfaf94eb77702eb0d1efeba014e9f387b3fa677d216b086b606518.png"
+                alt="FindX Logo"
+                className="header-logo-img"
+              />
               <div>
-                <h1 style={{ fontSize: '1.125rem', color: '#111827' }}>Treasure Hunter</h1>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>분실물 찾기</p>
+                <h1 className="header-title">FindX</h1>
+                <p className="header-location">
+                  <MapPin style={{ width: '0.625rem', height: '0.625rem', display: 'inline', marginRight: '0.2rem' }} />
+                  내 주변
+                </p>
               </div>
             </div>
 
+            {/* Action buttons */}
             <div className="header-actions">
               <button
-                className="notification-btn"
-                onClick={() => navigate('/notifications')}
+                className="header-icon-btn"
+                onClick={() => { setIsSearchExpanded(v => !v); setSearchQuery(''); }}
+                aria-label="검색"
               >
-                <Bell
-                  style={{
-                    width: "1.25rem",
-                    height: "1.25rem",
-                    color: "#4b5563",
-                  }}
-                />
-                {unreadNotifications > 0 && (
-                  <span className="notification-badge">
-                    {unreadNotifications}
-                  </span>
-                )}
-              </button>
-              <button
-                className="search-toggle-btn"
-                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
-              >
-                <Search
-                  style={{
-                    width: "1.25rem",
-                    height: "1.25rem",
-                    color: "#4b5563",
-                  }}
-                />
+                <Search style={{ width: '1.125rem', height: '1.125rem' }} />
               </button>
 
               <div className="profile-menu-wrapper">
                 <button
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="profile-btn"
+                  className="header-icon-btn"
+                  onClick={() => setShowProfileMenu(v => !v)}
+                  aria-label="메뉴"
                 >
-                  <Avatar style={{ width: '2rem', height: '2rem' }}>
+                  <Avatar style={{ width: '1.5rem', height: '1.5rem' }}>
                     <AvatarImage src={userInfo?.profileImage} />
-                    <AvatarFallback style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
+                    <AvatarFallback style={{ backgroundColor: '#0F3D2E', color: '#F5F2E8', fontSize: '0.75rem' }}>
                       {userInfo?.nickname?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
@@ -419,13 +414,13 @@ export default function HomePage() {
 
                 {showProfileMenu && (
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
+                    initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="profile-dropdown"
                   >
                     <div className="profile-info">
-                      <p style={{ fontSize: '0.875rem', color: '#111827' }}>{userInfo?.nickname}</p>
-                      <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>{userInfo?.name}</p>
+                      <p style={{ fontSize: '0.875rem', color: '#1A2E1A', fontWeight: 600 }}>{userInfo?.nickname}</p>
+                      <p style={{ fontSize: '0.75rem', color: '#6FA886' }}>{userInfo?.name}</p>
                     </div>
                     <button onClick={() => navigate('/profile')} className="menu-item">
                       <User style={{ width: '1rem', height: '1rem' }} />
@@ -444,42 +439,28 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+
+          {/* Search bar */}
           {isSearchExpanded && (
             <motion.form
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
+              animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.25 }}
               onSubmit={handleSearch}
-              style={{ marginTop: "1rem", overflow: "hidden" }}
+              className="search-form"
             >
               <div className="search-wrapper">
-                <Search
-                  className="search-icon"
-                  style={{
-                    width: "1.25rem",
-                    height: "1.25rem",
-                    color: "#9ca3af",
-                  }}
-                />
-                <Input
+                <Search className="search-icon" style={{ width: '1rem', height: '1rem' }} />
+                <input
+                  ref={searchInputRef}
                   type="text"
-                  placeholder="분실물 검색 (예: 지갑, 휴대폰, 강남역...)"
+                  className="search-input-field"
+                  placeholder="분실물 검색 (예: 지갑, 휴대폰...)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onBlur={() => {
-                    if (!searchQuery) {
-                      setTimeout(() => setIsSearchExpanded(false), 200);
-                    }
-                  }}
-                  autoFocus
-                  style={{
-                    paddingLeft: "3rem",
-                    height: "3rem",
-                    backgroundColor: "#f9fafb",
-                    borderColor: "#e5e7eb",
-                    borderRadius: "1rem",
-                  }}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => { if (!Capacitor.isNativePlatform()) setIsSearchFocused(false); }}
                 />
               </div>
             </motion.form>
@@ -488,168 +469,179 @@ export default function HomePage() {
       </header>
 
       <main className="main-content">
-        {userInfo?.role === 'NOT_VERIFIED' && (
+        {/* ── Banners ── */}
+        {(userInfo?.role === 'NOT_VERIFIED' || userInfo?.role === 'NOT_REGISTERED') && (
           <div className="verification-banner">
             <AlertCircle className="banner-icon" />
             <div className="banner-text">
-              <strong>본인 인증이 필요합니다.</strong>
-              <span>모든 기능을 사용하려면 휴대폰 인증을 완료해주세요.</span>
+              <strong>휴대폰 인증이 필요합니다.</strong>
+              <span>모든 기능을 사용하려면 인증을 완료해주세요.</span>
             </div>
-            <button onClick={() => navigate('/verify-phone')} className="banner-button">
-              인증하기
-            </button>
+            <button onClick={() => navigate('/verify-phone')} className="banner-button">인증하기</button>
+          </div>
+        )}
+        {userInfo?.name === 'temp' && (
+          <div className="verification-banner profile-banner">
+            <AlertCircle className="banner-icon" />
+            <div className="banner-text">
+              <strong>프로필 설정을 완료해주세요.</strong>
+              <span>닉네임과 프로필 사진을 설정해보세요.</span>
+            </div>
+            <button onClick={() => navigate('/setup-profile')} className="banner-button">설정하기</button>
           </div>
         )}
 
-        <div className="quick-actions">
-          <div className="promo-banner">
-            <div className="promo-content">
-              <h3>광고 및 프로모션</h3>
-              <p>여기에 배너 광고를 추가할 수 있습니다</p>
+        {/* ── Hero Card ── */}
+        <div className="hero-card">
+          <RadarDecoration />
+          <div className="hero-body">
+            <p className="hero-date">{getTodayLabel()}</p>
+            <h2 className="hero-headline">
+              근처에서<br />
+              <span className="hero-count">{totalCount}건</span>의 보물이 기다려요
+            </h2>
+            <div className="hero-stats">
+              <div className="hero-stat-box">
+                <span className="hero-stat-label">LOST</span>
+                <span className="hero-stat-value">{lostCount}건</span>
+              </div>
+              <div className="hero-stat-box">
+                <span className="hero-stat-label">FOUND</span>
+                <span className="hero-stat-value">{foundCount}건</span>
+              </div>
+              <button className="hero-map-btn" onClick={() => navigate('/map')}>
+                지도로 →
+              </button>
             </div>
           </div>
         </div>
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div className="section-header">
-            <div className="sort-buttons">
+        {/* ── Filter Chips ── */}
+        <div className="filter-chips-wrap">
+          <div className="filter-chips">
+            {([
+              { key: 'all', label: '전체' },
+              { key: 'lost', label: `분실물 ${lostCount}` },
+              { key: 'found', label: `습득물 ${foundCount}` },
+              { key: 'recent', label: '최근' },
+              { key: 'distance', label: '근처순' },
+            ] as { key: ActiveTab; label: string }[]).map(({ key, label }) => (
               <button
-                className={`sort-btn ${sortOption === 'latest' ? 'active' : ''}`}
-                onClick={() => setSortOption('latest')}
+                key={key}
+                className={`filter-chip${activeTab === key ? ' active' : ''}`}
+                onClick={() => handleTabChange(key)}
               >
-                최신순
+                {label}
               </button>
-              <button
-                className={`sort-btn ${sortOption === 'distance' ? 'active' : ''}`}
-                onClick={() => setSortOption('distance')}
-              >
-                거리순
-              </button>
-            </div>
+            ))}
           </div>
+        </div>
 
-          {filteredItems.length > 0 ? (
-            <div className="items-grid">
-              {filteredItems.map((item, index) => (
-                <motion.div
-                  key={`${item.id}-${index}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="item-card"
-                  onClick={() => navigate(`/items/${item.id}`)}
-                >
-                  <div className="item-image" style={{ position: 'relative' }}>
-                    <ImageWithFallback
-                      src={item.image}
-                      alt={item.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                    <Badge
-                      className={item.status === "lost" ? "badge-lost" : "badge-found"}
-                      style={{
-                        position: "absolute",
-                        top: "0.75rem",
-                        right: "0.75rem",
-                        backgroundColor: item.status === "lost" ? "#ef4444" : "#22c55e",
-                        color: "white",
-                        zIndex: 1
-                      }}
-                    >
-                      {item.status === "lost" ? "분실물" : "습득물"}
-                    </Badge>
-                    {item.isCompleted && (
-                      <div style={{
-                        position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'white', fontWeight: 'bold', fontSize: '14px', zIndex: 5
-                      }}>
-                        완료됨
-                      </div>
-                    )}
-                  </div>
-                  <div className="item-info">
-                    <h3 className="item-title" style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>{item.title}</h3>
-                    <div className="item-meta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                      {item.points > 0 && (
-                        <div className="meta-item" title={`리워드: ${item.points}P`}>
-                          <Coins style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#f59e0b' }} />
-                          <span className="meta-text" style={{ color: '#b45309', fontWeight: 600 }}>
-                            {item.points.toLocaleString()}P
-                          </span>
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '0.25rem' }}>
-                        <div className="meta-item" title="내 위치로부터의 거리">
-                          <Navigation style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
-                          <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                            {item.distance !== null ? `${item.distance.toFixed(1)} km` : '거리 미상'}
-                          </span>
-                        </div>
-                        <div className="meta-item" title="게시일">
-                          <Calendar style={{ width: '0.875rem', height: '0.875rem', flexShrink: 0, color: '#6b7280' }} />
-                          <span className="meta-text" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                            {formatDate(item.createdAt)}
-                          </span>
-                        </div>
-                      </div>
+        {/* ── Item List ── */}
+        {showInitialLoader || (isLoading && page === 0) ? (
+          <div className="loader-center">
+            <Loader2 className="animate-spin" style={{ width: '1.75rem', height: '1.75rem', color: '#0F3D2E' }} />
+            <p style={{ color: '#6FA886', fontSize: '0.875rem' }}>불러오는 중...</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="no-results">
+            <div className="no-results-icon">
+              <Search style={{ width: '1.75rem', height: '1.75rem', color: '#6FA886' }} />
+            </div>
+            <p style={{ color: '#1A2E1A' }}>
+              {searchQuery ? '검색 결과가 없습니다' : '등록된 게시물이 없습니다.'}
+            </p>
+          </div>
+        ) : (
+          <div className="items-list">
+            {filteredItems.map((item, index) => (
+              <motion.div
+                key={`${item.id}-${index}`}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.3) }}
+                className={`item-row row-${item.status}`}
+                onClick={() => navigate(`/items/${item.id}`)}
+              >
+                {/* Left accent bar */}
+                <div className={`item-accent-bar accent-${item.status}`} />
+
+                {/* Thumbnail */}
+                <div className={`item-thumb ${item.status === 'lost' ? 'thumb-lost' : 'thumb-found'}`}>
+                  <ImageWithFallback
+                    src={item.image}
+                    alt={item.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  {!item.hasImage && (
+                    <span className={`thumb-label label-${item.status}`}>
+                      {item.status === 'lost' ? 'LOST' : 'FOUND'}
+                    </span>
+                  )}
+                  <div className="item-thumb-overlay" />
+                  {item.isLiked && (
+                    <div className="item-heart" onClick={(e) => { e.stopPropagation(); /* TODO: Heart logic */ }}>
+                      <Heart fill="currentColor" size={12} />
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-
-              {/* [NEW] 무한 스크롤 트리거 및 로딩바 */}
-              {hasNextPage && (
-                <div
-                  ref={ref}
-                  style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', padding: '20px 0' }}
-                >
-                  {isLoading && (
-                    <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
+                  )}
+                  {item.isCompleted && (
+                    <div className="thumb-completed">완료됨</div>
                   )}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="no-results">
-              {isLoading && page === 0 ? (
-                <Loader2 className="animate-spin" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
-              ) : (
-                <>
-                  <div className="no-results-icon">
-                    <Search style={{ width: '2rem', height: '2rem', color: '#9ca3af' }} />
+
+                {/* Content */}
+                <div className="item-content">
+                  {/* 배지 */}
+                  <div className="item-meta-row">
+                    <span className={`item-pill ${item.status}`}>
+                      · {item.status.toUpperCase()} ·
+                    </span>
+                    {item.points > 0 && (
+                      <span className="item-points">◆ {item.points >= 10000 ? `${item.points / 10000}만P` : `${item.points}P`}</span>
+                    )}
                   </div>
-                  <p style={{ color: '#4b5563' }}>
-                    {searchQuery ? '검색 결과가 없습니다' : '등록된 게시물이 없습니다.'}
-                  </p>
-                  {!searchQuery && (
-                    <Button onClick={() => navigate('/create')} style={{ marginTop: '1rem' }}>
-                      <Plus size={16} style={{ marginRight: '0.5rem' }} /> 첫 게시물 등록하기
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
+
+                  {/* 제목 */}
+                  <h3 className="item-title">{item.title}</h3>
+
+                  {/* 시간 + 위치 */}
+                  <div className="item-desc">
+                    {item.location || '위치 정보 없음'} · {formatDate(item.createdAt)}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+
+            {/* Infinite scroll trigger */}
+            {hasNextPage && (
+              <div ref={bottomRef} style={{ display: 'flex', justifyContent: 'center', padding: '1.5rem 0' }}>
+                {isLoading && (
+                  <Loader2 className="animate-spin" style={{ width: '1.5rem', height: '1.5rem', color: '#0F3D2E' }} />
+                )}
+              </div>
+            )}
+
+            {/* Bottom spacer — ensures last item clears the nav bar + FAB when all pages loaded */}
+            {!hasNextPage && <div style={{ height: '1.5rem' }} />}
+          </div>
+        )}
       </main>
 
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+      {/* ── FAB ── */}
+      <button
         onClick={() => navigate('/create')}
         className="fab"
-        style={{ bottom: '5.5rem', right: '0.5rem' }}
         aria-label="게시물 등록"
       >
-        <Plus style={{ width: '2rem', height: '2rem', color: 'white' }} />
-      </motion.button>
+        <Plus style={{ width: '1.625rem', height: '1.625rem', color: '#F5F2E8', strokeWidth: 2.5 }} />
+      </button>
 
+      {/* ── Delete dialog ── */}
       {isDeleteDialogOpen && (
         <div className="delete-dialog-overlay">
           <motion.div
             className="delete-dialog-content"
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
           >
             <h3>회원 탈퇴</h3>
@@ -662,7 +654,7 @@ export default function HomePage() {
         </div>
       )}
 
-      <BottomNavigation />
+      {!isSearchFocused && <BottomNavigation />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Lock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { useTheme } from '../utils/theme';
 import '../styles/change-password-page.css';
+import { Dialog } from "@capacitor/dialog";
 
 interface PasswordValidation {
   minLength: boolean;
@@ -84,7 +85,7 @@ const ChangePasswordPage: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // 성공 시
-      alert('비밀번호가 성공적으로 변경되었습니다.');
+      await Dialog.alert({ title: '알림', message: '비밀번호가 성공적으로 변경되었습니다.' });
       navigate(-1);
     } catch (err) {
       setError('비밀번호 변경에 실패했습니다. 다시 시도해주세요.');
